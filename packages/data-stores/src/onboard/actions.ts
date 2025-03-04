@@ -2,7 +2,7 @@ import { guessTimezone, getLanguage } from '@automattic/i18n-utils';
 import { dispatch, select } from '@wordpress/data-controls';
 import { __ } from '@wordpress/i18n';
 import { STORE_KEY as SITE_STORE } from '../site';
-import { Visibility } from '../site/types';
+import { Visibility, GlobalStyles } from '../site/types';
 import { SiteGoal, STORE_KEY } from './constants';
 import { ProfilerData, ReadymadeTemplate } from './types';
 import type { DomainTransferData, State } from '.';
@@ -171,6 +171,11 @@ export const setSelectedStyleVariation = (
 	selectedStyleVariation,
 } );
 
+export const setSelectedGlobalStyles = ( selectedGlobalStyles: GlobalStyles | undefined ) => ( {
+	type: 'SET_SELECTED_GLOBAL_STYLES' as const,
+	selectedGlobalStyles,
+} );
+
 export const setSelectedReadymadeTemplate = ( readymadeTemplate: ReadymadeTemplate ) => ( {
 	type: 'SET_READYMADE_TEMPLATE' as const,
 	readymadeTemplate,
@@ -280,16 +285,6 @@ export const resetSelectedDesign = () => ( {
 	type: 'RESET_SELECTED_DESIGN' as const,
 } );
 
-export const setVerticalId = ( verticalId: string ) => ( {
-	type: 'SET_VERTICAL_ID' as const,
-	verticalId,
-} );
-
-export const setStoreLocationCountryCode = ( storeLocationCountryCode: string ) => ( {
-	type: 'SET_STORE_LOCATION_COUNTRY_CODE' as const,
-	storeLocationCountryCode,
-} );
-
 export const setEcommerceFlowRecurType = ( ecommerceFlowRecurType: string ) => ( {
 	type: 'SET_ECOMMERCE_FLOW_RECUR_TYPE' as const,
 	ecommerceFlowRecurType,
@@ -386,6 +381,11 @@ export const setPartnerBundle = ( partnerBundle: string | null ) => ( {
 	partnerBundle,
 } );
 
+export const setCreateWithBigSky = ( createWithBigSky: boolean ) => ( {
+	type: 'SET_CREATE_WITH_BIG_SKY' as const,
+	createWithBigSky,
+} );
+
 export type OnboardAction = ReturnType<
 	| typeof addFeature
 	| typeof removeFeature
@@ -410,6 +410,7 @@ export type OnboardAction = ReturnType<
 	| typeof setRandomizedDesigns
 	| typeof setSelectedDesign
 	| typeof setSelectedStyleVariation
+	| typeof setSelectedGlobalStyles
 	| typeof setSelectedSite
 	| typeof setSelectedReadymadeTemplate
 	| typeof setShowSignupDialog
@@ -434,8 +435,6 @@ export type OnboardAction = ReturnType<
 	| typeof setSiteLogo
 	| typeof setSiteUrl
 	| typeof setSiteAccentColor
-	| typeof setVerticalId
-	| typeof setStoreLocationCountryCode
 	| typeof setEcommerceFlowRecurType
 	| typeof setCouponCode
 	| typeof setStorageAddonSlug
@@ -447,4 +446,5 @@ export type OnboardAction = ReturnType<
 	| typeof setPaidSubscribers
 	| typeof setPartnerBundle
 	| typeof setSignupDomainOrigin
+	| typeof setCreateWithBigSky
 >;

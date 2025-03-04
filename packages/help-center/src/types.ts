@@ -9,7 +9,6 @@ export interface Container {
 	hidden?: boolean;
 	currentRoute?: string;
 	openingCoordinates?: ReturnType< typeof useOpeningCoordinates >;
-	shouldUseHelpCenterExperience?: boolean;
 }
 
 export interface PostObject {
@@ -48,12 +47,6 @@ export interface Article {
 	blog_id?: string;
 	url?: { pathname: string; search: string } | string;
 	is_external?: boolean;
-}
-
-export interface TailoredArticles {
-	post_ids: Array< number >;
-	blog_id: number;
-	locale: string;
 }
 
 export interface FeatureFlags {

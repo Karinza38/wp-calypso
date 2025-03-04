@@ -1,5 +1,4 @@
 import { Plans, AddOns, PlanPricing } from '@automattic/data-stores';
-import { MinimalRequestCartProduct } from '@automattic/shopping-cart';
 import type {
 	UrlFriendlyTermType,
 	PlanSlug,
@@ -8,6 +7,7 @@ import type {
 	FeatureGroupMap,
 	Feature,
 } from '@automattic/calypso-products';
+import type { MinimalRequestCartProduct } from '@automattic/shopping-cart';
 import type { TranslateResult } from 'i18n-calypso';
 
 /******************
@@ -57,7 +57,6 @@ export type PlansIntent =
 	| 'plans-affiliate'
 	| 'plans-blog-onboarding'
 	| 'plans-newsletter'
-	| 'plans-link-in-bio'
 	| 'plans-new-hosted-site'
 	| 'plans-new-hosted-site-business-only'
 	| 'plans-plugins'
@@ -105,7 +104,6 @@ export interface CommonGridProps {
 	siteId?: number | null;
 	isInSignup: boolean;
 	isInAdmin: boolean;
-	isReskinned?: boolean;
 	onStorageAddOnClick?: ( addOnSlug: AddOns.StorageAddOnSlug ) => void;
 	currentSitePlanSlug?: string | null;
 	hideUnavailableFeatures?: boolean; // used to hide features that are not available, instead of strike-through as explained in #76206
@@ -234,6 +232,12 @@ export type GridContextProps = {
 	 * This carries lower precedence than promo/coupon and introductory pricing, irrespective of whether set or not.
 	 */
 	enableTermSavingsPriceDisplay?: boolean;
+
+	/**
+	 * Determine if storage add-on products should be combined with plan costs when
+	 * calculating prices.
+	 */
+	reflectStorageSelectionInPlanPrices?: boolean;
 };
 
 export type ComparisonGridExternalProps = Omit<

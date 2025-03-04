@@ -1,9 +1,11 @@
 import { Button, Gridicon } from '@automattic/components';
 import styled from '@emotion/styled';
+import { Button as WPButton } from '@wordpress/components';
+import { Icon, external } from '@wordpress/icons';
 import { useTranslate } from 'i18n-calypso';
 import SiteIcon from 'calypso/blocks/site-icon';
-import { navigate } from 'calypso/lib/navigate';
 import { urlToSlug } from 'calypso/lib/url';
+import { showSitesPage } from 'calypso/sites/components/sites-dashboard';
 import SitesStagingBadge from 'calypso/sites-dashboard/components/sites-staging-badge';
 import { useSelector } from 'calypso/state';
 import getSiteUrl from 'calypso/state/selectors/get-site-url';
@@ -13,9 +15,13 @@ import { SiteSyncCard } from './staging-sync-card';
 
 const SiteRow = styled.div( {
 	display: 'flex',
-	alignItems: 'center',
+	alignItems: 'flex-start',
 	marginBottom: 24,
-	'.site-icon': { flexShrink: 0 },
+	'.site-icon': {
+		flexShrink: 0,
+		alignSelf: 'flex-start',
+		marginTop: '2px',
+	},
 } );
 
 const BorderedContainer = styled.div( {
@@ -60,10 +66,6 @@ const SiteName = styled.a( {
 	'&, &:hover, &:visited': {
 		color: 'var( --studio-gray-100 )',
 	},
-} );
-
-const StagingSiteLink = styled.div( {
-	wordBreak: 'break-word',
 } );
 
 const ActionButtons = styled.div( {
@@ -128,13 +130,7 @@ export const ManageStagingSiteCardContent = ( {
 				<Button
 					primary
 					onClick={ () => {
-						navigate(
-							`/overview/${ urlToSlug( stagingSite.url ) }?search=${ urlToSlug(
-								productionSiteUrl as string
-							) }`,
-							false,
-							true
-						);
+						showSitesPage( `/overview/${ urlToSlug( stagingSite.url ) }` );
 					} }
 					disabled={ isButtonDisabled }
 				>
@@ -157,9 +153,17 @@ export const ManageStagingSiteCardContent = ( {
 								</SiteName>
 								<SitesStagingBadge>{ translate( 'Staging' ) }</SitesStagingBadge>
 							</SiteNameContainer>
-							<StagingSiteLink>
-								<a href={ stagingSite.url }>{ stagingSite.url }</a>
-							</StagingSiteLink>
+							<WPButton
+								variant="link"
+								href={ stagingSite.url }
+								target="_blank"
+								className="tools-staging-site__site-url"
+							>
+								<span>
+									{ stagingSite.url }
+									<Icon icon={ external } size={ 16 } />
+								</span>
+							</WPButton>
 						</SiteInfo>
 					</SiteRow>
 					<ActionButtons>

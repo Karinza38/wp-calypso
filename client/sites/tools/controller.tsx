@@ -1,10 +1,14 @@
+import page, { Context as PageJSContext } from '@automattic/calypso-router';
 import { __ } from '@wordpress/i18n';
 import { useSelector } from 'react-redux';
+import { LogType } from 'calypso/data/hosting/use-site-logs-query';
+import PageViewTracker from 'calypso/lib/analytics/page-view-tracker';
 import HostingFeatures from 'calypso/sites/hosting-features/components/hosting-features';
-import { getSelectedSiteSlug } from 'calypso/state/ui/selectors';
+import { SiteLogsDataViews } from 'calypso/sites/tools/logs';
+import { getSelectedSite, getSelectedSiteSlug } from 'calypso/state/ui/selectors';
+import { getRouteFromContext } from 'calypso/utils';
 import { SidebarItem, Sidebar, PanelWithSidebar } from '../components/panel-sidebar';
-import { useAreAdvancedHostingFeaturesSupported } from '../hosting-features/features';
-import Database from './database/page';
+import { areHostingFeaturesSupported } from '../hosting-features/features';
 import {
 	DeploymentCreation,
 	DeploymentManagement,
@@ -12,18 +16,11 @@ import {
 	Deployments,
 } from './deployments';
 import { indexPage } from './deployments/routes';
-import Logs from './logs';
 import Monitoring from './monitoring';
-import useSftpSshSettingTitle from './sftp-ssh/hooks/use-sftp-ssh-setting-title';
-import SftpSsh from './sftp-ssh/page';
 import StagingSite from './staging-site';
-import type { Context as PageJSContext } from '@automattic/calypso-router';
 
 export function ToolsSidebar() {
 	const slug = useSelector( getSelectedSiteSlug );
-	const shouldShowAdvancedHostingFeatures = useAreAdvancedHostingFeaturesSupported();
-
-	const sftpSshTitle = useSftpSshSettingTitle();
 
 	return (
 		<Sidebar>
@@ -35,30 +32,35 @@ export function ToolsSidebar() {
 			</SidebarItem>
 			<SidebarItem href={ `/sites/tools/monitoring/${ slug }` }>{ __( 'Monitoring' ) }</SidebarItem>
 			<SidebarItem href={ `/sites/tools/logs/${ slug }` }>{ __( 'Logs' ) }</SidebarItem>
-			<SidebarItem
-				enabled={ !! shouldShowAdvancedHostingFeatures }
-				href={ `/sites/tools/sftp-ssh/${ slug }` }
-			>
-				{ sftpSshTitle }
-			</SidebarItem>
-			<SidebarItem
-				enabled={ !! shouldShowAdvancedHostingFeatures }
-				href={ `/sites/tools/database/${ slug }` }
-			>
-				{ __( 'Database' ) }
-			</SidebarItem>
 		</Sidebar>
 	);
 }
 
 export function tools( context: PageJSContext, next: () => void ) {
-	context.primary = <HostingFeatures showAsTools />;
+	const state = context.store.getState();
+	const site = getSelectedSite( state );
+
+	if ( areHostingFeaturesSupported( site ) ) {
+		// Redirect to the first subtab
+		return page.redirect( `/sites/tools/staging-site/${ site?.slug }` );
+	}
+
+	context.primary = (
+		<>
+			<PageViewTracker title="Sites > Advanced Tools" path={ getRouteFromContext( context ) } />
+			<HostingFeatures showAsTools />
+		</>
+	);
 	next();
 }
 
 export function stagingSite( context: PageJSContext, next: () => void ) {
 	context.primary = (
 		<PanelWithSidebar>
+			<PageViewTracker
+				title="Sites > Advanced Tools > Staging site"
+				path={ getRouteFromContext( context ) }
+			/>
 			<ToolsSidebar />
 			<StagingSite />
 		</PanelWithSidebar>
@@ -69,6 +71,10 @@ export function stagingSite( context: PageJSContext, next: () => void ) {
 export function deployments( context: PageJSContext, next: () => void ) {
 	context.primary = (
 		<PanelWithSidebar>
+			<PageViewTracker
+				title="Sites > Advanced Tools > Deployments"
+				path={ getRouteFromContext( context ) }
+			/>
 			<ToolsSidebar />
 			<Deployments />
 		</PanelWithSidebar>
@@ -79,6 +85,10 @@ export function deployments( context: PageJSContext, next: () => void ) {
 export function deploymentCreation( context: PageJSContext, next: () => void ) {
 	context.primary = (
 		<PanelWithSidebar>
+			<PageViewTracker
+				title="Sites > Advanced Tools > Deployments > Create"
+				path={ getRouteFromContext( context ) }
+			/>
 			<ToolsSidebar />
 			<DeploymentCreation />
 		</PanelWithSidebar>
@@ -97,6 +107,10 @@ export function deploymentManagement( context: PageJSContext, next: () => void )
 
 	context.primary = (
 		<PanelWithSidebar>
+			<PageViewTracker
+				title="Sites > Advanced Tools > Deployments > Manage"
+				path={ getRouteFromContext( context ) }
+			/>
 			<ToolsSidebar />
 			<DeploymentManagement codeDeploymentId={ codeDeploymentId } />
 		</PanelWithSidebar>
@@ -115,6 +129,10 @@ export function deploymentRunLogs( context: PageJSContext, next: () => void ) {
 
 	context.primary = (
 		<PanelWithSidebar>
+			<PageViewTracker
+				title="Sites > Advanced Tools > Deployments > Run logs"
+				path={ getRouteFromContext( context ) }
+			/>
 			<ToolsSidebar />
 			<DeploymentRunLogs codeDeploymentId={ codeDeploymentId } />
 		</PanelWithSidebar>
@@ -125,6 +143,10 @@ export function deploymentRunLogs( context: PageJSContext, next: () => void ) {
 export function monitoring( context: PageJSContext, next: () => void ) {
 	context.primary = (
 		<PanelWithSidebar>
+			<PageViewTracker
+				title="Sites > Advanced Tools > Monitoring"
+				path={ getRouteFromContext( context ) }
+			/>
 			<ToolsSidebar />
 			<Monitoring />
 		</PanelWithSidebar>
@@ -135,8 +157,12 @@ export function monitoring( context: PageJSContext, next: () => void ) {
 export function phpErrorLogs( context: PageJSContext, next: () => void ) {
 	context.primary = (
 		<PanelWithSidebar>
+			<PageViewTracker
+				title="Sites > Advanced Tools > Logs > PHP"
+				path={ getRouteFromContext( context ) }
+			/>
 			<ToolsSidebar />
-			<Logs logType="php" />
+			<SiteLogsDataViews logType={ LogType.PHP } query={ context.query } />
 		</PanelWithSidebar>
 	);
 	next();
@@ -145,28 +171,12 @@ export function phpErrorLogs( context: PageJSContext, next: () => void ) {
 export function webServerLogs( context: PageJSContext, next: () => void ) {
 	context.primary = (
 		<PanelWithSidebar>
+			<PageViewTracker
+				title="Sites > Advanced Tools > Logs > Web"
+				path={ getRouteFromContext( context ) }
+			/>
 			<ToolsSidebar />
-			<Logs logType="web" />
-		</PanelWithSidebar>
-	);
-	next();
-}
-
-export function sftpSsh( context: PageJSContext, next: () => void ) {
-	context.primary = (
-		<PanelWithSidebar>
-			<ToolsSidebar />
-			<SftpSsh />
-		</PanelWithSidebar>
-	);
-	next();
-}
-
-export function database( context: PageJSContext, next: () => void ) {
-	context.primary = (
-		<PanelWithSidebar>
-			<ToolsSidebar />
-			<Database />
+			<SiteLogsDataViews logType={ LogType.WEB } query={ context.query } />
 		</PanelWithSidebar>
 	);
 	next();

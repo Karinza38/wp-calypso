@@ -18,7 +18,7 @@ import UpsellNudge from 'calypso/blocks/upsell-nudge';
 import FormFieldset from 'calypso/components/forms/form-fieldset';
 import FormTextInput from 'calypso/components/forms/form-text-input';
 import InlineSupportLink from 'calypso/components/inline-support-link';
-import { PanelHeading, PanelSection } from 'calypso/components/panel';
+import { PanelCard, PanelCardHeading } from 'calypso/components/panel';
 
 import './style.scss';
 
@@ -90,7 +90,7 @@ const GoogleAnalyticsSimpleForm = ( {
 				onSubmit={ handleSubmitForm }
 			>
 				<>
-					<PanelHeading>{ translate( 'Google Analytics' ) }</PanelHeading>
+					<PanelCardHeading>{ translate( 'Google Analytics' ) }</PanelCardHeading>
 					<div className="analytics site-settings__analytics">
 						<div className="analytics site-settings__analytics-illustration">
 							<img src={ googleIllustration } alt="" />
@@ -100,6 +100,8 @@ const GoogleAnalyticsSimpleForm = ( {
 								{ translate(
 									'A free analytics tool that offers additional insights into your site.'
 								) }{ ' ' }
+							</p>
+							<p>
 								<a
 									onClick={ recordSupportLinkClick }
 									href={ analyticsSupportUrl }
@@ -175,7 +177,7 @@ const GoogleAnalyticsSimpleForm = ( {
 								checked={ displayForm }
 								disabled={ isRequestingSettings || isSavingSettings }
 								onChange={ handleFormToggle }
-								label={ translate( 'Add Google' ) }
+								label={ translate( 'Add Google Analytics' ) }
 							/>
 						</div>
 						<Button
@@ -197,7 +199,7 @@ const GoogleAnalyticsSimpleForm = ( {
 	if ( ! site ) {
 		return null;
 	}
-	return <PanelSection>{ renderForm() }</PanelSection>;
+	return <PanelCard>{ renderForm() }</PanelCard>;
 };
 
 export default GoogleAnalyticsSimpleForm;

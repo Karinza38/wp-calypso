@@ -1,10 +1,10 @@
-import useResize from '@automattic/components/src/chart-uplot/hooks/use-resize';
 import { Spinner } from '@wordpress/components';
 import clsx from 'clsx';
 import { numberFormat } from 'i18n-calypso';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import uPlot from 'uplot';
 import UplotReact from 'uplot-react';
+import useResize from 'calypso/components/chart-uplot/hooks/use-resize';
 import { HostingCard, HostingCardDescription } from 'calypso/components/hosting-card';
 import { TimeRange } from '../site-monitoring';
 import { TIME_RANGE_OPTIONS } from '../time-range-picker';
@@ -37,6 +37,7 @@ interface SeriesProp {
 	scale?: string;
 	unit?: string;
 	showInLegend?: boolean;
+	showInTooltip?: boolean;
 }
 
 export function formatChartHour( date: Date ): string {
@@ -87,7 +88,7 @@ function createSeries( series: Array< SeriesProp > ) {
 						return '-';
 					}
 
-					return numberFormat( rawValue, 0 );
+					return numberFormat( rawValue, { decimals: 0 } );
 				},
 			},
 		};
@@ -104,7 +105,7 @@ function addExtraScaleIfDefined( series: Array< SeriesProp > ) {
 			{
 				scale: serie.scale,
 				side: 1,
-				size: 70,
+				size: 60,
 				grid: {
 					show: false,
 				},
@@ -183,7 +184,7 @@ export const SiteMonitoringLineChart = ( {
 					// y-axis
 					gap: 8,
 					space: 40,
-					size: 50,
+					size: 40,
 					stroke: '#787C82',
 					grid: {
 						stroke: '#DCDCDE',

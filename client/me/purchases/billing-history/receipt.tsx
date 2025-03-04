@@ -1,7 +1,6 @@
 import config from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
 import { Button, Card, FormLabel } from '@automattic/components';
-import { formatCurrency } from '@automattic/format-currency';
 import { IntroductoryOfferTerms } from '@automattic/shopping-cart';
 import {
 	LineItemCostOverrideForDisplay,
@@ -10,7 +9,7 @@ import {
 	isUserVisibleCostOverride,
 } from '@automattic/wpcom-checkout';
 import clsx from 'clsx';
-import { localize, useTranslate } from 'i18n-calypso';
+import { formatCurrency, localize, useTranslate } from 'i18n-calypso';
 import { Component, useState, useCallback } from 'react';
 import { connect } from 'react-redux';
 import DocumentHead from 'calypso/components/data/document-head';
@@ -21,7 +20,7 @@ import Main from 'calypso/components/main';
 import NavigationHeader from 'calypso/components/navigation-header';
 import TextareaAutosize from 'calypso/components/textarea-autosize';
 import PageViewTracker from 'calypso/lib/analytics/page-view-tracker';
-import { PARTNER_PAYPAL_EXPRESS } from 'calypso/lib/checkout/payment-methods';
+import { PARTNER_PAYPAL_EXPRESS, PARTNER_PAYPAL_PPCP } from 'calypso/lib/checkout/payment-methods';
 import { billingHistory, vatDetails as vatDetailsPath } from 'calypso/me/purchases/paths';
 import titles from 'calypso/me/purchases/titles';
 import useVatDetails from 'calypso/me/purchases/vat-info/use-vat-details';
@@ -41,6 +40,8 @@ import {
 	renderTransactionQuantitySummary,
 	renderDomainTransactionVolumeSummary,
 	transactionIncludesTax,
+	isTransactionJetpackSearch10kTier,
+	renderJetpackSearch10kTierBreakdown,
 } from './utils';
 import { VatVendorDetails } from './vat-vendor-details';
 import type {
@@ -137,26 +138,51 @@ export function ReceiptBody( {
 	const title = translate( 'Visit %(url)s', { args: { url: transaction.url }, textOnly: true } );
 	const serviceLink = <a href={ transaction.url } title={ title } />;
 
+	const membershipServiceHeader = translate(
+		'{{link}}%(service)s{{/link}} {{small}}Payment processed by %(organization)s{{/small}}',
+		{
+			components: {
+				link: serviceLink,
+				small: <small />,
+			},
+			args: {
+				service: transaction.service,
+				organization: transaction.org,
+			},
+			comment:
+				'This string is "Service Payment processed by Organization". ' +
+				'The {{link}} and {{small}} add html styling and attributes. ' +
+				'Screenshot: https://cloudup.com/isX-WEFYlOs',
+		}
+	);
+
+	const connectedServiceHeader = translate(
+		'{{link}}%(service)s{{/link}} {{small}}by %(organization)s{{/small}}',
+		{
+			components: {
+				link: serviceLink,
+				small: <small />,
+			},
+			args: {
+				service: transaction.service,
+				organization: transaction.org,
+			},
+			comment:
+				'This string is "Service by Organization". ' +
+				'The {{link}} and {{small}} add html styling and attributes. ' +
+				'Screenshot: https://cloudup.com/isX-WEFYlOs',
+		}
+	);
+
 	return (
 		<div>
 			<Card compact className="billing-history__receipt-card">
 				<div className="billing-history__app-overview">
 					<img src={ transaction.icon } title={ transaction.service } alt={ transaction.service } />
 					<h2>
-						{ translate( '{{link}}%(service)s{{/link}} {{small}}by %(organization)s{{/small}}', {
-							components: {
-								link: serviceLink,
-								small: <small />,
-							},
-							args: {
-								service: transaction.service,
-								organization: transaction.org,
-							},
-							comment:
-								'This string is "Service by Organization". ' +
-								'The {{link}} and {{small}} add html styling and attributes. ' +
-								'Screenshot: https://cloudup.com/isX-WEFYlOs',
-						} ) }
+						{ 'memberships' === transaction.service_slug
+							? membershipServiceHeader
+							: connectedServiceHeader }
 						<small className="billing-history__organization-address">{ transaction.address }</small>
 					</h2>
 					<span className="billing-history__transaction-date">
@@ -207,7 +233,10 @@ function ReceiptPaymentMethod( { transaction }: { transaction: BillingTransactio
 	const translate = useTranslate();
 	let text;
 
-	if ( transaction.pay_part === PARTNER_PAYPAL_EXPRESS ) {
+	if (
+		transaction.pay_part === PARTNER_PAYPAL_EXPRESS ||
+		transaction.pay_part === PARTNER_PAYPAL_PPCP
+	) {
 		text = translate( 'PayPal' );
 	} else if ( 'XXXX' !== transaction.cc_num ) {
 		text = translate( '%(cardType)s ending in %(cardNum)s', {
@@ -517,14 +546,13 @@ function ReceiptLineItem( {
 	const translate = useTranslate();
 	const termLabel = getTransactionTermLabel( item, translate );
 	const shouldShowDiscount = areReceiptItemDiscountsAccurate( transaction.date );
-	const formattedAmount = formatCurrency(
-		shouldShowDiscount ? getReceiptItemOriginalCost( item ) : item.subtotal_integer,
-		item.currency,
-		{
-			isSmallestUnit: true,
-			stripZeros: true,
-		}
-	);
+	const subtotal_integer = shouldShowDiscount
+		? getReceiptItemOriginalCost( item )
+		: item.subtotal_integer;
+	const formattedAmount = formatCurrency( subtotal_integer, item.currency, {
+		isSmallestUnit: true,
+		stripZeros: true,
+	} );
 	return (
 		<>
 			<tr>
@@ -535,6 +563,9 @@ function ReceiptLineItem( {
 					{ item.domain && <em>{ item.domain }</em> }
 					{ item.licensed_quantity && (
 						<em>{ renderTransactionQuantitySummary( item, translate ) }</em>
+					) }
+					{ isTransactionJetpackSearch10kTier( item ) && (
+						<em>{ renderJetpackSearch10kTierBreakdown( item, subtotal_integer, translate ) }</em>
 					) }
 					{ item.volume && <em>{ renderDomainTransactionVolumeSummary( item, translate ) }</em> }
 				</td>

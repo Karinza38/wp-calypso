@@ -1,3 +1,4 @@
+import { isEnabled } from '@automattic/calypso-config';
 import { StepContainer } from '@automattic/onboarding';
 import { useTranslate } from 'i18n-calypso';
 import { useEffect } from 'react';
@@ -9,12 +10,22 @@ import { useUpdateMigrationStatus } from 'calypso/data/site-migration/landing/us
 import { useSiteIdParam } from 'calypso/landing/stepper/hooks/use-site-id-param';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
 import { CredentialsForm } from './components/credentials-form';
+import { NeedHelpLink } from './components/need-help-link';
+import { ApplicationPasswordsInfo } from './types';
 import type { Step } from '../../types';
 import './style.scss';
 
-const getAction = ( siteInfo?: UrlData ) => {
+const getAction = ( siteInfo?: UrlData, applicationPasswordsInfo?: ApplicationPasswordsInfo ) => {
 	if ( ! siteInfo ) {
 		return 'submit';
+	}
+
+	if ( applicationPasswordsInfo?.application_passwords_enabled ) {
+		return 'application-passwords-approval';
+	}
+
+	if ( applicationPasswordsInfo?.application_passwords_enabled === false ) {
+		return 'credentials-required';
 	}
 
 	if ( siteInfo?.platform_data?.is_wpcom ) {
@@ -34,9 +45,17 @@ const SiteMigrationCredentials: Step = function ( { navigation } ) {
 
 	const { mutate: updateMigrationStatus } = useUpdateMigrationStatus( siteId );
 
-	const handleSubmit = ( siteInfo?: UrlData | undefined ) => {
-		const action = getAction( siteInfo );
-		return navigation.submit?.( { action, from: siteInfo?.url, platform: siteInfo?.platform } );
+	const handleSubmit = (
+		siteInfo?: UrlData | undefined,
+		applicationPasswordsInfo?: ApplicationPasswordsInfo
+	) => {
+		const action = getAction( siteInfo, applicationPasswordsInfo );
+		return navigation.submit?.( {
+			action,
+			from: siteInfo?.url,
+			platform: siteInfo?.platform,
+			authorizationUrl: applicationPasswordsInfo?.authorization_url,
+		} );
 	};
 
 	const handleSkip = () => {
@@ -50,6 +69,12 @@ const SiteMigrationCredentials: Step = function ( { navigation } ) {
 			updateMigrationStatus( { status: MigrationStatus.PENDING_DIFM } );
 		}
 	}, [ siteId, updateMigrationStatus ] );
+
+	const subHeaderText = isEnabled( 'automated-migration/application-password' )
+		? translate( 'Help us get started by providing some basic details about your current website.' )
+		: translate(
+				'Please share the following details to access your site and start your migration to WordPress.com.'
+		  );
 
 	return (
 		<>
@@ -65,14 +90,13 @@ const SiteMigrationCredentials: Step = function ( { navigation } ) {
 					<FormattedHeader
 						id="site-migration-credentials-header"
 						headerText={ translate( 'Tell us about your WordPress site' ) }
-						subHeaderText={ translate(
-							'Please share the following details to access your site and start your migration to WordPress.com.'
-						) }
+						subHeaderText={ subHeaderText }
 						align="center"
 					/>
 				}
-				stepContent={ <CredentialsForm onSubmit={ handleSubmit } onSkip={ handleSkip } /> }
+				stepContent={ <CredentialsForm onSubmit={ handleSubmit } /> }
 				recordTracksEvent={ recordTracksEvent }
+				customizedActionButtons={ <NeedHelpLink onHelpLinkClicked={ handleSkip } /> }
 			/>
 		</>
 	);

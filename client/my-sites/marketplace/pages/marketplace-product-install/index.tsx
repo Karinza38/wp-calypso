@@ -170,14 +170,22 @@ const MarketplaceProductInstall = ( {
 		}
 	} );
 
+	const { primaryDomain } = useSelector( getPurchaseFlowState );
+
+	const shouldShowNoDirectAccessError =
+		// 1. This is a plugin upload flow (via zip file) and we don't have a primary domain set
+		( isPluginUploadFlow && ! primaryDomain ) ||
+		// 2. This is a marketplace plugin installation but the installation process hasn't started
+		( ! isPluginUploadFlow && ! marketplaceInstallationInProgress );
+
 	// Check that the site URL and the plugin slug are the same which were selected on the plugin page
 	useEffect( () => {
-		if ( ! marketplaceInstallationInProgress ) {
+		if ( shouldShowNoDirectAccessError ) {
 			waitFor( 2 ).then( () => {
-				! marketplaceInstallationInProgress && setNoDirectAccessError( true );
+				shouldShowNoDirectAccessError && setNoDirectAccessError( true );
 			} );
 		}
-	}, [ marketplaceInstallationInProgress ] );
+	}, [ shouldShowNoDirectAccessError ] );
 
 	// Upload flow startup
 	useEffect( () => {
@@ -195,15 +203,14 @@ const MarketplaceProductInstall = ( {
 			( marketplaceInstallationInProgress || directInstallationAllowed ) &&
 			! isPluginUploadFlow &&
 			! initializeInstallFlow &&
-			( wporgPlugin || wpOrgTheme ) &&
-			selectedSite
+			( wporgPlugin || wpOrgTheme )
 		) {
 			const triggerInstallFlow = () => {
 				setInitializeInstallFlow( true );
 				waitFor( 1 ).then( () => setCurrentStep( 1 ) );
 			};
 
-			if ( selectedSite.jetpack ) {
+			if ( isJetpack || isAtomic ) {
 				if ( wpOrgTheme ) {
 					// initilize theme activating
 					dispatch( installAndActivateTheme( wpOrgTheme.id, siteId ) );
@@ -230,7 +237,6 @@ const MarketplaceProductInstall = ( {
 		directInstallationAllowed,
 		isPluginUploadFlow,
 		initializeInstallFlow,
-		selectedSite,
 		siteId,
 		wporgPlugin,
 		wpOrgTheme,
@@ -238,6 +244,8 @@ const MarketplaceProductInstall = ( {
 		themeSlug,
 		dispatch,
 		hasAtomicFeature,
+		isAtomic,
+		isJetpack,
 	] );
 
 	// Validate completion of atomic transfer flow

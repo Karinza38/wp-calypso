@@ -1,3 +1,4 @@
+import { isEnabled } from '@automattic/calypso-config';
 import { FEATURE_SFTP, getPlan, PLAN_BUSINESS } from '@automattic/calypso-products';
 import page from '@automattic/calypso-router';
 import { useHasEnTranslation } from '@automattic/i18n-utils';
@@ -44,19 +45,22 @@ const HostingFeatures = ( { showAsTools }: HostingFeaturesProps ) => {
 	const dispatch = useDispatch();
 	const { searchParams } = new URL( document.location.toString() );
 	const siteId = useSelector( getSelectedSiteId );
-	const { siteSlug, isSiteAtomic, hasSftpFeature, isPlanExpired } = useSelector( ( state ) => ( {
-		siteSlug: getSiteSlug( state, siteId ) || '',
-		isSiteAtomic: isSiteWpcomAtomic( state, siteId as number ),
-		hasSftpFeature: siteHasFeature( state, siteId, FEATURE_SFTP ),
-		isPlanExpired: !! getSelectedSite( state )?.plan?.expired,
-	} ) );
+	const siteSlug = useSelector( ( state ) => getSiteSlug( state, siteId ) || '' );
+	const isSiteAtomic = useSelector( ( state ) => isSiteWpcomAtomic( state, siteId ) );
+	const hasSftpFeature = useSelector( ( state ) => siteHasFeature( state, siteId, FEATURE_SFTP ) );
+	const isPlanExpired = useSelector( ( state ) => !! getSelectedSite( state )?.plan?.expired );
+
 	// The ref is required to persist the value of redirect_to after renders
 	const redirectToRef = useRef( searchParams.get( 'redirect_to' ) );
 
-	const redirectUrl =
-		redirectToRef.current ?? hasSftpFeature
-			? `/hosting-config/${ siteId }`
-			: `/overview/${ siteId }`;
+	let redirectUrl = redirectToRef.current as string;
+	if ( ! redirectUrl ) {
+		if ( isEnabled( 'untangling/hosting-menu' ) ) {
+			redirectUrl = `/sites/tools/${ siteId }`;
+		} else {
+			redirectUrl = hasSftpFeature ? `/hosting-config/${ siteSlug }` : `/overview/${ siteId }`;
+		}
+	}
 
 	const hasEnTranslation = useHasEnTranslation();
 
@@ -111,6 +115,13 @@ const HostingFeatures = ( { showAsTools }: HostingFeaturesProps ) => {
 			),
 			supportContext: 'hosting-configuration',
 		},
+		{
+			title: translate( 'SFTP & SSH Access' ),
+			text: translate(
+				'Securely access and edit your site via SFTP, or use SSH for file management and WP-CLI commands.'
+			),
+			supportContext: 'hosting-sftp',
+		},
 	];
 
 	const canSiteGoAtomic = ! isSiteAtomic && hasSftpFeature;
@@ -120,7 +131,7 @@ const HostingFeatures = ( { showAsTools }: HostingFeaturesProps ) => {
 		? translate( 'Activate all hosting features' )
 		: translate( 'Activate all developer tools' );
 
-	const activateTitleAsTools = hasEnTranslation( 'Activate all advanced tools' );
+	const activateTitleAsTools = translate( 'Activate all advanced tools' );
 
 	const activationStatusTitle = translate( 'Activating hosting features' );
 	const activationStatusTitleAsTools = translate( 'Activating advanced tools' );

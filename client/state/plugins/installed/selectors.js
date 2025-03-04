@@ -124,7 +124,11 @@ function getPluginsSelector( state, siteIds, pluginFilter ) {
 
 export const getPlugins = createSelector(
 	getPluginsSelector,
-	( state ) => state.plugins.installed.plugins,
+	( state, siteIds ) => [
+		state.plugins.installed.plugins,
+		isRequestingForAllSites( state ),
+		...siteIds.map( ( siteId ) => isRequesting( state, siteId ) ),
+	],
 	( state, siteIds, pluginFilter ) => {
 		return [ siteIds, pluginFilter ].flat().join( '-' );
 	}
@@ -191,14 +195,6 @@ export function getPluginsWithUpdates( state, siteIds ) {
 export const getPluginOnSites = createSelector( ( state, siteIds, pluginSlug ) =>
 	getPlugins( state, siteIds ).find( ( plugin ) => isEqualSlugOrId( pluginSlug, plugin ) )
 );
-
-export const getPluginsOnSites = createSelector( ( state, plugins ) => {
-	return Object.values( plugins ).reduce( ( acc, plugin ) => {
-		const siteIds = Object.keys( plugin.sites );
-		acc[ plugin.slug ] = getPluginOnSites( state, siteIds, plugin.slug );
-		return acc;
-	}, {} );
-} );
 
 export function getPluginOnSite( state, siteId, pluginSlug ) {
 	const pluginList = getPlugins( state, [ siteId ] );

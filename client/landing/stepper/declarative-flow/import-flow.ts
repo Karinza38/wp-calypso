@@ -1,4 +1,3 @@
-import { Design, isAssemblerDesign, isAssemblerSupported } from '@automattic/design-picker';
 import { IMPORT_FOCUSED_FLOW } from '@automattic/onboarding';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { useEffect } from 'react';
@@ -13,6 +12,7 @@ import { useSiteSlugParam } from 'calypso/landing/stepper/hooks/use-site-slug-pa
 import { ONBOARD_STORE, USER_STORE } from 'calypso/landing/stepper/stores';
 import { ImporterMainPlatform } from 'calypso/lib/importer/types';
 import { stepsWithRequiredLogin } from '../utils/steps-with-required-login';
+import { useRedirectDesignSetupOldSlug } from './helpers/use-redirect-design-setup-old-slug';
 import { STEPS } from './internals/steps';
 import {
 	AssertConditionState,
@@ -41,7 +41,6 @@ const importFlow: Flow = {
 			STEPS.IMPORTER_SQUARESPACE,
 			STEPS.IMPORTER_WORDPRESS,
 			STEPS.DESIGN_SETUP,
-			STEPS.PATTERN_ASSEMBLER,
 			STEPS.PROCESSING,
 			STEPS.SITE_CREATION_STEP,
 			STEPS.MIGRATION_HANDLER,
@@ -80,10 +79,6 @@ const importFlow: Flow = {
 		const fromParam = urlQueryParams.get( 'from' );
 		const { data: migrationStatus } = useSourceMigrationStatusQuery( fromParam );
 		const siteSlugParam = useSiteSlugParam();
-		const selectedDesign = useSelect(
-			( select ) => ( select( ONBOARD_STORE ) as OnboardSelect ).getSelectedDesign(),
-			[]
-		);
 		const isMigrateFromWp = useSelect(
 			( select ) => ( select( ONBOARD_STORE ) as OnboardSelect ).getIsMigrateFromWp(),
 			[]
@@ -121,6 +116,8 @@ const importFlow: Flow = {
 				`importerWordpress?siteSlug=${ providedDependencies?.targetBlogSlug }&from=${ fromParam }&option=everything`
 			);
 		};
+
+		useRedirectDesignSetupOldSlug( _currentStep, navigate );
 
 		const submit = ( providedDependencies: ProvidedDependencies = {}, ...params: string[] ) => {
 			switch ( _currentStep ) {
@@ -175,17 +172,9 @@ const importFlow: Flow = {
 					}
 				}
 
-				case 'designSetup': {
-					const { selectedDesign: _selectedDesign } = providedDependencies;
-					if ( isAssemblerDesign( _selectedDesign as Design ) && isAssemblerSupported() ) {
-						return navigate( 'pattern-assembler' );
-					}
-
+				case 'design-setup': {
 					return navigate( 'processing' );
 				}
-
-				case 'pattern-assembler':
-					return navigate( 'processing' );
 
 				case 'createSite':
 					return navigate( 'processing' );
@@ -207,11 +196,6 @@ const importFlow: Flow = {
 							return navigate( `importerWordpress?${ urlQueryParams.toString() }` );
 						}
 						return navigate( `import?siteSlug=${ providedDependencies?.siteSlug }` );
-					}
-
-					// End of Pattern Assembler flow
-					if ( isAssemblerDesign( selectedDesign ) ) {
-						return exitFlow( `/site-editor/${ siteSlugParam }` );
 					}
 
 					return exitFlow( `/home/${ siteSlugParam }` );
@@ -324,7 +308,7 @@ const importFlow: Flow = {
 				case 'importReadyNot':
 				case 'importReadyWpcom':
 				case 'importReadyPreview':
-				case 'designSetup':
+				case 'design-setup':
 					return navigate( `import?siteSlug=${ siteSlugParam }` );
 
 				case 'verifyEmail':

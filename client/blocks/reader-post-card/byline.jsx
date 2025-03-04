@@ -1,3 +1,4 @@
+import { TimeSince } from '@automattic/components';
 import { get, debounce } from 'lodash';
 import PropTypes from 'prop-types';
 import { Component, createRef } from 'react';
@@ -5,8 +6,6 @@ import ReaderAuthorLink from 'calypso/blocks/reader-author-link';
 import ReaderAvatar from 'calypso/blocks/reader-avatar';
 import ReaderPostEllipsisMenu from 'calypso/blocks/reader-post-options-menu/reader-post-ellipsis-menu';
 import ReaderSiteStreamLink from 'calypso/blocks/reader-site-stream-link';
-import TimeSince from 'calypso/components/time-since';
-import { areEqualIgnoringWhitespaceAndCase } from 'calypso/lib/string';
 import { getSiteName } from 'calypso/reader/get-helpers';
 import { isAuthorNameBlocked } from 'calypso/reader/lib/author-name-blocklist';
 import { getStreamUrl } from 'calypso/reader/route';
@@ -107,12 +106,7 @@ class PostByline extends Component {
 		const siteUrl = get( site, 'URL' );
 		const siteName = getSiteName( { site, feed, post } );
 		const hasAuthorName = !! get( post, 'author.name', null );
-		const hasMatchingAuthorAndSiteNames =
-			hasAuthorName && areEqualIgnoringWhitespaceAndCase( siteName, post.author.name );
-		const shouldDisplayAuthor =
-			hasAuthorName &&
-			! isAuthorNameBlocked( post.author.name ) &&
-			( ! hasMatchingAuthorAndSiteNames || ! showSiteName );
+		const shouldDisplayAuthor = hasAuthorName && ! isAuthorNameBlocked( post.author.name );
 		const streamUrl = getStreamUrl( feedId, siteId );
 		const siteIcon = get( site, 'icon.img' );
 

@@ -43,7 +43,7 @@ exports[`JetpackAuthorize renders as expected 1`] = `
       </div>
     </div>
     <div
-      class="jetpack-connect__authorize-form"
+      class="jetpack-connect__authorize-form feature-flag-woocommerce-core-profiler-passwordless-auth"
     >
       <div
         class="jetpack-connect__logged-in-form"
@@ -84,9 +84,9 @@ exports[`JetpackAuthorize renders as expected 1`] = `
                 >
                   <svg
                     class="gridicon gridicons-globe"
-                    height="18"
+                    height="28"
                     viewBox="0 0 24 24"
-                    width="18"
+                    width="28"
                     xmlns="http://www.w3.org/2000/svg"
                   >
                     <use

@@ -1,11 +1,10 @@
 import { recordTracksEvent } from '@automattic/calypso-analytics';
 import { getPlan, PLAN_PERSONAL, PLAN_BUSINESS } from '@automattic/calypso-products';
 import page from '@automattic/calypso-router';
-import formatCurrency from '@automattic/format-currency';
 import { useHasEnTranslation } from '@automattic/i18n-utils';
 import { useOpenZendeskMessaging } from '@automattic/zendesk-client';
 import { Button } from '@wordpress/components';
-import { useTranslate, numberFormat } from 'i18n-calypso';
+import { useTranslate, numberFormat, formatCurrency } from 'i18n-calypso';
 import { useState } from 'react';
 import imgBuiltBy from 'calypso/assets/images/cancellation/built-by.png';
 import imgBusinessPlan from 'calypso/assets/images/cancellation/business-plan.png';
@@ -111,7 +110,7 @@ export default function UpsellStep( { upsell, site, purchase, ...props }: StepPr
 	const translate = useTranslate();
 	const hasEnTranslation = useHasEnTranslation();
 	const currencyCode = useSelector( getCurrentUserCurrencyCode ) || 'USD';
-	const numberOfPluginsThemes = numberFormat( 50000, 0 );
+	const numberOfPluginsThemes = numberFormat( 50000 );
 	const discountRate = 25;
 	const couponCode = 'BIZWPC25';
 	const builtByURL = 'https://wordpress.com/website-design-service/?ref=wpcom-cancel-flow';
@@ -254,15 +253,16 @@ export default function UpsellStep( { upsell, site, purchase, ...props }: StepPr
 								'You will lose your free domain registration since that feature is only included in annual/biannual plans.'
 							) }
 						{ refundAmount && <br /> }
-						{ refundAmount &&
-							translate(
-								'You can downgrade immediately and get a partial refund of %(refundAmount)s.',
-								{
-									args: {
-										refundAmount: formatCurrency( parseFloat( refundAmount ), currencyCode ),
-									},
-								}
-							) }
+						{ Number( refundAmount )
+							? translate(
+									'You can downgrade immediately and get a partial refund of %(refundAmount)s.',
+									{
+										args: {
+											refundAmount: formatCurrency( parseFloat( refundAmount ), currencyCode ),
+										},
+									}
+							  )
+							: null }
 					</>
 				</Upsell>
 			);

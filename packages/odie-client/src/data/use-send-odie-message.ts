@@ -6,6 +6,7 @@ import { useSelect } from '@wordpress/data';
 import wpcomRequest, { canAccessWpcomApis } from 'wpcom-proxy-request';
 import { ODIE_ERROR_MESSAGE, ODIE_RATE_LIMIT_MESSAGE } from '../constants';
 import { useOdieAssistantContext } from '../context';
+import { useCreateZendeskConversation } from '../hooks';
 import { generateUUID } from '../utils';
 import { useManageSupportInteraction, broadcastOdieMessage } from '.';
 import type { Chat, Message, ReturnedChat } from '../types';
@@ -31,6 +32,7 @@ export const useSendOdieMessage = () => {
 	}, [] );
 
 	const { addEventToInteraction } = useManageSupportInteraction();
+	const newConversation = useCreateZendeskConversation();
 	const internal_message_id = generateUUID();
 	const queryClient = useQueryClient();
 
@@ -41,10 +43,19 @@ export const useSendOdieMessage = () => {
 		setChat,
 		odieBroadcastClientId,
 		setChatStatus,
-		shouldUseHelpCenterExperience,
+		setExperimentVariationName,
+		isUserEligibleForPaidSupport,
 	} = useOdieAssistantContext();
 
 	const addMessage = ( message: Message | Message[], props?: Partial< Chat > ) => {
+		if ( ! Array.isArray( message ) ) {
+			const isRequestingHumanSupport = message.context?.flags?.forward_to_human_support ?? false;
+			if ( isRequestingHumanSupport && isUserEligibleForPaidSupport ) {
+				newConversation( { createdFrom: 'automatic_escalation' } );
+				return;
+			}
+		}
+
 		setChat( ( prevChat ) => ( {
 			...prevChat,
 			...props,
@@ -87,7 +98,7 @@ export const useSendOdieMessage = () => {
 				! returnedChat.messages[ 0 ].content
 			) {
 				const errorMessage: Message = {
-					content: ODIE_ERROR_MESSAGE( shouldUseHelpCenterExperience ),
+					content: ODIE_ERROR_MESSAGE,
 					internal_message_id,
 					role: 'bot',
 					type: 'error',
@@ -118,7 +129,7 @@ export const useSendOdieMessage = () => {
 				type: 'message',
 				context: returnedChat.messages[ 0 ].context,
 			};
-
+			setExperimentVariationName( returnedChat.experiment_name );
 			addMessage( botMessage, { odieId: returnedChat.chat_id } );
 			broadcastOdieMessage( botMessage, odieBroadcastClientId );
 		},
@@ -128,9 +139,7 @@ export const useSendOdieMessage = () => {
 		onError: ( error ) => {
 			const isRateLimitError = error.message.includes( '429' );
 			const errorMessage: Message = {
-				content: isRateLimitError
-					? ODIE_RATE_LIMIT_MESSAGE
-					: ODIE_ERROR_MESSAGE( shouldUseHelpCenterExperience ),
+				content: isRateLimitError ? ODIE_RATE_LIMIT_MESSAGE : ODIE_ERROR_MESSAGE,
 				internal_message_id,
 				role: 'bot',
 				type: 'error',

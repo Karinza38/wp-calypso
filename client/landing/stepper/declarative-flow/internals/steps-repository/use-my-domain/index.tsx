@@ -1,21 +1,17 @@
 /* eslint-disable wpcalypso/jsx-classname-namespace */
 import {
-	DESIGN_FIRST_FLOW,
 	START_WRITING_FLOW,
 	ONBOARDING_FLOW,
 	StepContainer,
 	isStartWritingFlow,
-	isOnboardingFlow,
 } from '@automattic/onboarding';
 import { useDispatch } from '@wordpress/data';
 import { useState } from '@wordpress/element';
-import { useI18n } from '@wordpress/react-i18n';
 import { getQueryArg } from '@wordpress/url';
 import { useLocation } from 'react-router';
 import QueryProductsList from 'calypso/components/data/query-products-list';
 import { useMyDomainInputMode as inputMode } from 'calypso/components/domains/connect-domain-step/constants';
 import UseMyDomainComponent from 'calypso/components/domains/use-my-domain';
-import FormattedHeader from 'calypso/components/formatted-header';
 import { ONBOARD_STORE } from 'calypso/landing/stepper/stores';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
 import { domainMapping, domainTransfer } from 'calypso/lib/cart-values/cart-items';
@@ -25,7 +21,6 @@ import type { Step } from '../../types';
 import './style.scss';
 
 const UseMyDomain: Step = function UseMyDomain( { navigation, flow } ) {
-	const { __ } = useI18n();
 	const { setHideFreePlan, setDomainCartItem } = useDispatch( ONBOARD_STORE );
 	const { goNext, goBack, submit } = navigation;
 	const getDefaultStepContent = () => <h1>Choose a domain step</h1>;
@@ -86,7 +81,6 @@ const UseMyDomain: Step = function UseMyDomain( { navigation, flow } ) {
 			<CalypsoShoppingCartProvider>
 				<UseMyDomainComponent
 					analyticsSection="signup"
-					basePath=""
 					initialQuery={ getInitialQuery() }
 					initialMode={ getInitialMode() }
 					isSignupStep
@@ -98,6 +92,7 @@ const UseMyDomain: Step = function UseMyDomain( { navigation, flow } ) {
 					onNextStep={ handleOnNext }
 					isStepper
 					stepLocation={ location }
+					registerNowAction={ handleGoBack }
 				/>
 			</CalypsoShoppingCartProvider>
 		);
@@ -106,24 +101,10 @@ const UseMyDomain: Step = function UseMyDomain( { navigation, flow } ) {
 	const getStepContent = () => {
 		switch ( flow ) {
 			case START_WRITING_FLOW:
-			case DESIGN_FIRST_FLOW:
 			case ONBOARDING_FLOW:
 				return getBlogOnboardingFlowStepContent();
 			default:
 				return getDefaultStepContent();
-		}
-	};
-
-	const getFormattedHeader = () => {
-		if ( isOnboardingFlow( flow ) ) {
-			return (
-				<FormattedHeader
-					id="choose-a-domain-onboarding-header"
-					headerText=""
-					subHeaderText={ __( 'Find and claim one or more domain names' ) }
-					align="center"
-				/>
-			);
 		}
 	};
 
@@ -140,7 +121,6 @@ const UseMyDomain: Step = function UseMyDomain( { navigation, flow } ) {
 				isLargeSkipLayout={ false }
 				stepContent={ getStepContent() }
 				recordTracksEvent={ recordTracksEvent }
-				formattedHeader={ getFormattedHeader() }
 			/>
 		</>
 	);
