@@ -381,6 +381,32 @@ const maybeTrackPatternInsertion = ( actionData, additionalData ) => {
 };
 
 /**
+ * Track block drag and drop events.
+ * @param {Array} clientIds - Array of client IDs of the blocks being dragged.
+ * @param {string} fromRootClientId - Root client ID from where the blocks are dragged.
+ * @param {string} toRootClientId - Root client ID to where the blocks are dropped.
+ * @returns {void}
+ */
+const trackBlockDragDrop = ( clientIds, fromRootClientId, toRootClientId ) => {
+	const isDragging = select( 'core/block-editor' ).isDraggingBlocks();
+
+	// moveBlocksToPosition action is called when moving given blocks
+	// to a new position. This could be used in various scenarios such
+	// as mover arrows in the block toolbar, drag and drop, etc.
+	// Therefore this tracking ignore actions that are not related to
+	// dragging blocks.
+	if ( ! isDragging ) {
+		return;
+	}
+
+	getBlocksTracker( 'wpcom_block_moved_via_dragging' )(
+		clientIds,
+		fromRootClientId,
+		toRootClientId
+	);
+};
+
+/**
  * Track block insertion.
  * @param {Object | Array} blocks block instance object or an array of such objects
  * @param {Array} args additional insertBlocks data e.g. metadata containing pattern name.
@@ -496,7 +522,11 @@ const trackInnerBlocksReplacement = ( rootClientId, blocks ) => {
 			// Reusable Block
 			name === 'core/block' ||
 			// Post Content
-			name === 'core/post-content'
+			name === 'core/post-content' ||
+			// Page List
+			name === 'core/page-list' ||
+			// Navigation
+			name === 'core/navigation'
 		) {
 			return;
 		}
@@ -906,7 +936,7 @@ const REDUX_TRACKING = {
 		moveBlocksDown: getBlocksTracker( 'wpcom_block_moved_down' ),
 		removeBlocks: trackBlockRemoval,
 		removeBlock: trackBlockRemoval,
-		moveBlockToPosition: getBlocksTracker( 'wpcom_block_moved_via_dragging' ),
+		moveBlocksToPosition: trackBlockDragDrop,
 		insertBlock: trackBlockInsertion,
 		insertBlocks: trackBlockInsertion,
 		replaceBlock: trackBlockReplacement,

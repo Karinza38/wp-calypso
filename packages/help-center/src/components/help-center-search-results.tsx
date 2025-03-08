@@ -135,11 +135,18 @@ function debounceSpeak( {
 	}, timeout );
 }
 
-const loadingSpeak = debounceSpeak( { message: 'Loading search results.', timeout: 1500 } );
+const loadingSpeak = debounceSpeak( {
+	message: __( 'Loading search results.', __i18n_text_domain__ ),
+	timeout: 1500,
+} );
 
-const resultsSpeak = debounceSpeak( { message: 'Search results loaded.' } );
+const resultsSpeak = debounceSpeak( {
+	message: __( 'Search results loaded.', __i18n_text_domain__ ),
+} );
 
-const errorSpeak = debounceSpeak( { message: 'No search results found.' } );
+const errorSpeak = debounceSpeak( {
+	message: __( 'No search results found.', __i18n_text_domain__ ),
+} );
 
 const filterManagePurchaseLink = ( hasPurchases: boolean, isPurchasesSection: boolean ) => {
 	if ( hasPurchases || isPurchasesSection ) {
@@ -189,7 +196,6 @@ function HelpSearchResults( {
 	currentRoute,
 }: HelpSearchResultsProps ) {
 	const { hasPurchases, sectionName, site } = useHelpCenterContext();
-	const { shouldUseHelpCenterExperience } = useHelpCenterContext();
 
 	const adminResults = useAdminResults( searchQuery );
 
@@ -347,6 +353,7 @@ function HelpSearchResults( {
 
 	return (
 		<div className="help-center-search-results" aria-label={ resultsLabel }>
+			<HelpCenterRecentConversations />
 			{ isSearching && ! searchResults.length && <PlaceholderLines lines={ placeholderLines } /> }
 			{ searchQuery && ! ( hasAPIResults || isSearching ) ? (
 				<p className="help-center-search-results__empty-results">
@@ -356,8 +363,6 @@ function HelpSearchResults( {
 					) }
 				</p>
 			) : null }
-
-			{ shouldUseHelpCenterExperience && <HelpCenterRecentConversations /> }
 			{ sections }
 		</div>
 	);

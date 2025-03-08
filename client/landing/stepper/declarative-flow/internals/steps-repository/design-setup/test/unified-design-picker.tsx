@@ -42,27 +42,8 @@ jest.mock( 'calypso/lib/explat', () => ( {
 	useExperiment: () => [ false, null ],
 } ) );
 
-jest.mock( 'calypso/state/themes/theme-utils', () => ( {
-	getPreferredBillingCycleProductSlug: () => {
-		return;
-	},
-} ) );
-
 jest.mock( 'calypso/state/automated-transfer/selectors', () => ( {
 	getEligibility: () => {
-		return;
-	},
-} ) );
-
-jest.mock( 'calypso/state/products-list/selectors', () => ( {
-	...jest.requireActual( 'calypso/state/products-list/selectors' ),
-	getProductBillingSlugByThemeId: () => {
-		return;
-	},
-} ) );
-
-jest.mock( 'calypso/components/data/query-site-features', () => ( {
-	useQuerySiteFeatures: () => {
 		return;
 	},
 } ) );
@@ -73,26 +54,25 @@ jest.mock( 'calypso/components/data/query-themes', () => ( {
 	},
 } ) );
 
-jest.mock( 'calypso/components/data/query-products-list', () => ( {
-	useQueryProductsList: () => {
-		return;
-	},
-} ) );
-
 jest.mock( 'calypso/state/themes/hooks/use-is-theme-allowed-on-site', () => ( {
 	useIsThemeAllowedOnSite: () => false,
 } ) );
 
 jest.mock( 'calypso/state/themes/selectors', () => ( {
-	isMarketplaceThemeSubscribed: () => {
-		return;
-	},
 	getTheme: () => {
 		return;
 	},
-	isSiteEligibleForManagedExternalThemes: () => {
-		return;
-	},
+} ) );
+
+jest.mock( '../../../../../hooks/use-marketplace-theme-products', () => ( {
+	useMarketplaceThemeProducts: () => ( {
+		isLoading: false,
+		selectedMarketplaceProduct: '',
+		selectedMarketplaceProductCartItems: [],
+		isMarketplaceThemeSubscriptionNeeded: false,
+		isMarketplaceThemeSubscribed: false,
+		isExternallyManagedThemeAvailable: false,
+	} ),
 } ) );
 
 /**
@@ -117,10 +97,11 @@ const renderComponent = ( component, initialState = {} ) => {
 	const store = mockStore( {
 		purchases: {},
 		sites: {},
+		ui: { selectedSiteId: 'anySiteId' },
 		...initialState,
 	} );
 
-	const initialEntries = [ `/setup/site-setup/designSetup?siteSlug=test.wordpress.com` ];
+	const initialEntries = [ `/setup/site-setup/design-setup?siteSlug=test.wordpress.com` ];
 
 	return render(
 		<Provider store={ store }>
@@ -182,7 +163,7 @@ describe( 'UnifiedDesignPickerStep', () => {
 			);
 
 			await waitFor( () => {
-				expect( screen.getByText( 'Pick a design' ) ).toBeInTheDocument();
+				expect( screen.getByText( 'Pick a theme' ) ).toBeInTheDocument();
 				expect( container.getElementsByClassName( 'unified-design-picker__designs' ) ).toHaveLength(
 					1
 				);

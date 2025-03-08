@@ -70,7 +70,7 @@ export const fetchLaunchpad = (
 	const checklistSlugEncoded = checklistSlug ? encodeURIComponent( checklistSlug ) : null;
 	const launchpadContextEncoded = launchpadContext ? encodeURIComponent( launchpadContext ) : null;
 	const queryArgs = {
-		_locale: 'uesr',
+		_locale: 'user',
 		...( checklistSlug && { checklist_slug: checklistSlugEncoded } ),
 		...( launchpadContext && { launchpad_context: launchpadContextEncoded } ),
 	};
@@ -79,7 +79,6 @@ export const fetchLaunchpad = (
 		? wpcomRequest( {
 				path: addQueryArgs( `/sites/${ slug }/launchpad`, queryArgs ),
 				apiNamespace: 'wpcom/v2',
-				apiVersion: '2',
 				method: 'GET',
 		  } )
 		: apiFetch( {
@@ -138,6 +137,7 @@ export const useLaunchpad = (
 			is_dismissible: false,
 			title: null,
 		},
+		enabled: Boolean( siteSlug ),
 	} );
 };
 
@@ -203,7 +203,11 @@ const getDismissParams = ( settings: DismissSettings ) => {
 	}
 };
 
-export const useLaunchpadDismisser = ( siteSlug: SiteSlug, checklistSlug: string ) => {
+export const useLaunchpadDismisser = (
+	siteSlug: SiteSlug,
+	checklistSlug: string,
+	launchpadContext: string
+) => {
 	const queryClient = useQueryClient();
 	const key = getKey( siteSlug, checklistSlug );
 
@@ -230,7 +234,7 @@ export const useLaunchpadDismisser = ( siteSlug: SiteSlug, checklistSlug: string
 		onSuccess: () => {
 			recordTracksEvent( 'calypso_launchpad_dismiss_guide', {
 				checklist_slug: checklistSlug,
-				context: 'customer-home',
+				context: launchpadContext,
 			} );
 		},
 		onError: ( _, _2, context ) => {

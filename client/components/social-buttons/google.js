@@ -148,7 +148,6 @@ class GoogleSocialButton extends Component {
 			const response = await wpcomRequest( {
 				path: '/generate-authorization-nonce',
 				apiNamespace: 'wpcom/v2',
-				apiVersion: '2',
 				method: 'GET',
 			} );
 			const state = response.nonce;
@@ -202,11 +201,7 @@ class GoogleSocialButton extends Component {
 						data-social-service="google"
 						disabled={ isDisabled }
 					>
-						<GoogleIcon
-							isDisabled={ isDisabled }
-							width={ this.props.isReskinned ? 19 : 20 }
-							height={ this.props.isReskinned ? 19 : 20 }
-						/>
+						<GoogleIcon isDisabled={ isDisabled } width={ 19 } height={ 19 } />
 
 						<span className="social-buttons__service-name">
 							{ this.props.translate( 'Continue with %(service)s', {

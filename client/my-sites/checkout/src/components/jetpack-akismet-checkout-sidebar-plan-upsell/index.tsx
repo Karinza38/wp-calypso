@@ -1,11 +1,11 @@
 import { isAkismetProduct, isJetpackPlan, isJetpackProduct } from '@automattic/calypso-products';
 import { FormStatus, useFormStatus } from '@automattic/composite-checkout';
-import { formatCurrency } from '@automattic/format-currency';
 import { ResponseCartProduct, useShoppingCart } from '@automattic/shopping-cart';
 import { sprintf } from '@wordpress/i18n';
 import { useI18n } from '@wordpress/react-i18n';
 import clsx from 'clsx';
 import debugFactory from 'debug';
+import { formatCurrency } from 'i18n-calypso';
 import { useCallback, type FC, useMemo } from 'react';
 import PromoCard from 'calypso/components/promo-section/promo-card';
 import PromoCardCTA from 'calypso/components/promo-section/promo-card/cta';
@@ -91,6 +91,9 @@ const useCalculatedDiscounts = () => {
 	const originalPrice = current.priceBeforeDiscounts * 2;
 	const introductoryOfferDiscount = biennial.priceBeforeDiscounts - biennial.priceInteger;
 	const multiYearDiscount = originalPrice - biennial.priceBeforeDiscounts;
+	const additionalDiscount = product.introductory_offer_terms?.enabled
+		? 0
+		: biennial.priceBeforeDiscounts - biennial.priceInteger; // additional discount for events like Black Friday
 
 	const priceBreakdown: PriceBreakdown[] = [];
 
@@ -128,6 +131,14 @@ const useCalculatedDiscounts = () => {
 		priceBreakdown.push( {
 			label: __( 'Multi-year discount' ),
 			priceInteger: multiYearDiscount,
+			isDiscount: true,
+		} );
+	}
+
+	if ( additionalDiscount > 0 ) {
+		priceBreakdown.push( {
+			label: __( 'Additional discount' ),
+			priceInteger: additionalDiscount,
 			isDiscount: true,
 		} );
 	}

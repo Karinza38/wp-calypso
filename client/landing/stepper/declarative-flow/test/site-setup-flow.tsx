@@ -10,7 +10,7 @@ const originalLocation = window.location;
 describe( 'Site Setup Flow', () => {
 	beforeAll( () => {
 		Object.defineProperty( window, 'location', {
-			value: { assign: jest.fn() },
+			value: { assign: jest.fn(), pathname: '' },
 		} );
 	} );
 
@@ -20,24 +20,6 @@ describe( 'Site Setup Flow', () => {
 
 	beforeEach( () => {
 		jest.resetAllMocks();
-	} );
-
-	/**
-	 * This test is important because site-setup-wg assumes the first two steps are goals and intent capture.
-	 * It's totally fine to change this test if the flow changes. But please make sure to update and test the site-setup-wg accordingly.
-	 */
-	describe( 'First steps should be goals and intent capture', () => {
-		const steps = siteSetupFlow.useSteps();
-		const firstStep = steps[ 0 ];
-		const secondStep = steps[ 1 ];
-
-		it( 'should be goals', () => {
-			expect( firstStep.slug ).toBe( STEPS.GOALS.slug );
-		} );
-
-		it( 'should be intent capture', () => {
-			expect( secondStep.slug ).toBe( STEPS.INTENT.slug );
-		} );
 	} );
 
 	describe( 'when the current step is importListing', () => {

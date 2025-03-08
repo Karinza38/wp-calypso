@@ -149,6 +149,10 @@ export function useProductDescription( productSlug: string ): {
 					translate( 'Akismet Anti-spam*' )
 				);
 				break;
+			case 'jetpack-growth':
+				description = translate( 'Grow your audience effortlessly.' );
+				features.push( translate( 'Stats' ), translate( 'Social' ) );
+				break;
 			case 'jetpack-starter':
 				description = translate( 'Includes VaultPress Backup 1GB and Akismet Anti-spam.' );
 				features.push( translate( 'VaultPress Backup 1GB' ), translate( 'Akismet Anti-spam*' ) );
@@ -416,6 +420,29 @@ export function useProductDescription( productSlug: string ): {
 			case 'woocommerce-product-filters':
 				description = translate(
 					'This is a tool to create ajax product filters that make the process of finding products in your store simple and fast.'
+				);
+				break;
+			case 'woocommerce-constellation':
+				description = translate(
+					'A flexible, WooCommerce memberships platform to support publishers, purchasing clubs, online learning, associations, and more.'
+				);
+				break;
+			case 'woocommerce-rental-products':
+				description = translate(
+					'Sell rental products in your store, manage rental orders and more.'
+				);
+				break;
+			case 'woocommerce-smart-coupons':
+				description = translate(
+					'Boost sales and customer loyalty. Create advanced discounts, sell gift cards, set BOGO deals, give store credits, and all types of rule based dynamic discounts with this all-in-one Smart Coupons plugin for WooCommerce.'
+				);
+				break;
+			case 'woocommerce-dynamic-pricing':
+				description = translate( 'Bulk discounts, role-based pricing and much more.' );
+				break;
+			case 'woocommerce-variation-swatches-and-photos':
+				description = translate(
+					'Show color and image swatches instead of dropdowns for variable products.'
 				);
 				break;
 			case 'jetpack-stats':
