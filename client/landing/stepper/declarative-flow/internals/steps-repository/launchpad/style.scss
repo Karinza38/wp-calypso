@@ -144,14 +144,10 @@
 
 // Launchpad - Sidebar heading text
 .start-writing,
-.design-first,
 .newsletter,
-.link-in-bio.launchpad,
-.link-in-bio-tld:not(.domains),
 .free,
 .build,
-.write,
-.assembler-first {
+.write {
 	.step-container {
 		.step-container__content h1,
 		.step-container__content h1.launchpad__sidebar-h1 {
@@ -271,8 +267,7 @@
 
 }
 
-.start-writing .launchpad__sidebar-admin-link,
-.design-first .launchpad__sidebar-admin-link {
+.start-writing .launchpad__sidebar-admin-link {
 	display: none;
 }
 
@@ -300,37 +295,14 @@
 
 // Launchpad - Processing Screens
 .processing {
-	.processing-step__progress-bar {
+	.wpcom__loading-progress-bar {
 		background-color: #fff;
-	}
-
-	&.link-in-bio {
-		position: fixed;
-		width: 100%;
-		height: 100%;
-		background-color: #d0cce3;
-		background-image:
-			url(calypso/assets/images/onboarding/link-in-bio-processing-left.webp),
-			url(calypso/assets/images/onboarding/link-in-bio-processing-right.webp);
-		background-repeat: no-repeat, no-repeat;
-		background-attachment: fixed;
-		background-size: auto 30%, auto 30%;
-		background-position-x: 0%, 100%;
-		background-position-y: 90%, 10%;
-
-		@include break-huge {
-			background-size: auto 50%, auto 50%;
-			background-image:
-				url(calypso/assets/images/onboarding/link-in-bio-processing-left-desktop.webp),
-				url(calypso/assets/images/onboarding/link-in-bio-processing-right-desktop.webp);
-		}
 	}
 
 	.step-container {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		margin-top: 25vh;
 	}
 
 	.step-container__content {
@@ -340,8 +312,10 @@
 	.progress-bar {
 		display: none;
 	}
+}
 
-	h1.processing-step__progress-step {
+.wpcom__loading {
+	h1.wpcom__loading-title {
 		font-size: $font-title-medium;
 
 		@include break-medium {
@@ -365,17 +339,9 @@
 	}
 }
 
-// Link in Bio flow
-.link-in-bio-tld.launchpad {
-	.signup-header {
-		display: none;
-	}
-}
-
-// Write, Build, and Assembler First flow
+// Write and Build flow
 .write.launchpad,
-.build.launchpad,
-.assembler-first.launchpad {
+.build.launchpad {
 	.launchpad__sidebar-header-flow-name {
 		display: none;
 	}

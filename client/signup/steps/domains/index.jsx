@@ -1,11 +1,7 @@
 import { PLAN_PERSONAL } from '@automattic/calypso-products';
 import page from '@automattic/calypso-router';
 import { Spinner } from '@automattic/components';
-import {
-	isWithThemeFlow,
-	isHostingSignupFlow,
-	isOnboardingGuidedFlow,
-} from '@automattic/onboarding';
+import { isWithThemeFlow, isHostingSignupFlow, isOnboardingFlow } from '@automattic/onboarding';
 import { isTailoredSignupFlow } from '@automattic/onboarding/src';
 import { withShoppingCart } from '@automattic/shopping-cart';
 import clsx from 'clsx';
@@ -20,7 +16,7 @@ import QueryProductsList from 'calypso/components/data/query-products-list';
 import { useMyDomainInputMode as inputMode } from 'calypso/components/domains/connect-domain-step/constants';
 import RegisterDomainStep from 'calypso/components/domains/register-domain-step';
 import { recordUseYourDomainButtonClick } from 'calypso/components/domains/register-domain-step/analytics';
-import ReskinSideExplainer from 'calypso/components/domains/reskin-side-explainer';
+import SideExplainer from 'calypso/components/domains/side-explainer';
 import UseMyDomain from 'calypso/components/domains/use-my-domain';
 import FormattedHeader from 'calypso/components/formatted-header';
 import Notice from 'calypso/components/notice';
@@ -34,6 +30,7 @@ import {
 	hasPlan,
 	hasDomainRegistration,
 	getDomainsInCart,
+	hasPersonalPlan,
 } from 'calypso/lib/cart-values/cart-items';
 import {
 	getDomainProductSlug,
@@ -42,7 +39,6 @@ import {
 } from 'calypso/lib/domains';
 import { getSuggestionsVendor } from 'calypso/lib/domains/suggestions';
 import { triggerGuidesForStep } from 'calypso/lib/guides/trigger-guides-for-step';
-import { getSitePropertyDefaults } from 'calypso/lib/signup/site-properties';
 import CalypsoShoppingCartProvider from 'calypso/my-sites/checkout/calypso-shopping-cart-provider';
 import withCartKey from 'calypso/my-sites/checkout/with-cart-key';
 import { domainManagementRoot } from 'calypso/my-sites/domains/paths';
@@ -91,6 +87,7 @@ export class RenderDomainsStep extends Component {
 		domainsWithPlansOnly: PropTypes.bool,
 		flowName: PropTypes.string.isRequired,
 		goToNextStep: PropTypes.func.isRequired,
+		goBack: PropTypes.func,
 		isDomainOnly: PropTypes.bool.isRequired,
 		locale: PropTypes.string,
 		path: PropTypes.string.isRequired,
@@ -100,7 +97,7 @@ export class RenderDomainsStep extends Component {
 		stepName: PropTypes.string.isRequired,
 		stepSectionName: PropTypes.string,
 		selectedSite: PropTypes.object,
-		isReskinned: PropTypes.bool,
+		recordTracksEvent: PropTypes.func,
 	};
 
 	constructor( props ) {
@@ -183,6 +180,19 @@ export class RenderDomainsStep extends Component {
 		}
 	}
 
+	componentDidUpdate( prevProps ) {
+		if ( prevProps?.cart?.products?.length !== this.props?.cart?.products?.length ) {
+			if (
+				shouldUseMultipleDomainsInCart( this.props.flowName ) &&
+				hasDomainRegistration( this.props.cart ) &&
+				! hasPersonalPlan( this.props.cart )
+			) {
+				// This call is expensive, so we only do it if the mini-cart hasDomainRegistration.
+				this.props.shoppingCartManager.addProductsToCart( [ this.props.multiDomainDefaultPlan ] );
+			}
+		}
+	}
+
 	getLocale() {
 		return ! this.props.userLoggedIn ? this.props.locale : '';
 	}
@@ -226,7 +236,8 @@ export class RenderDomainsStep extends Component {
 			suggestion.domain_name,
 			this.getAnalyticsSection(),
 			position,
-			suggestion?.is_premium
+			suggestion?.is_premium,
+			this.props.flowName
 		);
 
 		await this.props.saveSignupStep( stepData );
@@ -343,6 +354,7 @@ export class RenderDomainsStep extends Component {
 			stepName: this.props.stepName,
 			suggestion: undefined,
 			domainCart: {},
+			siteUrl: '',
 		};
 
 		this.props.saveSignupStep( stepData );
@@ -476,7 +488,11 @@ export class RenderDomainsStep extends Component {
 			? { useThemeHeadstart: shouldUseThemeAnnotation }
 			: {};
 
-		this.props.recordAddDomainButtonClickInMapDomain( domain, this.getAnalyticsSection() );
+		this.props.recordAddDomainButtonClickInMapDomain(
+			domain,
+			this.getAnalyticsSection(),
+			this.props.flowName
+		);
 
 		this.props.submitSignupStep(
 			Object.assign(
@@ -519,7 +535,11 @@ export class RenderDomainsStep extends Component {
 			? { useThemeHeadstart: shouldUseThemeAnnotation }
 			: {};
 
-		this.props.recordAddDomainButtonClickInTransferDomain( domain, this.getAnalyticsSection() );
+		this.props.recordAddDomainButtonClickInTransferDomain(
+			domain,
+			this.getAnalyticsSection(),
+			this.props.flowName
+		);
 
 		this.props.submitSignupStep(
 			Object.assign(
@@ -697,8 +717,10 @@ export class RenderDomainsStep extends Component {
 									'Sorry, there was a problem adding that domain. Please try again later.'
 								)
 							);
+						} )
+						.then( () => {
+							this.setState( { isMiniCartContinueButtonBusy: false } );
 						} );
-					this.setState( { isMiniCartContinueButtonBusy: false } );
 				} );
 			}, 500 );
 		} else {
@@ -919,7 +941,7 @@ export class RenderDomainsStep extends Component {
 						( domainsInCart.length > 0 || this.state.wpcomSubdomainSelected ),
 				} ) }
 			>
-				<ReskinSideExplainer onClick={ this.handleUseYourDomainClick } type="use-your-domain" />
+				<SideExplainer onClick={ this.handleUseYourDomainClick } type="use-your-domain" />
 			</div>
 		) : null;
 
@@ -945,7 +967,7 @@ export class RenderDomainsStep extends Component {
 					! this.shouldHideDomainExplainer() &&
 					hasSearchedDomains && (
 						<div className="domains__domain-side-content domains__free-domain">
-							<ReskinSideExplainer
+							<SideExplainer
 								onClick={ this.handleDomainExplainerClick }
 								type={
 									this.props.isPlanSelectionAvailableLaterInFlow
@@ -960,7 +982,7 @@ export class RenderDomainsStep extends Component {
 				{ useYourDomain }
 				{ this.shouldDisplayDomainOnlyExplainer() && (
 					<div className="domains__domain-side-content">
-						<ReskinSideExplainer
+						<SideExplainer
 							onClick={ this.handleDomainExplainerClick }
 							type="free-domain-only-explainer"
 						/>
@@ -1051,8 +1073,8 @@ export class RenderDomainsStep extends Component {
 				forceHideFreeDomainExplainerAndStrikeoutUi={
 					this.props.forceHideFreeDomainExplainerAndStrikeoutUi
 				}
-				isReskinned={ this.props.isReskinned }
-				reskinSideContent={ this.getSideContent() }
+				isOnboarding
+				sideContent={ this.getSideContent() }
 				isInLaunchFlow={ 'launch-site' === this.props.flowName }
 				promptText={
 					this.isHostingFlow()
@@ -1065,6 +1087,7 @@ export class RenderDomainsStep extends Component {
 				forceExactSuggestion={ this.props?.queryObject?.source === 'general-settings' }
 				replaceDomainFailedMessage={ this.state.replaceDomainFailedMessage }
 				dismissReplaceDomainFailed={ this.dismissReplaceDomainFailed }
+				handleClickUseYourDomain={ this.handleUseYourDomainClick }
 			/>
 		);
 	};
@@ -1124,7 +1147,7 @@ export class RenderDomainsStep extends Component {
 	isHostingFlow = () => isHostingSignupFlow( this.props.flowName );
 
 	getSubHeaderText() {
-		const { flowName, isAllDomains, stepSectionName, isReskinned, translate } = this.props;
+		const { flowName, isAllDomains, stepSectionName, translate } = this.props;
 
 		if ( isAllDomains ) {
 			return translate( 'Find the domain that defines you' );
@@ -1154,12 +1177,8 @@ export class RenderDomainsStep extends Component {
 			return translate( 'Find and claim one or more domain names' );
 		}
 
-		if ( isReskinned ) {
-			return (
-				! stepSectionName &&
-				'domain-transfer' !== flowName &&
-				translate( 'Enter some descriptive keywords to get started' )
-			);
+		if ( ! stepSectionName ) {
+			return translate( 'Enter some descriptive keywords to get started' );
 		}
 
 		return 'transfer' === this.props.stepSectionName || 'mapping' === this.props.stepSectionName
@@ -1168,10 +1187,9 @@ export class RenderDomainsStep extends Component {
 	}
 
 	getHeaderText() {
-		const { headerText, isAllDomains, isReskinned, stepSectionName, translate, flowName } =
-			this.props;
+		const { headerText, isAllDomains, stepSectionName, translate, flowName } = this.props;
 
-		if ( stepSectionName === 'use-your-domain' || 'domain-transfer' === flowName ) {
+		if ( stepSectionName === 'use-your-domain' ) {
 			return '';
 		}
 
@@ -1183,14 +1201,10 @@ export class RenderDomainsStep extends Component {
 			return translate( 'Your next big idea starts here' );
 		}
 
-		if ( isReskinned ) {
-			if ( shouldUseMultipleDomainsInCart( flowName ) ) {
-				return ! stepSectionName && translate( 'Choose your domains' );
-			}
-			return ! stepSectionName && translate( 'Choose a domain' );
+		if ( shouldUseMultipleDomainsInCart( flowName ) ) {
+			return ! stepSectionName && translate( 'Choose your domains' );
 		}
-
-		return getSitePropertyDefaults( 'signUpFlowDomainsStepHeader' );
+		return ! stepSectionName && translate( 'Choose a domain' );
 	}
 
 	getAnalyticsSection() {
@@ -1209,13 +1223,8 @@ export class RenderDomainsStep extends Component {
 			content = this.domainForm();
 		}
 
-		if ( ! this.props.stepSectionName && this.props.isReskinned ) {
+		if ( ! this.props.stepSectionName ) {
 			sideContent = this.getSideContent();
-		}
-
-		if ( 'domain-transfer' === this.props.flowName && ! this.props.stepSectionName ) {
-			content = this.useYourDomainForm();
-			sideContent = null;
 		}
 
 		if ( this.props.step && 'invalid' === this.props.step.status ) {
@@ -1244,10 +1253,7 @@ export class RenderDomainsStep extends Component {
 	}
 
 	getPreviousStepUrl() {
-		if (
-			'use-your-domain' !== this.props.stepSectionName &&
-			'domain-transfer' !== this.props.flowName
-		) {
+		if ( 'use-your-domain' !== this.props.stepSectionName ) {
 			return null;
 		}
 
@@ -1296,10 +1302,10 @@ export class RenderDomainsStep extends Component {
 			stepSectionName,
 			isAllDomains,
 			translate,
-			isReskinned,
 			userSiteCount,
 			previousStepName,
 			useStepperWrapper,
+			goBack,
 		} = this.props;
 		const siteUrl = this.props.selectedSite?.URL;
 		const siteSlug = this.props.queryObject?.siteSlug;
@@ -1317,7 +1323,8 @@ export class RenderDomainsStep extends Component {
 		const shouldHideBack =
 			! userSiteCount &&
 			previousStepName?.startsWith( 'user' ) &&
-			stepSectionName !== 'use-your-domain';
+			stepSectionName !== 'use-your-domain' &&
+			! ( isOnboardingFlow( flowName ) && !! goBack );
 
 		const hideBack = flowName === 'domain' || shouldHideBack;
 
@@ -1332,9 +1339,6 @@ export class RenderDomainsStep extends Component {
 		} else if ( isAllDomains ) {
 			backUrl = domainManagementRoot();
 			backLabelText = translate( 'Back to All Domains' );
-		} else if ( ! previousStepBackUrl && 'domain-transfer' === flowName ) {
-			backUrl = null;
-			backLabelText = null;
 		} else if ( 'domain-for-gravatar' === flowName ) {
 			backUrl = null;
 			backLabelText = null;
@@ -1346,9 +1350,9 @@ export class RenderDomainsStep extends Component {
 			backLabelText = translate( 'Back to themes' );
 		} else if ( 'plans-first' === flowName ) {
 			backUrl = getStepUrl( flowName, previousStepName );
-		} else if ( isOnboardingGuidedFlow( flowName ) ) {
-			// Let the framework decide the back url.
-			backUrl = undefined;
+		} else if ( isOnboardingFlow( flowName ) && !! goBack ) {
+			backUrl = null;
+			backLabelText = translate( 'Back' );
 		} else {
 			backUrl = getStepUrl( flowName, stepName, null, this.getLocale() );
 
@@ -1399,7 +1403,6 @@ export class RenderDomainsStep extends Component {
 						<FormattedHeader
 							id="domains-header"
 							align="center"
-							subHeaderAlign="center"
 							headerText={ headerText }
 							subHeaderText={ fallbackSubHeaderText }
 						/>
@@ -1408,6 +1411,8 @@ export class RenderDomainsStep extends Component {
 					hideSkip
 					align="center"
 					isWideLayout
+					goBack={ goBack }
+					recordTracksEvent={ this.props.recordTracksEvent }
 				/>
 			);
 		}
@@ -1437,7 +1442,7 @@ export class RenderDomainsStep extends Component {
 				hideSkip
 				goToNextStep={ this.handleSkip }
 				align="center"
-				isWideLayout={ isReskinned }
+				isWideLayout
 			/>
 		);
 	}

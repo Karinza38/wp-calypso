@@ -209,7 +209,7 @@ export class StartImportFlow {
 		] );
 
 		if ( ! element ) {
-			throw new Error( `No matching URL input found at Site Importer.` );
+			throw new Error( 'No matching URL input found at Site Importer.' );
 		}
 		await element.fill( url );
 		const continueLocator = this.page.locator(
@@ -252,15 +252,6 @@ export class StartImportFlow {
 		await this.page.goto(
 			DataHelper.getCalypsoURL( route, { siteSlug, from, skipStoringTempTargetSite: 'true' } )
 		);
-	}
-
-	/**
-	 * Import hosted site flow, go to first import step
-	 */
-	async startImportHostedSite( step: string, siteSlug: string, from: string ): Promise< void > {
-		const route = `/setup/import-hosted-site/${ step }`;
-
-		await this.page.goto( DataHelper.getCalypsoURL( route, { siteSlug, from } ) );
 	}
 
 	/**

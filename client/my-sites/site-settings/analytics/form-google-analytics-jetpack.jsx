@@ -6,6 +6,7 @@ import {
 	FormInputValidation as FormTextValidation,
 	FormLabel,
 	Button,
+	ExternalLink,
 } from '@automattic/components';
 import { localizeUrl } from '@automattic/i18n-utils';
 import { ToggleControl } from '@wordpress/components';
@@ -14,12 +15,11 @@ import { useEffect } from 'react';
 import googleIllustration from 'calypso/assets/images/illustrations/google-analytics-logo.svg';
 import UpsellNudge from 'calypso/blocks/upsell-nudge';
 import QueryJetpackModules from 'calypso/components/data/query-jetpack-modules';
-import ExternalLink from 'calypso/components/external-link';
 import FormFieldset from 'calypso/components/forms/form-fieldset';
 import FormSettingExplanation from 'calypso/components/forms/form-setting-explanation';
 import FormTextInput from 'calypso/components/forms/form-text-input';
 import InlineSupportLink from 'calypso/components/inline-support-link';
-import { PanelHeading, PanelSection } from 'calypso/components/panel';
+import { PanelCard, PanelCardHeading } from 'calypso/components/panel';
 import SupportInfo from 'calypso/components/support-info';
 import { PRODUCT_UPSELLS_BY_FEATURE } from 'calypso/my-sites/plans/jetpack-plans/constants';
 import JetpackModuleToggle from 'calypso/my-sites/site-settings/jetpack-module-toggle';
@@ -134,7 +134,7 @@ const GoogleAnalyticsJetpackForm = ( {
 				<QueryJetpackModules siteId={ siteId } />
 
 				<>
-					<PanelHeading>{ translate( 'Google Analytics' ) }</PanelHeading>
+					<PanelCardHeading>{ translate( 'Google Analytics' ) }</PanelCardHeading>
 					<div className="analytics site-settings__analytics">
 						<div className="analytics site-settings__analytics-illustration">
 							<img src={ googleIllustration } alt="" />
@@ -198,7 +198,6 @@ const GoogleAnalyticsJetpackForm = ( {
 										icon
 										href="https://support.google.com/analytics/answer/2763052"
 										target="_blank"
-										rel="noopener noreferrer"
 									>
 										{ translate( 'Learn more' ) }
 									</ExternalLink>
@@ -292,6 +291,6 @@ const GoogleAnalyticsJetpackForm = ( {
 	if ( ! site ) {
 		return null;
 	}
-	return <PanelSection>{ renderForm() }</PanelSection>;
+	return <PanelCard>{ renderForm() }</PanelCard>;
 };
 export default GoogleAnalyticsJetpackForm;

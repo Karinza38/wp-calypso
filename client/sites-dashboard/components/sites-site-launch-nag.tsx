@@ -1,9 +1,8 @@
 import { recordTracksEvent } from '@automattic/calypso-analytics';
-import { englishLocales, useLocale } from '@automattic/i18n-utils';
 import styled from '@emotion/styled';
 import { useI18n } from '@wordpress/react-i18n';
 import { useInView } from 'react-intersection-observer';
-import { getDashboardUrl, getLaunchpadUrl } from '../utils';
+import { getDashboardUrl } from '../utils';
 import type { SiteExcerptData } from '@automattic/sites';
 
 interface SiteLaunchNagProps {
@@ -84,8 +83,7 @@ const recordNagView = () => {
 };
 
 export const SiteLaunchNag = ( { site }: SiteLaunchNagProps ) => {
-	const { __, hasTranslation } = useI18n();
-	const locale = useLocale();
+	const { __ } = useI18n();
 	const { ref } = useInView( {
 		onChange: ( inView ) => inView && recordNagView(),
 	} );
@@ -97,21 +95,8 @@ export const SiteLaunchNag = ( { site }: SiteLaunchNagProps ) => {
 		return null;
 	}
 
-	const validSiteIntent =
-		site.options?.launchpad_screen === 'full' &&
-		site.options?.site_intent &&
-		[ 'link-in-bio' ].includes( site.options.site_intent )
-			? site.options.site_intent
-			: false;
-
-	const link = validSiteIntent
-		? getLaunchpadUrl( site.slug, validSiteIntent )
-		: getDashboardUrl( site.slug );
-	const checklistTranslation =
-		hasTranslation( 'Checklist' ) || englishLocales.includes( locale )
-			? __( 'Checklist' )
-			: __( 'Launch checklist' );
-	const text = validSiteIntent ? __( 'Launch guide' ) : checklistTranslation;
+	const link = getDashboardUrl( site.slug );
+	const text = __( 'Checklist' );
 
 	return (
 		<SiteLaunchNagLink

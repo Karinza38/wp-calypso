@@ -8,6 +8,8 @@
 		display: table;
 	}
 	border: 1px solid var(--studio-gray-5);
+	border-left: none;
+	border-right: none;
 	border-collapse: collapse;
 	tr {
 		height: 1px;
@@ -51,11 +53,6 @@
 		display: inline-flex;
 		min-width: 50%;
 		vertical-align: middle;
-	}
-	&.has-bulk-management-active {
-		thead {
-			display: none;
-		}
 	}
 }
 td.plugin-common-table__actions {

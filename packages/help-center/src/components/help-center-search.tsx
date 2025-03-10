@@ -46,7 +46,7 @@ export const HelpCenterSearch = ( { onSearchChange, currentRoute }: HelpCenterSe
 		[ setSubject, setMessage, onSearchChange ]
 	);
 
-	const launchpadEnabled = site?.options.launchpad_screen === 'full';
+	const launchpadEnabled = site?.options?.launchpad_screen === 'full';
 
 	// Search query can be a query param, if the user searches or clears the search field
 	// we need to keep the query param up-to-date with that
@@ -70,7 +70,7 @@ export const HelpCenterSearch = ( { onSearchChange, currentRoute }: HelpCenterSe
 					post_id: result.post_id,
 					blog_id: result.blog_id,
 				};
-				recordTracksEvent( `calypso_inlinehelp_article_no_postid_redirect`, tracksData );
+				recordTracksEvent( 'calypso_inlinehelp_article_no_postid_redirect', tracksData );
 				window.open( result.link, '_blank' );
 				return;
 			}

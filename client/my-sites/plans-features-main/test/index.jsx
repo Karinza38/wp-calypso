@@ -50,6 +50,8 @@ jest.mock( '../hooks/experiments/use-longer-plan-term-default-experiment', () =>
 	isLoadingExperiment: false,
 } ) );
 
+jest.mock( '../hooks/use-eligibility-for-term-savings-price-display', () => () => false );
+
 import {
 	PLAN_FREE,
 	PLAN_BUSINESS_MONTHLY,
@@ -121,13 +123,6 @@ describe( 'PlansFeaturesMain', () => {
 
 		test( 'Should render <PlanFeatures /> with Newsletter plans when called with newsletter intent', () => {
 			renderWithProvider( <PlansFeaturesMain { ...props } intent="plans-newsletter" /> );
-			expect( screen.getByTestId( 'visible-plans' ) ).toHaveTextContent(
-				JSON.stringify( [ PLAN_FREE, PLAN_PERSONAL, PLAN_PREMIUM ] )
-			);
-		} );
-
-		test( 'Should render <PlanFeatures /> with LinkInBio plans when called with link-in-bio intent', () => {
-			renderWithProvider( <PlansFeaturesMain { ...props } intent="plans-link-in-bio" /> );
 			expect( screen.getByTestId( 'visible-plans' ) ).toHaveTextContent(
 				JSON.stringify( [ PLAN_FREE, PLAN_PERSONAL, PLAN_PREMIUM ] )
 			);

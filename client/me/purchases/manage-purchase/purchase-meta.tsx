@@ -92,7 +92,7 @@ export default function PurchaseMeta( {
 		: translate( 'Renewal Price' );
 
 	const hideRenewalPriceSection = isOneTimePurchase( purchase );
-	const hideTaxString = isIncludedWithPlan( purchase );
+	const hideTaxString = isIncludedWithPlan( purchase ) || purchase?.priceInteger === 0;
 
 	// To-do: There isn't currently a way to get the taxName based on the country.
 	// The country is not included in the purchase information envelope
@@ -168,6 +168,9 @@ function renderRenewsOrExpiresOnLabel( {
 } ): string | null {
 	if ( isExpiring( purchase ) ) {
 		if ( isDomainRegistration( purchase ) ) {
+			if ( domainDetails?.isHundredYearDomain ) {
+				return translate( 'Paid until' );
+			}
 			return translate( 'Domain expires on' );
 		}
 

@@ -65,7 +65,7 @@ export class AdvertisingPage {
 		if ( envVariables.VIEWPORT_NAME === 'desktop' ) {
 			await this.page
 				.getByRole( 'main' )
-				.locator( '.posts-list-banner__container' )
+				.locator( '.posts-list-banner__container, .tsp-banner__container' )
 				.waitFor( { timeout: 20 * 1000 } ); // Banner can be pretty slow on some sites.
 		}
 
@@ -82,7 +82,7 @@ export class AdvertisingPage {
 				.getByRole( 'button', { name: name } )
 				.click();
 		} else {
-			throw new Error( `Must pass in either row or postTitle.` );
+			throw new Error( 'Must pass in either row or postTitle.' );
 		}
 	}
 }

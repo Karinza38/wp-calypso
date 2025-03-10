@@ -9,7 +9,7 @@ import type { ReactNode, LegacyRef } from 'react';
 const noop = () => {};
 
 interface MasterbarSubItemProps {
-	label: string;
+	label: string | React.ReactNode;
 	url?: string;
 	onClick?: () => void;
 	className?: string;
@@ -29,7 +29,7 @@ interface MasterbarItemProps {
 	children?: ReactNode;
 	alwaysShowContent?: boolean;
 	disabled?: boolean;
-	subItems?: Array< MasterbarSubItemProps >;
+	subItems?: Array< Array< MasterbarSubItemProps > >;
 	hasGlobalBorderStyle?: boolean;
 }
 
@@ -60,8 +60,7 @@ class MasterbarItem extends Component< MasterbarItemProps > {
 		isOpenForNonMouseFlow: false,
 	};
 
-	componentButtonRef = React.createRef< HTMLButtonElement >();
-	componentDivRef = React.createRef< HTMLDivElement >();
+	wrapperRef = React.createRef< HTMLDivElement >();
 
 	_preloaded = false;
 
@@ -102,10 +101,19 @@ class MasterbarItem extends Component< MasterbarItemProps > {
 		if ( ! subItems ) {
 			return null;
 		}
-		return (
-			<ul className="masterbar__item-subitems">
-				{ subItems.map( ( item, i ) => (
-					<li key={ i } className={ clsx( 'masterbar__item-subitems-item', item.className ) }>
+		return <ul className="masterbar__item-subitems">{ this.renderSubItemGroups( subItems ) }</ul>;
+	}
+
+	renderSubItemGroups = ( subItemGroups: Array< Array< MasterbarSubItemProps > > ) => {
+		return subItemGroups
+			.map( ( subItems, groupIndex ) =>
+				subItems.map( ( item, i ) => (
+					<li
+						key={ `${ groupIndex }-${ i }` }
+						className={ clsx( 'masterbar__item-subitems-item', item.className, {
+							'masterbar__item-subitems-item--odd': groupIndex % 2 === 1,
+						} ) }
+					>
 						{ item.onClick && (
 							<Button
 								className="is-link"
@@ -130,10 +138,10 @@ class MasterbarItem extends Component< MasterbarItemProps > {
 							</a>
 						) }
 					</li>
-				) ) }
-			</ul>
-		);
-	}
+				) )
+			)
+			.flat();
+	};
 
 	toggleMenuByTouch = ( event: React.TouchEvent | React.KeyboardEvent ) => {
 		// If there are no subItems, there is nothing to toggle.
@@ -191,12 +199,8 @@ class MasterbarItem extends Component< MasterbarItemProps > {
 		}
 
 		// Check refs to see if the touch event started inside our component, if it didn't, close the menu.
-		const isInComponentButtonRef = this.componentButtonRef.current?.contains(
-			event.target as Node
-		);
-		const isInComponentDivRef = this.componentDivRef.current?.contains( event.target as Node );
-
-		if ( ! isInComponentButtonRef && ! isInComponentDivRef ) {
+		const isInWrapper = this.wrapperRef.current?.contains( event.target as Node );
+		if ( ! isInWrapper ) {
 			this.setState( { isOpenForNonMouseFlow: false } );
 		}
 	};
@@ -221,49 +225,21 @@ class MasterbarItem extends Component< MasterbarItemProps > {
 			disabled: this.props.disabled,
 		};
 
-		if ( this.props.url && ! this.props.subItems ) {
-			return (
-				<a
-					{ ...attributes }
-					href={ this.props.url }
-					ref={ this.props.innerRef as LegacyRef< HTMLAnchorElement > }
-				>
-					{ this.renderChildren() }
-				</a>
-			);
-		}
-
-		if ( this.props.url && this.props.subItems ) {
-			return (
-				<button
-					{ ...attributes }
-					ref={ this.componentButtonRef }
-					onKeyDown={ this.toggleMenuByKey }
-				>
-					<a
-						href={ this.props.url }
-						ref={ this.props.innerRef as LegacyRef< HTMLAnchorElement > }
-						onTouchEnd={ this.toggleMenuByTouch }
-						tabIndex={ -1 }
-					>
-						{ this.renderChildren() }
-					</a>
-					{ this.renderSubItems() }
-				</button>
-			);
-		}
-
 		return (
-			<div className={ this.props.wrapperClassName } ref={ this.componentDivRef }>
-				<button
+			<div
+				className={ clsx( 'masterbar__item-wrapper', this.props.wrapperClassName ) }
+				ref={ this.wrapperRef }
+			>
+				<MenuItem
+					url={ this.props.url }
+					innerRef={ this.props.innerRef }
 					{ ...attributes }
-					ref={ this.props.innerRef as LegacyRef< HTMLButtonElement > }
 					onKeyDown={ this.props.subItems && this.toggleMenuByKey }
 					onTouchEnd={ this.props.subItems && this.toggleMenuByTouch }
 				>
 					{ this.renderChildren() }
-					{ this.renderSubItems() }
-				</button>
+				</MenuItem>
+				{ this.renderSubItems() }
 			</div>
 		);
 	}
@@ -272,3 +248,16 @@ class MasterbarItem extends Component< MasterbarItemProps > {
 export default forwardRef< HTMLButtonElement | HTMLAnchorElement, MasterbarItemProps >(
 	( props, ref ) => <MasterbarItem innerRef={ ref } { ...props } />
 );
+
+type MenuItemProps< R > = {
+	url?: string;
+	innerRef?: R;
+} & React.HTMLAttributes< HTMLElement >;
+
+function MenuItem< R >( { url, innerRef, ...props }: MenuItemProps< R > ) {
+	return url ? (
+		<a href={ url } ref={ innerRef as LegacyRef< HTMLAnchorElement > } { ...props } />
+	) : (
+		<button ref={ innerRef as LegacyRef< HTMLButtonElement > } { ...props } />
+	);
+}
