@@ -4,10 +4,8 @@ import {
 	isWooExpressPlan,
 	isFreePlan,
 } from '@automattic/calypso-products';
-import { AddOns } from '@automattic/data-stores';
-import { formatCurrency } from '@automattic/format-currency';
 import styled from '@emotion/styled';
-import { useTranslate } from 'i18n-calypso';
+import { useTranslate, formatCurrency } from 'i18n-calypso';
 import { usePlansGridContext } from '../../../grid-context';
 import usePlanBillingDescription from '../../../hooks/data-store/use-plan-billing-description';
 import type { GridPlan } from '../../../types';
@@ -54,7 +52,6 @@ const BillingTimeframe = ( { showRefundPeriod, planSlug }: Props ) => {
 	const translate = useTranslate();
 	const { helpers, gridPlansIndex, coupon, siteId } = usePlansGridContext();
 	const { isMonthlyPlan, billingTimeframe, pricing } = gridPlansIndex[ planSlug ];
-	const storageAddOns = AddOns.useStorageAddOns( { siteId } );
 
 	const { introOffer, billingPeriod } = pricing;
 	const planBillingDescription = usePlanBillingDescription( {
@@ -62,7 +59,6 @@ const BillingTimeframe = ( { showRefundPeriod, planSlug }: Props ) => {
 		planSlug,
 		pricing,
 		isMonthlyPlan,
-		storageAddOnsForPlan: storageAddOns,
 		coupon,
 		useCheckPlanAvailabilityForPurchase: helpers?.useCheckPlanAvailabilityForPurchase,
 	} );

@@ -1,7 +1,7 @@
 import { isEnabled } from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
 import { Gridicon } from '@automattic/components';
-import { Icon, chevronDown, layout } from '@wordpress/icons';
+import { Icon, chevronDown } from '@wordpress/icons';
 import clsx from 'clsx';
 import { localize } from 'i18n-calypso';
 import PropTypes from 'prop-types';
@@ -57,9 +57,6 @@ class Site extends Component {
 
 		isP2Hub: false,
 		isSiteP2: false,
-
-		isReskinned: false,
-
 		defaultIcon: null,
 	};
 
@@ -81,7 +78,6 @@ class Site extends Component {
 		compact: PropTypes.bool,
 		isP2Hub: PropTypes.bool,
 		isSiteP2: PropTypes.bool,
-		isReskinned: PropTypes.bool,
 		defaultIcon: PropTypes.node,
 	};
 
@@ -226,7 +222,6 @@ class Site extends Component {
 			'is-selected': this.props.isSelected,
 			'is-highlighted': this.props.isHighlighted,
 			'is-compact': this.props.compact,
-			'is-reskinned': this.props.isReskinned,
 			'is-trial': this.props.isTrialSite,
 			'inline-badges': inlineBadges,
 		} );
@@ -257,10 +252,14 @@ class Site extends Component {
 					}
 				>
 					<SiteIcon
-						defaultIcon={ this.props.isReskinned ? layout : this.props.defaultIcon }
+						defaultIcon={
+							this.props.defaultIcon || (
+								<Gridicon icon="globe" size={ this.props.compact ? 20 : 28 } />
+							)
+						}
 						site={ site }
 						// eslint-disable-next-line no-nested-ternary
-						size={ this.props.compact ? 24 : this.props.isReskinned ? 50 : 32 }
+						size={ this.props.compact ? 24 : 32 }
 					/>
 					<div className="site__info">
 						{ ! this.props.showChevronDownIcon ? (
@@ -277,10 +276,9 @@ class Site extends Component {
 							this.renderDomainAndInlineBadges()
 						) : (
 							<>
-								{ ! this.props.isReskinned && this.renderSiteDomain() }
 								{ /* eslint-disable wpcalypso/jsx-gridicon-size */ }
+								{ this.renderSiteDomain() }
 								{ this.renderSiteBadges() }
-								{ this.props.isReskinned && this.renderSiteDomain() }
 							</>
 						) }
 

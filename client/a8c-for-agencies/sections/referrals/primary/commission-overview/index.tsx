@@ -1,23 +1,34 @@
 import { FoldableCard } from '@automattic/components';
 import { useDesktopBreakpoint } from '@automattic/viewport-react';
 import clsx from 'clsx';
-import { useTranslate } from 'i18n-calypso';
-import Layout from 'calypso/a8c-for-agencies/components/layout';
-import LayoutBody from 'calypso/a8c-for-agencies/components/layout/body';
-import LayoutHeader, {
-	LayoutHeaderBreadcrumb as Breadcrumb,
-} from 'calypso/a8c-for-agencies/components/layout/header';
-import LayoutTop from 'calypso/a8c-for-agencies/components/layout/top';
+import { useTranslate, numberFormatCompact, formatCurrency, getCurrencyObject } from 'i18n-calypso';
+import { LayoutWithGuidedTour as Layout } from 'calypso/a8c-for-agencies/components/layout/layout-with-guided-tour';
+import LayoutTop from 'calypso/a8c-for-agencies/components/layout/layout-with-payment-notification';
 import MobileSidebarNavigation from 'calypso/a8c-for-agencies/components/sidebar/mobile-sidebar-navigation';
 import { A4A_REFERRALS_LINK } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
 import StepSection from 'calypso/a8c-for-agencies/components/step-section';
+import WooLogoRebrand2 from 'calypso/assets/images/icons/Woo_logo_color.svg';
 import pressableIcon from 'calypso/assets/images/pressable/pressable-icon.svg';
 import JetpackLogo from 'calypso/components/jetpack-logo';
-import WooCommerceLogo from 'calypso/components/woocommerce-logo';
 import WordPressLogo from 'calypso/components/wordpress-logo';
+import LayoutBody from 'calypso/layout/hosting-dashboard/body';
+import LayoutHeader, {
+	LayoutHeaderBreadcrumb as Breadcrumb,
+} from 'calypso/layout/hosting-dashboard/header';
 import ReferralsFooter from '../footer';
 
 import './style.scss';
+
+// TODO: Remove this once we can use the new formatCurrency function that gives the compact number in the correct format.
+const formatCurrencyCompact = ( amount: number, currencyCode = 'USD' ) => {
+	const currencyObject = getCurrencyObject( amount, currencyCode );
+	const formattedAmount =
+		currencyObject.symbolPosition === 'before'
+			? `${ currencyObject.symbol }${ numberFormatCompact( amount ) }`
+			: `${ numberFormatCompact( amount ) }${ currencyObject.symbol }`;
+
+	return formattedAmount;
+};
 
 export default function CommissionOverview( {
 	isAutomatedReferral,
@@ -34,6 +45,11 @@ export default function CommissionOverview( {
 	const title = isAutomatedReferral
 		? automatedReferralTitle
 		: translate( 'Referrals - Commission details and terms' );
+
+	// TODO: This is a workaround to keep the formatting of the max amount consistent until
+	// we can use the new formatCurrency function that gives the compact number in the correct format.
+	const oneMillion = 1000000;
+	const oneMillionFormatted = formatCurrencyCompact( oneMillion );
 
 	return (
 		<Layout
@@ -83,12 +99,12 @@ export default function CommissionOverview( {
 					</>
 				) }
 				<div className="commission-overview__section-container">
-					<StepSection heading={ translate( 'How much can I earn?' ) }>
+					<StepSection applyCoreStyles heading={ translate( 'How much can I earn?' ) }>
 						<FoldableCard
 							header={
 								<>
 									<div className="a4a-overview-hosting__logo-container">
-										<WooCommerceLogo className="woocommerce-logo" size={ 40 } />
+										<img width={ 45 } src={ WooLogoRebrand2 } alt="WooCommerce" />
 									</div>
 									<div>{ translate( 'WooPayments revenue share' ) }</div>
 								</>
@@ -99,7 +115,15 @@ export default function CommissionOverview( {
 						>
 							{ translate(
 								'You will receive a revenue share of 5 basis points (bps) on new WooPayments total payments volume (“TPV”) on client sites through June 30, 2025.' +
-									' For example, if your client’s store generates $1M in TPV per year, your revenue share for that year would be $500.'
+									" For example, if your client's store generates %(maxAmount)s in TPV per year, your revenue share for that year would be %(amount)s.",
+								{
+									args: {
+										maxAmount: oneMillionFormatted,
+										amount: formatCurrency( 500, 'USD', {
+											stripZeros: true,
+										} ),
+									},
+								}
 							) }
 						</FoldableCard>
 
@@ -134,7 +158,7 @@ export default function CommissionOverview( {
 								<>
 									<div className="a4a-overview-hosting__logo-container">
 										<JetpackLogo className="jetpack-logo" size={ 24 } />
-										<WooCommerceLogo className="woocommerce-logo" size={ 40 } />
+										<img width={ 45 } src={ WooLogoRebrand2 } alt="WooCommerce" />
 									</div>
 
 									<div>
@@ -157,7 +181,10 @@ export default function CommissionOverview( {
 						</FoldableCard>
 					</StepSection>
 
-					<StepSection heading={ translate( 'Eligibility requirements and terms of use?' ) }>
+					<StepSection
+						applyCoreStyles
+						heading={ translate( 'Eligibility requirements and terms of use?' ) }
+					>
 						<FoldableCard
 							header={ translate( 'Active referrals' ) }
 							expanded

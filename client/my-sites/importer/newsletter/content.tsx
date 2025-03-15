@@ -4,6 +4,7 @@ import { Button } from '@wordpress/components';
 import { createInterpolateElement } from '@wordpress/element';
 import { external } from '@wordpress/icons';
 import { useI18n } from '@wordpress/react-i18n';
+import i18n from 'i18n-calypso';
 import { useEffect } from 'react';
 import exportSubstackDataImg from 'calypso/assets/images/importer/export-substack-content.png';
 import importerConfig from 'calypso/lib/importer/importer-config';
@@ -77,6 +78,15 @@ export default function Content( {
 		importerStatus?.importerState !== appStates.IMPORTING &&
 		importerStatus?.importerState !== appStates.IMPORT_SUCCESS;
 
+	const normalizedFromSite = normalizeFromSite( fromSite );
+	const baseUrl = normalizedFromSite.startsWith( 'http' )
+		? normalizedFromSite
+		: `https://${ normalizedFromSite }`;
+
+	const settingsUrl = `${
+		baseUrl.endsWith( '/' ) ? baseUrl.slice( 0, -1 ) : baseUrl
+	}/publish/settings?search=export`;
+
 	return (
 		<Card>
 			<Interval onTick={ fetchImporters } period={ EVERY_FIVE_SECONDS } />
@@ -100,7 +110,7 @@ export default function Content( {
 						className="export-content"
 					/>
 					<Button
-						href={ `https://${ normalizeFromSite( fromSite ) }/publish/settings?search=export` }
+						href={ settingsUrl }
 						target="_blank"
 						rel="noreferrer noopener"
 						icon={ external }
@@ -111,6 +121,26 @@ export default function Content( {
 					</Button>
 					<hr />
 					<h2>{ __( 'Step 2: Import your content to WordPress.com' ) }</h2>
+					<p>
+						{ i18n.fixMe( {
+							text: 'Your posts may be added to your homepage by default. If you prefer your posts to load on a separate page, first go to Reading Settings, and change "Your homepage displays" to a static page.',
+							newCopy: createInterpolateElement(
+								__(
+									'Your posts may be added to your homepage by default. If you prefer your posts to load on a separate page, first go to <a>Reading Settings</a>, and change "Your homepage displays" to a static page.'
+								),
+								{
+									a: (
+										<a
+											href={ `${ selectedSite.URL }/wp-admin/options-reading.php` }
+											target="_blank"
+											rel="noreferrer noopener"
+										/>
+									),
+								}
+							),
+							oldCopy: __( '' ),
+						} ) }
+					</p>
 				</>
 			) }
 			{ importerStatus && (

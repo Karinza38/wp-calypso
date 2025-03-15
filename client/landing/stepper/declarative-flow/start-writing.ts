@@ -18,6 +18,7 @@ import { getCurrentUserSiteCount, isUserLoggedIn } from 'calypso/state/current-u
 import { useExitFlow } from '../hooks/use-exit-flow';
 import { useSiteData } from '../hooks/use-site-data';
 import { stepsWithRequiredLogin } from '../utils/steps-with-required-login';
+import { STEPS } from './internals/steps';
 
 const startWriting: Flow = {
 	name: START_WRITING_FLOW,
@@ -26,53 +27,19 @@ const startWriting: Flow = {
 	},
 	isSignupFlow: true,
 	useSteps() {
-		//TODO: Migrate to use the STEPS from the steps.ts file
 		return stepsWithRequiredLogin( [
-			{
-				slug: 'check-sites',
-				asyncComponent: () => import( './internals/steps-repository/sites-checker' ),
-			},
-			{
-				slug: 'new-or-existing-site',
-				asyncComponent: () => import( './internals/steps-repository/new-or-existing-site' ),
-			},
-			{
-				slug: 'site-picker',
-				asyncComponent: () => import( './internals/steps-repository/site-picker-list' ),
-			},
-			{
-				slug: 'create-site',
-				asyncComponent: () => import( './internals/steps-repository/create-site' ),
-			},
-			{
-				slug: 'processing',
-				asyncComponent: () => import( './internals/steps-repository/processing-step' ),
-			},
-			{
-				slug: 'domains',
-				asyncComponent: () => import( './internals/steps-repository/choose-a-domain' ),
-			},
-			{
-				slug: 'use-my-domain',
-				asyncComponent: () => import( './internals/steps-repository/use-my-domain' ),
-			},
-			{ slug: 'plans', asyncComponent: () => import( './internals/steps-repository/plans' ) },
-			{
-				slug: 'setup-blog',
-				asyncComponent: () => import( './internals/steps-repository/setup-blog' ),
-			},
-			{
-				slug: 'launchpad',
-				asyncComponent: () => import( './internals/steps-repository/launchpad' ),
-			},
-			{
-				slug: 'site-launch',
-				asyncComponent: () => import( './internals/steps-repository/site-launch' ),
-			},
-			{
-				slug: 'celebration-step',
-				asyncComponent: () => import( './internals/steps-repository/celebration-step' ),
-			},
+			STEPS.CHECK_SITES,
+			STEPS.NEW_OR_EXISTING_SITE,
+			STEPS.SITE_PICKER,
+			STEPS.SITE_CREATION_STEP,
+			STEPS.PROCESSING,
+			STEPS.DOMAINS,
+			STEPS.USE_MY_DOMAIN,
+			STEPS.PLANS,
+			STEPS.SETUP_BLOG,
+			STEPS.LAUNCHPAD,
+			STEPS.SITE_LAUNCH,
+			STEPS.CELEBRATION,
 		] );
 	},
 
@@ -126,7 +93,7 @@ const startWriting: Flow = {
 
 						return redirect(
 							`https://${ providedDependencies?.siteSlug }/wp-admin/post-new.php?` +
-								`${ START_WRITING_FLOW }=true&origin=${ siteOrigin }&new_prompt=true` +
+								`${ START_WRITING_FLOW }=true&origin=${ siteOrigin }` +
 								`&postFlowUrl=${ getPostFlowUrl( {
 									flow: START_WRITING_FLOW,
 									siteId: providedDependencies?.siteId as string,
@@ -157,7 +124,7 @@ const startWriting: Flow = {
 
 						return redirect(
 							`https://${ providedDependencies?.siteSlug }/wp-admin/post-new.php?` +
-								`${ START_WRITING_FLOW }=true&origin=${ siteOrigin }&new_prompt=true` +
+								`${ START_WRITING_FLOW }=true&origin=${ siteOrigin }` +
 								`&postFlowUrl=${ getPostFlowUrl( {
 									flow: START_WRITING_FLOW,
 									siteId: providedDependencies?.siteId as string,
@@ -232,7 +199,6 @@ const startWriting: Flow = {
 			switch ( currentStep ) {
 				case 'launchpad':
 					skipLaunchpad( {
-						checklistSlug: 'start-writing',
 						siteId,
 						siteSlug,
 					} );

@@ -1,9 +1,7 @@
 import * as AddOns from './add-ons';
 import * as Analyzer from './analyzer';
-import * as AutomatedTransferEligibility from './automated-transfer-eligibility';
 import * as DomainSuggestions from './domain-suggestions';
 import * as HelpCenter from './help-center';
-import * as LaunchpadNavigator from './launchpad-navigator';
 import * as Onboard from './onboard';
 import * as Plans from './plans';
 import * as ProductsList from './products-list';
@@ -28,13 +26,13 @@ export * from './theme';
 export * from './user/types';
 export * from './wpcom-plans-ui/types';
 export * from './queries/use-launchpad';
-export * from './queries/use-launchpad-navigator';
 export * from './queries/use-all-domains-query';
 export * from './queries/use-site-domains-query';
 export * from './queries/use-site-query';
 export * from './mutations/use-domains-bulk-actions-mutation';
 export * from './queries/use-bulk-domain-update-status-query';
 export * from './site-reset';
+export { useNewsletterCategories } from './newsletter-categories';
 
 const { SubscriptionManager } = Reader;
 
@@ -44,14 +42,12 @@ export {
 	User,
 	DomainSuggestions,
 	HelpCenter,
-	LaunchpadNavigator,
 	Site,
 	Plans,
 	Purchases,
 	WpcomPlansUI,
 	Onboard,
 	ProductsList,
-	AutomatedTransferEligibility,
 	Reader,
 	StepperInternal,
 	Subscriber,

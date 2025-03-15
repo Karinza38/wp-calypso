@@ -6,10 +6,8 @@ import { activateTheme } from 'calypso/state/themes/actions/activate-theme';
 import { installAndActivateTheme } from 'calypso/state/themes/actions/install-and-activate-theme';
 import { showAtomicTransferDialog } from 'calypso/state/themes/actions/show-atomic-transfer-dialog';
 import { suffixThemeIdForInstall } from 'calypso/state/themes/actions/suffix-theme-id-for-install';
-import { showActivationModal } from 'calypso/state/themes/actions/theme-activation-modal';
 import {
 	getTheme,
-	hasActivationModalAccepted,
 	wasAtomicTransferDialogAccepted,
 	isExternallyManagedTheme,
 	doesThemeBundleSoftwareSet,
@@ -34,6 +32,7 @@ export function activate( themeId, siteId, options ) {
 			purchased,
 			isOnboardingFlow = typeof window !== 'undefined' &&
 				hasQueryArg( window.location.href, 'onboarding' ),
+			showSuccessNotice = true,
 		} = options || {};
 		const isDotComTheme = !! getTheme( getState(), 'wpcom', themeId );
 		const isDotOrgTheme = !! getTheme( getState(), 'wporg', themeId );
@@ -58,13 +57,6 @@ export function activate( themeId, siteId, options ) {
 			return dispatch( showAtomicTransferDialog( themeId ) );
 		}
 
-		/**
-		 * Check whether the user has confirmed the activation or is in a flow that doesn't require acceptance.
-		 */
-		if ( ! hasActivationModalAccepted( getState(), themeId ) && ! isOnboardingFlow ) {
-			return dispatch( showActivationModal( themeId ) );
-		}
-
 		const siteSlug = getSiteSlug( getState(), siteId );
 
 		// Redirect to the thank-you page if the theme has plugin bundle and is being activated in the onboarding flow.
@@ -83,7 +75,7 @@ export function activate( themeId, siteId, options ) {
 		return activateOrInstallThenActivate( themeId, siteId, {
 			source,
 			purchased,
-			showSuccessNotice: true,
+			showSuccessNotice,
 		} )( dispatch, getState );
 	};
 }

@@ -1,7 +1,7 @@
 import {
-	isBlogOnboardingFlow,
 	isDomainUpsellFlow,
 	isNewHostedSiteCreationFlow,
+	isStartWritingFlow,
 	StepContainer,
 } from '@automattic/onboarding';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
@@ -9,6 +9,9 @@ import PlansWrapper from './plans-wrapper';
 import type { ProvidedDependencies, Step } from '../../types';
 import type { MinimalRequestCartProduct } from '@automattic/shopping-cart';
 
+/**
+ * @deprecated Use `unified-plans` instead. This step is deprecated and will be removed in the future.
+ */
 const plans: Step = function Plans( { navigation, flow } ) {
 	const { goBack, submit } = navigation;
 
@@ -17,7 +20,7 @@ const plans: Step = function Plans( { navigation, flow } ) {
 			plan,
 		};
 
-		if ( isDomainUpsellFlow( flow ) || isBlogOnboardingFlow( flow ) ) {
+		if ( isDomainUpsellFlow( flow ) || isStartWritingFlow( flow ) ) {
 			providedDependencies.goToCheckout = true;
 		}
 

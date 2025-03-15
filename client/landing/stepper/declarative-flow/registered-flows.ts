@@ -1,16 +1,13 @@
 import config from '@automattic/calypso-config';
 import {
-	AI_ASSEMBLER_FLOW,
 	START_WRITING_FLOW,
 	CONNECT_DOMAIN_FLOW,
 	NEW_HOSTED_SITE_FLOW,
-	DESIGN_FIRST_FLOW,
 	TRANSFERRING_HOSTED_SITE_FLOW,
-	IMPORT_HOSTED_SITE_FLOW,
 	DOMAIN_TRANSFER,
 	GOOGLE_TRANSFER,
+	HUNDRED_YEAR_DOMAIN_TRANSFER,
 	REBLOGGING_FLOW,
-	MIGRATION_FLOW,
 	SITE_MIGRATION_FLOW,
 	MIGRATION_SIGNUP_FLOW,
 	ENTREPRENEUR_FLOW,
@@ -19,14 +16,14 @@ import {
 	NEW_HOSTED_SITE_FLOW_USER_INCLUDED,
 	ONBOARDING_FLOW,
 	HUNDRED_YEAR_DOMAIN_FLOW,
+	EXAMPLE_FLOW,
+	AI_SITE_BUILDER_FLOW,
 } from '@automattic/onboarding';
 import type { Flow } from '../declarative-flow/internals/types';
 
 const availableFlows: Record< string, () => Promise< { default: Flow } > > = {
 	'site-setup': () =>
 		import( /* webpackChunkName: "site-setup-flow" */ '../declarative-flow/site-setup-flow' ),
-	'site-setup-wg': () =>
-		import( /* webpackChunkName: "site-setup-wg" */ '../declarative-flow/site-setup-wg-flow' ),
 
 	'copy-site': () =>
 		import( /* webpackChunkName: "copy-site-flow" */ '../declarative-flow/copy-site' ),
@@ -37,46 +34,11 @@ const availableFlows: Record< string, () => Promise< { default: Flow } > > = {
 	[ IMPORT_FOCUSED_FLOW ]: () =>
 		import( /* webpackChunkName: "import-flow" */ '../declarative-flow/import-flow' ),
 
-	'link-in-bio-tld': () =>
-		import( /* webpackChunkName: "link-in-bio-tld-flow" */ '../declarative-flow/link-in-bio-tld' ),
-
-	'link-in-bio-post-setup': () =>
-		import(
-			/* webpackChunkName: "link-in-bio-post-setup-flow" */ '../declarative-flow/link-in-bio-post-setup'
-		),
-
-	'newsletter-post-setup': () =>
-		import(
-			/* webpackChunkName: "newsletter-post-setup-flow" */ '../declarative-flow/newsletter-post-setup'
-		),
-
-	ecommerce: () =>
-		import(
-			/* webpackChunkName: "tailored-ecommerce-flow" */ '../declarative-flow/tailored-ecommerce-flow'
-		),
-
 	[ ENTREPRENEUR_FLOW ]: () =>
 		import( /* webpackChunkName: "entrepreneur-flow" */ '../declarative-flow/entrepreneur-flow' ),
 
-	wooexpress: () =>
-		import(
-			/* webpackChunkName: "trial-wooexpress-flow" */ '../declarative-flow/trial-wooexpress-flow'
-		),
-
-	'with-theme-assembler': () =>
-		import( /* webpackChunkName: "with-theme-assembler-flow" */ './with-theme-assembler-flow' ),
-
-	'assembler-first': () =>
-		import( /* webpackChunkName: "assembler-first-flow" */ './assembler-first-flow' ),
-
 	'readymade-template': () =>
 		import( /* webpackChunkName: "readymade-template-flow" */ './readymade-template' ),
-
-	[ AI_ASSEMBLER_FLOW ]: () =>
-		import( /* webpackChunkName: "ai-assembler-flow" */ './ai-assembler' ),
-
-	'free-post-setup': () =>
-		import( /* webpackChunkName: "free-post-setup-flow" */ '../declarative-flow/free-post-setup' ),
 
 	'update-design': () =>
 		import( /* webpackChunkName: "update-design-flow" */ '../declarative-flow/update-design' ),
@@ -93,9 +55,6 @@ const availableFlows: Record< string, () => Promise< { default: Flow } > > = {
 	[ START_WRITING_FLOW ]: () =>
 		import( /* webpackChunkName: "start-writing-flow" */ './start-writing' ),
 
-	[ DESIGN_FIRST_FLOW ]: () =>
-		import( /* webpackChunkName: "design-first-flow" */ './design-first' ),
-
 	[ CONNECT_DOMAIN_FLOW ]: () =>
 		import( /* webpackChunkName: "connect-domain" */ '../declarative-flow/connect-domain' ),
 
@@ -111,8 +70,6 @@ const availableFlows: Record< string, () => Promise< { default: Flow } > > = {
 		import(
 			/* webpackChunkName: "transferring-hosted-site-flow" */ './transferring-hosted-site-flow'
 		),
-	[ IMPORT_HOSTED_SITE_FLOW ]: () =>
-		import( /* webpackChunkName: "import-hosted-site-flow" */ './import-hosted-site' ),
 
 	[ DOMAIN_TRANSFER ]: () =>
 		import( /* webpackChunkName: "domain-transfer" */ './domain-transfer' ),
@@ -140,9 +97,17 @@ const availableFlows: Record< string, () => Promise< { default: Flow } > > = {
 		import(
 			/* webpackChunkName: "site-migration-flow" */ '../declarative-flow/site-migration-flow'
 		),
-	[ MIGRATION_FLOW ]: () =>
-		import( /* webpackChunkName: "migration-flow" */ '../declarative-flow/migration' ),
+	[ EXAMPLE_FLOW ]: () =>
+		import( /* webpackChunkName: "example-flow" */ '../declarative-flow/example' ),
 };
+
+const aiSiteBuilderFlows: Record< string, () => Promise< { default: Flow } > > = config.isEnabled(
+	'calypso/ai-site-builder-flow'
+)
+	? {
+			[ AI_SITE_BUILDER_FLOW ]: () => import( './ai-site-builder' ),
+	  }
+	: {};
 
 const hostedSiteMigrationFlow: Record< string, () => Promise< { default: Flow } > > = {
 	[ HOSTED_SITE_MIGRATION_FLOW ]: () =>
@@ -151,16 +116,18 @@ const hostedSiteMigrationFlow: Record< string, () => Promise< { default: Flow } 
 		),
 };
 
-const hundredYearDomainFlow: Record< string, () => Promise< { default: Flow } > > =
-	config.isEnabled( '100-year-domain' )
-		? {
-				[ HUNDRED_YEAR_DOMAIN_FLOW ]: () =>
-					import( /* webpackChunkName: "hundred-year-domain" */ './hundred-year-domain' ),
-		  }
-		: {};
+const hundredYearDomainFlow: Record< string, () => Promise< { default: Flow } > > = {
+	[ HUNDRED_YEAR_DOMAIN_FLOW ]: () =>
+		import( /* webpackChunkName: "hundred-year-domain" */ './hundred-year-domain' ),
+	[ HUNDRED_YEAR_DOMAIN_TRANSFER ]: () =>
+		import(
+			/* webpackChunkName: "hundred-year-domain-transfer" */ './hundred-year-domain-transfer'
+		),
+};
 
 export default {
 	...availableFlows,
 	...hostedSiteMigrationFlow,
 	...hundredYearDomainFlow,
+	...aiSiteBuilderFlows,
 };

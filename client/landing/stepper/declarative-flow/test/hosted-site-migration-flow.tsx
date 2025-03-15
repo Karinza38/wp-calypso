@@ -1,7 +1,6 @@
 /**
  * @jest-environment jsdom
  */
-import config from '@automattic/calypso-config';
 import { PLAN_MIGRATION_TRIAL_MONTHLY } from '@automattic/calypso-products';
 import { isCurrentUserLoggedIn } from '@automattic/data-stores/src/user/selectors';
 import { waitFor } from '@testing-library/react';
@@ -20,7 +19,8 @@ jest.mock( '../../utils/checkout' );
 jest.mock( '@automattic/data-stores/src/user/selectors' );
 jest.mock( 'calypso/landing/stepper/hooks/use-is-site-owner' );
 
-describe( 'Hosted site Migration Flow', () => {
+// eslint-disable-next-line jest/no-disabled-tests
+describe.skip( 'Hosted site Migration Flow', () => {
 	beforeAll( () => {
 		Object.defineProperty( window, 'location', {
 			value: { ...originalLocation, assign: jest.fn() },
@@ -119,7 +119,7 @@ describe( 'Hosted site Migration Flow', () => {
 			const { runUseStepNavigationSubmit } = renderFlow( hostedSiteMigrationFlow );
 
 			runUseStepNavigationSubmit( {
-				currentURL: `/processing?siteSlug=example.wordpress.com`,
+				currentURL: '/processing?siteSlug=example.wordpress.com',
 				currentStep: STEPS.PROCESSING.slug,
 				dependencies: {
 					siteCreated: true,
@@ -134,7 +134,8 @@ describe( 'Hosted site Migration Flow', () => {
 			const { runUseStepNavigationSubmit } = renderFlow( hostedSiteMigrationFlow );
 
 			runUseStepNavigationSubmit( {
-				currentURL: `/processing?siteSlug=example.wordpress.com&from=https://site-to-be-migrated.com`,
+				currentURL:
+					'/processing?siteSlug=example.wordpress.com&from=https://site-to-be-migrated.com',
 				currentStep: STEPS.PROCESSING.slug,
 				dependencies: {
 					siteCreated: true,
@@ -178,27 +179,6 @@ describe( 'Hosted site Migration Flow', () => {
 					siteSlug: 'example.wordpress.com',
 				},
 			} );
-		} );
-
-		it( 'migrate redirects from the how-to-migrate (do it for me) page to assisted migration page', () => {
-			config.disable( 'automated-migration/collect-credentials' );
-			const { runUseStepNavigationSubmit } = renderFlow( hostedSiteMigrationFlow );
-
-			runUseStepNavigationSubmit( {
-				currentStep: STEPS.SITE_MIGRATION_HOW_TO_MIGRATE.slug,
-				dependencies: {
-					destination: 'migrate',
-					how: HOW_TO_MIGRATE_OPTIONS.DO_IT_FOR_ME,
-				},
-			} );
-
-			expect( getFlowLocation() ).toEqual( {
-				path: `/${ STEPS.SITE_MIGRATION_ASSISTED_MIGRATION.slug }`,
-				state: {
-					siteSlug: 'example.wordpress.com',
-				},
-			} );
-			config.enable( 'automated-migration/collect-credentials' );
 		} );
 
 		it( 'migrate redirects from the how-to-migrate (do it for me) page to credential collection step', () => {

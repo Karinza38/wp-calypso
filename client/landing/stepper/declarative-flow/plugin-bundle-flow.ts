@@ -1,4 +1,3 @@
-import { isEnabled } from '@automattic/calypso-config';
 import { Onboard, getThemeIdFromStylesheet } from '@automattic/data-stores';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { useDispatch as reduxDispatch } from 'calypso/state';
@@ -15,7 +14,7 @@ import { ProcessingResult } from './internals/steps-repository/processing-step/c
 import {
 	AssertConditionResult,
 	AssertConditionState,
-	Flow,
+	FlowV1,
 	ProvidedDependencies,
 	StepperStep,
 } from './internals/types';
@@ -37,7 +36,7 @@ const getNextStep = ( currentStep: string, steps: StepperStep[] ): string | unde
 
 const SiteIntent = Onboard.SiteIntent;
 
-const pluginBundleFlow: Flow = {
+const pluginBundleFlow: FlowV1 = {
 	name: 'plugin-bundle',
 	isSignupFlow: false,
 
@@ -130,7 +129,9 @@ const pluginBundleFlow: Flow = {
 						setGoalsOnSite( siteSlug, goals ),
 					];
 					if ( intent === SiteIntent.Write && ! selectedDesign && ! isAtomic ) {
-						pendingActions.push( setDesignOnSite( siteSlug, WRITE_INTENT_DEFAULT_DESIGN ) );
+						pendingActions.push(
+							setDesignOnSite( siteSlug, WRITE_INTENT_DEFAULT_DESIGN, { enableThemeSetup: true } )
+						);
 					}
 
 					Promise.all( pendingActions ).then( () => window.location.assign( to ) );
@@ -143,16 +144,12 @@ const pluginBundleFlow: Flow = {
 			resetOnboardStoreWithSkipFlags( [ 'skipPendingAction' ] );
 		};
 
-		function submit( providedDependencies: ProvidedDependencies = {}, ...params: string[] ) {
+		function submit( providedDependencies: ProvidedDependencies = {} ) {
 			let defaultExitDest = `/home/${ siteSlug }`;
 
 			if ( siteDetails?.options?.theme_slug ) {
 				const themeId = getThemeIdFromStylesheet( siteDetails?.options?.theme_slug );
-				if ( isEnabled( 'themes/display-thank-you-page-for-bundle' ) ) {
-					defaultExitDest = `/marketplace/thank-you/${ siteSlug }?themes=${ themeId }`;
-				} else {
-					defaultExitDest = `/theme/${ themeId }/${ siteSlug }`;
-				}
+				defaultExitDest = `/marketplace/thank-you/${ siteSlug }?themes=${ themeId }`;
 			}
 
 			if ( 'checkForPlugins' === currentStep ) {
@@ -174,7 +171,7 @@ const pluginBundleFlow: Flow = {
 
 			switch ( currentStep ) {
 				case 'bundleConfirm': {
-					const [ checkoutUrl ] = params;
+					const checkoutUrl = providedDependencies.checkoutUrl as string;
 
 					if ( checkoutUrl ) {
 						window.location.replace( checkoutUrl.toString() );
@@ -183,7 +180,7 @@ const pluginBundleFlow: Flow = {
 					return navigate( 'bundleTransfer' );
 				}
 				case 'processing': {
-					const processingResult = params[ 0 ] as ProcessingResult;
+					const processingResult = providedDependencies.processingResult;
 
 					if ( processingResult === ProcessingResult.FAILURE ) {
 						return navigate( 'error' );

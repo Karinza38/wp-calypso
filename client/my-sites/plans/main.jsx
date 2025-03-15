@@ -12,15 +12,11 @@ import {
 	PLAN_WOOEXPRESS_MEDIUM_MONTHLY,
 	PLAN_WOOEXPRESS_SMALL,
 	PLAN_WOOEXPRESS_SMALL_MONTHLY,
-	getBillingMonthsForTerm,
-	URL_FRIENDLY_TERMS_MAPPING,
 } from '@automattic/calypso-products';
 import page from '@automattic/calypso-router';
 import { WpcomPlansUI, Plans } from '@automattic/data-stores';
-import { englishLocales } from '@automattic/i18n-utils';
 import { withShoppingCart } from '@automattic/shopping-cart';
 import { useDispatch } from '@wordpress/data';
-import { hasTranslation } from '@wordpress/i18n';
 import { addQueryArgs } from '@wordpress/url';
 import { localize, useTranslate } from 'i18n-calypso';
 import PropTypes from 'prop-types';
@@ -38,10 +34,11 @@ import TrackComponentView from 'calypso/lib/analytics/track-component-view';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
 import { getDomainRegistrations } from 'calypso/lib/cart-values/cart-items';
 import { PerformanceTrackerStop } from 'calypso/lib/performance-tracking';
+import { isPlansPageUntangled } from 'calypso/lib/plans/untangling-plans-experiment';
 import PlansNavigation from 'calypso/my-sites/plans/navigation';
 import P2PlansMain from 'calypso/my-sites/plans/p2-plans-main';
 import PlansFeaturesMain from 'calypso/my-sites/plans-features-main';
-import useLongerPlanTermDefaultExperiment from 'calypso/my-sites/plans-features-main/hooks/experiments/use-longer-plan-term-default-experiment';
+import { FeatureBreadcrumb } from 'calypso/sites/hooks/breadcrumbs/use-set-feature-breadcrumb';
 import { useSelector } from 'calypso/state';
 import { getByPurchaseId } from 'calypso/state/purchases/selectors';
 import { canCurrentUser } from 'calypso/state/selectors/can-current-user';
@@ -52,6 +49,7 @@ import getDomainFromHomeUpsellInQuery from 'calypso/state/selectors/get-domain-f
 import isEligibleForWpComMonthlyPlan from 'calypso/state/selectors/is-eligible-for-wpcom-monthly-plan';
 import isSiteWPForTeams from 'calypso/state/selectors/is-site-wpforteams';
 import siteHasFeature from 'calypso/state/selectors/site-has-feature';
+import { useSiteGlobalStylesOnPersonal } from 'calypso/state/sites/hooks/use-site-global-styles-on-personal';
 import { fetchSitePlans } from 'calypso/state/sites/plans/actions';
 import { isJetpackSite } from 'calypso/state/sites/selectors';
 import { getSelectedSite, getSelectedSiteId } from 'calypso/state/ui/selectors';
@@ -369,6 +367,7 @@ class PlansComponent extends Component {
 			selectedSite,
 			translate,
 			canAccessPlans,
+			isUntangled,
 			currentPlan,
 			domainAndPlanPackage,
 			isDomainAndPlanPackageFlow,
@@ -400,22 +399,13 @@ class PlansComponent extends Component {
 		const wooExpressSubHeaderText = translate(
 			"Discover what's available in your Woo Express plan."
 		);
-
-		const hasEntrepreneurTrialSubHeaderTextTranslation = hasTranslation(
-			"Discover what's available in your %(planName)s plan."
-		);
-
-		const isEnglishLocale = englishLocales.includes( this.props.locale );
-
 		const entrepreneurTrialSubHeaderText =
-			isEnglishLocale || hasEntrepreneurTrialSubHeaderTextTranslation
-				? // translators: %(planName)s is a plan name. E.g. Commerce plan.
-				  translate( "Discover what's available in your %(planName)s plan.", {
-						args: {
-							planName: getPlan( PLAN_ECOMMERCE )?.getTitle() ?? '',
-						},
-				  } )
-				: translate( "Discover what's available in your Entrepreneur plan." );
+			// translators: %(planName)s is a plan name. E.g. Commerce plan.
+			translate( "Discover what's available in your %(planName)s plan.", {
+				args: {
+					planName: getPlan( PLAN_ECOMMERCE )?.getTitle() ?? '',
+				},
+			} );
 
 		const isWooExpressTrial = purchase?.isWooExpressTrial;
 
@@ -444,11 +434,11 @@ class PlansComponent extends Component {
 
 		// Hide for WooExpress plans and Entrepreneur trials that are not WooExpress trials
 		const isEntrepreneurTrial = isEcommerceTrial && ! purchase?.isWooExpressTrial;
-		const showPlansNavigation = ! ( isWooExpressPlan || isEntrepreneurTrial );
+		const showPlansNavigation = ! isUntangled && ! ( isWooExpressPlan || isEntrepreneurTrial );
 
 		return (
 			<div>
-				{ ! isJetpackNotAtomic && <ModernizedLayout /> }
+				{ ! isUntangled && ! isJetpackNotAtomic && <ModernizedLayout /> }
 				{ selectedSite.ID && <QuerySitePurchases siteId={ selectedSite.ID } /> }
 				<DocumentHead title={ translate( 'Plans', { textOnly: true } ) } />
 				<PageViewTracker path="/plans/:site" title="Plans" />
@@ -466,7 +456,10 @@ class PlansComponent extends Component {
 				) }
 				{ canAccessPlans && (
 					<div>
-						{ ! isDomainAndPlanPackageFlow && (
+						{ isUntangled && (
+							<FeatureBreadcrumb siteId={ selectedSite.ID } title={ translate( 'Plan' ) } />
+						) }
+						{ ! isUntangled && ! isDomainAndPlanPackageFlow && (
 							<PlansHeader
 								domainFromHomeUpsellFlow={ domainFromHomeUpsellFlow }
 								subHeaderText={ subHeaderText }
@@ -530,6 +523,7 @@ const ConnectedPlans = connect(
 			purchase: currentPlan ? getByPurchaseId( state, currentPlan.purchaseId ) : null,
 			selectedSite: getSelectedSite( state ),
 			canAccessPlans: canCurrentUser( state, getSelectedSiteId( state ), 'manage_options' ),
+			isUntangled: isPlansPageUntangled( state ),
 			isWPForTeamsSite: isSiteWPForTeams( state, selectedSiteId ),
 			isSiteEligibleForMonthlyPlan: isEligibleForWpComMonthlyPlan( state, selectedSiteId ),
 			isDomainAndPlanPackageFlow: !! getCurrentQueryArguments( state )?.domainAndPlanPackage,
@@ -555,22 +549,18 @@ export default function PlansWrapper( props ) {
 	const { intervalType: intervalTypeFromProps } = props;
 	const selectedSiteId = useSelector( getSelectedSiteId );
 	const currentPlan = Plans.useCurrentPlan( { siteId: selectedSiteId } );
-	const longerPlanTermDefaultExperiment = useLongerPlanTermDefaultExperiment();
+
+	// Initialize Global Styles.
+	useSiteGlobalStylesOnPersonal();
+
 	/**
 	 * For WP.com plans page, if intervalType is not explicitly specified in the URL,
 	 * we want to show plans of the same term as plan that is currently active
 	 * We want to show the highest term between the current plan and the longer plan term default experiment
 	 */
-	const currentPlanTerm = useSelector( ( state ) =>
+	const intervalTypeForCurrentPlanTerm = useSelector( ( state ) =>
 		getIntervalTypeForTerm( getCurrentPlanTerm( state, selectedSiteId ) )
 	);
-	const intervalType =
-		longerPlanTermDefaultExperiment.term &&
-		currentPlanTerm &&
-		getBillingMonthsForTerm( URL_FRIENDLY_TERMS_MAPPING[ currentPlanTerm ] ) >
-			getBillingMonthsForTerm( URL_FRIENDLY_TERMS_MAPPING[ longerPlanTermDefaultExperiment.term ] )
-			? currentPlanTerm
-			: longerPlanTermDefaultExperiment.term;
 
 	return (
 		<CalypsoShoppingCartProvider>
@@ -578,7 +568,7 @@ export default function PlansWrapper( props ) {
 				{ ...props }
 				currentPlan={ currentPlan }
 				selectedSiteId={ selectedSiteId }
-				intervalType={ intervalTypeFromProps ?? intervalType ?? currentPlanTerm }
+				intervalType={ intervalTypeFromProps ?? intervalTypeForCurrentPlanTerm }
 			/>
 		</CalypsoShoppingCartProvider>
 	);

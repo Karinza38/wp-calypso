@@ -17,7 +17,7 @@ const HELP_CENTER_STORE = HelpCenter.register();
 const CancelPurchaseSupportLink = ( { purchase } ) => {
 	const translate = useTranslate();
 	const { siteId, siteUrl } = purchase;
-	const { setShowHelpCenter, setNavigateToRoute, resetStore } =
+	const { setShowHelpCenter, setNavigateToRoute, setNewMessagingChat } =
 		useDataStoreDispatch( HELP_CENTER_STORE );
 	const { isEligibleForChat } = useChatStatus();
 	const { data: canConnectToZendeskMessaging } = useCanConnectToZendeskMessaging();
@@ -25,30 +25,23 @@ const CancelPurchaseSupportLink = ( { purchase } ) => {
 		'wpcom_messaging',
 		isEligibleForChat
 	);
-	const { openZendeskWidget, isOpeningZendeskWidget } = useOpenZendeskMessaging(
+	const { isOpeningZendeskWidget } = useOpenZendeskMessaging(
 		'migration-error',
-		'zendesk_support_chat_key',
 		isEligibleForChat
 	);
 
 	const getHelp = useCallback( () => {
 		if ( isMessagingAvailable && canConnectToZendeskMessaging ) {
-			openZendeskWidget( {
+			setNewMessagingChat( {
+				initialMessage: 'Purchase cancellation flow',
 				siteUrl: siteUrl,
 				siteId: siteId,
-				message: `${ status }: Purchase cancellation flow`,
-				onSuccess: () => {
-					resetStore();
-					setShowHelpCenter( false );
-				},
 			} );
 		} else {
 			setNavigateToRoute( '/contact-options' );
 			setShowHelpCenter( true );
 		}
 	}, [
-		resetStore,
-		openZendeskWidget,
 		siteId,
 		isMessagingAvailable,
 		siteUrl,

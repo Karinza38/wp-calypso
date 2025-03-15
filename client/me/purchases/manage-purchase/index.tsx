@@ -73,7 +73,7 @@ import VerticalNavItem from 'calypso/components/vertical-nav/item';
 import reinstallPlugins from 'calypso/data/marketplace/reinstall-plugins-api';
 import HundredYearPlanLogo from 'calypso/landing/stepper/declarative-flow/internals/steps-repository/hundred-year-plan-step-wrapper/hundred-year-plan-logo';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
-import { resolveDomainStatus } from 'calypso/lib/domains';
+import { getSelectedDomain, resolveDomainStatus } from 'calypso/lib/domains';
 import isJetpackCloud from 'calypso/lib/jetpack/is-jetpack-cloud';
 import {
 	getDomainRegistrationAgreementUrl,
@@ -133,7 +133,11 @@ import getPrimaryDomainBySiteId from 'calypso/state/selectors/get-primary-domain
 import isDomainOnly from 'calypso/state/selectors/is-domain-only-site';
 import isSiteAtomic from 'calypso/state/selectors/is-site-automated-transfer';
 import { useGetWebsiteContentQuery } from 'calypso/state/signup/steps/website-content/hooks/use-get-website-content-query';
-import { hasLoadedSiteDomains, getAllDomains } from 'calypso/state/sites/domains/selectors';
+import {
+	hasLoadedSiteDomains,
+	getAllDomains,
+	getDomainsBySiteId,
+} from 'calypso/state/sites/domains/selectors';
 import { getSite, getSiteSlug, isRequestingSites } from 'calypso/state/sites/selectors';
 import { getCanonicalTheme } from 'calypso/state/themes/selectors';
 import { CalypsoDispatch, IAppState } from 'calypso/state/types';
@@ -284,7 +288,9 @@ class ManagePurchase extends Component<
 		const { purchase, siteSlug, redirectTo } = this.props;
 		const options = redirectTo ? { redirectTo } : undefined;
 		const isSitelessRenewal =
-			isAkismetTemporarySitePurchase( purchase ) || isMarketplaceTemporarySitePurchase( purchase );
+			purchase &&
+			( isAkismetTemporarySitePurchase( purchase ) ||
+				isMarketplaceTemporarySitePurchase( purchase ) );
 
 		if ( ! purchase ) {
 			return;
@@ -667,6 +673,23 @@ class ManagePurchase extends Component<
 		return null;
 	}
 
+	renderRefundText() {
+		const { purchase, translate } = this.props;
+
+		if ( ! purchase ) {
+			return null;
+		}
+
+		// Hide if refund window has lapsed.
+		if ( ! hasAmountAvailableToRefund( purchase ) || ! purchase?.mostRecentRenewDate ) {
+			return;
+		}
+
+		return (
+			<span className="manage-purchase__refund-text">{ translate( 'Refund available' ) }</span>
+		);
+	}
+
 	renderRemovePurchaseNavItem() {
 		const {
 			hasLoadedSites,
@@ -692,6 +715,10 @@ class ManagePurchase extends Component<
 		if ( isPlanPurchase ) {
 			text = translate( 'Remove plan' );
 		} else if ( isDomainRegistration( purchase ) ) {
+			// 100-year domains cannot be removed by the user
+			if ( this.isHundredYearDomain( purchase ) ) {
+				return null;
+			}
 			text = translate( 'Remove domain' );
 		}
 
@@ -711,6 +738,7 @@ class ManagePurchase extends Component<
 			>
 				<MaterialIcon icon="delete" className="card__icon" />
 				{ text }
+				{ this.renderRefundText() }
 			</RemovePurchase>
 		);
 	}
@@ -915,6 +943,7 @@ class ManagePurchase extends Component<
 			<CompactCard href={ link } className="remove-purchase__card" onClick={ onClick }>
 				<MaterialIcon icon="delete" className="card__icon" />
 				{ getCancelPurchaseNavText( purchase, translate ) }
+				{ this.renderRefundText() }
 			</CompactCard>
 		);
 	}
@@ -936,7 +965,7 @@ class ManagePurchase extends Component<
 		if ( this.isHundredYearDomain( purchase ) ) {
 			return (
 				<div className="manage-purchase__plan-icon">
-					<HundredYearPlanLogo width={ 50 } />
+					<HundredYearPlanLogo width={ 60 } />
 				</div>
 			);
 		}
@@ -1271,35 +1300,44 @@ class ManagePurchase extends Component<
 				<Card className={ classes }>
 					<header className="manage-purchase__header">
 						{ this.renderPurchaseIcon() }
-						<h2 className="manage-purchase__title">{ this.getProductDisplayName() }</h2>
-						<div className="manage-purchase__description">
-							{ isHundredYearDomain
-								? translate( '100-Year Domain Registration' )
-								: purchaseType( purchase ) }
+						<div className="manage-purchase__header-content">
+							<h2 className="manage-purchase__title">{ this.getProductDisplayName() }</h2>
+							<div className="manage-purchase__description">
+								{ isHundredYearDomain
+									? translate( '100-Year Domain Registration' )
+									: purchaseType( purchase ) }
+							</div>
+							<div className="manage-purchase__price">
+								{ isPartnerPurchase( purchase ) ? (
+									<div className="manage-purchase__contact-partner">
+										{ translate( 'Please contact %(partnerName)s for details', {
+											args: {
+												partnerName: getPartnerName( purchase ) ?? '',
+											},
+										} ) }
+									</div>
+								) : (
+									<>
+										{ isOneTimePurchase( purchase ) && (
+											<PlanPrice
+												rawPrice={ purchase.regularPriceInteger }
+												isSmallestUnit
+												currencyCode={ purchase.currencyCode }
+												taxText={ purchase.taxText }
+												isOnSale={ !! purchase.saleAmount }
+											/>
+										) }
+									</>
+								) }
+							</div>
 						</div>
-						<div className="manage-purchase__price">
-							{ isPartnerPurchase( purchase ) ? (
-								<div className="manage-purchase__contact-partner">
-									{ translate( 'Please contact %(partnerName)s for details', {
-										args: {
-											partnerName: getPartnerName( purchase ) ?? '',
-										},
-									} ) }
-								</div>
-							) : (
-								<>
-									{ isOneTimePurchase( purchase ) && (
-										<PlanPrice
-											rawPrice={ purchase.regularPriceInteger }
-											isSmallestUnit
-											currencyCode={ purchase.currencyCode }
-											taxText={ purchase.taxText }
-											isOnSale={ !! purchase.saleAmount }
-										/>
-									) }
-								</>
-							) }
-						</div>
+						{ isProductOwner && ! purchase.isLocked && (
+							<div className="manage-purchase__renew-upgrade-buttons">
+								{ preventRenewal && this.renderSelectNewButton() }
+								{ this.renderUpgradeButton( preventRenewal ) }
+								{ ! preventRenewal && this.renderRenewButton() }
+							</div>
+						) }
 					</header>
 					{ this.renderPurchaseDescription() }
 					{ ! isPartnerPurchase( purchase ) && (
@@ -1312,13 +1350,6 @@ class ManagePurchase extends Component<
 								getChangePaymentMethodUrlFor ?? getChangePaymentMethodPath
 							}
 						/>
-					) }
-					{ isProductOwner && ! purchase.isLocked && (
-						<div className="manage-purchase__renew-upgrade-buttons">
-							{ preventRenewal && this.renderSelectNewButton() }
-							{ this.renderUpgradeButton( preventRenewal ) }
-							{ ! preventRenewal && this.renderRenewButton() }
-						</div>
 					) }
 				</Card>
 				{ ! isPartnerPurchase( purchase ) && (
@@ -1630,7 +1661,6 @@ const WrappedManagePurchase = (
 		planSlugs: [ relatedMonthlyPlanSlug as PlanSlug ],
 		siteId,
 		coupon: undefined,
-		storageAddOns: null,
 		useCheckPlanAvailabilityForPurchase,
 	} );
 
@@ -1664,6 +1694,10 @@ export default connect( ( state: IAppState, props: ManagePurchaseProps ) => {
 	const relatedMonthlyPlanSlug = getMonthlyPlanByYearly( purchase?.productSlug ?? '' );
 	const primaryDomain = getPrimaryDomainBySiteId( state, siteId );
 	const currentRoute = getCurrentRoute( state );
+	const domains = purchase && getDomainsBySiteId( state, purchase.siteId );
+	const selectedDomainName = purchase && getName( purchase );
+	const selectedDomain =
+		domains && selectedDomainName && getSelectedDomain( { domains, selectedDomainName } );
 
 	return {
 		currentRoute,
@@ -1680,10 +1714,9 @@ export default connect( ( state: IAppState, props: ManagePurchaseProps ) => {
 		hasSetupAds: Boolean(
 			site?.options?.wordads || isRequestingWordAdsApprovalForSite( state, site )
 		),
-		hasCompletedCancelPurchaseSurvey: getPreference(
-			state,
-			getCancelPurchaseSurveyCompletedPreferenceKey( purchase?.id )
-		),
+		hasCompletedCancelPurchaseSurvey: purchase
+			? getPreference( state, getCancelPurchaseSurveyCompletedPreferenceKey( purchase.id ) )
+			: false,
 		isAtomicSite: isSiteAtomic( state, siteId ),
 		isDomainOnlySite: purchase && isDomainOnly( state, purchase.siteId ),
 		isProductOwner,
@@ -1696,6 +1729,7 @@ export default connect( ( state: IAppState, props: ManagePurchaseProps ) => {
 		purchases,
 		relatedMonthlyPlanSlug,
 		renewableSitePurchases,
+		selectedDomain,
 		selectedSiteId,
 		site,
 		siteId,

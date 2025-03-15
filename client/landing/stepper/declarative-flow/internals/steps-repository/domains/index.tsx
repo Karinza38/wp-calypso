@@ -1,15 +1,13 @@
 /* eslint-disable wpcalypso/jsx-classname-namespace */
 import {
 	StepContainer,
-	LINK_IN_BIO_TLD_FLOW,
 	COPY_SITE_FLOW,
 	isCopySiteFlow,
 	NEWSLETTER_FLOW,
-	DESIGN_FIRST_FLOW,
 	DOMAIN_UPSELL_FLOW,
 	HUNDRED_YEAR_PLAN_FLOW,
 	isDomainUpsellFlow,
-	isSiteAssemblerFlow,
+	isHundredYearDomainFlow,
 	HUNDRED_YEAR_DOMAIN_FLOW,
 } from '@automattic/onboarding';
 import { useDispatch } from '@wordpress/data';
@@ -133,6 +131,7 @@ const DomainsStep: Step = function DomainsStep( { navigation, flow } ) {
 			freeDomain: suggestion?.is_free,
 			domainName: suggestion?.domain_name,
 			productSlug: suggestion?.product_slug,
+			domainItem: suggestion,
 		} );
 	};
 
@@ -179,17 +178,10 @@ const DomainsStep: Step = function DomainsStep( { navigation, flow } ) {
 					),
 					decideLaterComponent
 				);
-			case LINK_IN_BIO_TLD_FLOW:
-				return createInterpolateElement(
-					__(
-						'Set your Link in Bio apart with a custom domain. Not sure yet? <span>Decide later</span>.'
-					),
-					decideLaterComponent
-				);
 			case COPY_SITE_FLOW:
 				return __( 'Make your copied site unique with a custom domain all of its own.' );
 			case DOMAIN_UPSELL_FLOW:
-				return __( 'Enter some descriptive keywords to get started' );
+				return __( 'Enter some descriptive keywords to get started.' );
 			case HUNDRED_YEAR_PLAN_FLOW:
 			case HUNDRED_YEAR_DOMAIN_FLOW:
 				return __( 'Secure your 100-Year domain and start building your legacy.' );
@@ -208,7 +200,7 @@ const DomainsStep: Step = function DomainsStep( { navigation, flow } ) {
 			return '';
 		}
 
-		if ( flow === DESIGN_FIRST_FLOW || flow === NEWSLETTER_FLOW ) {
+		if ( flow === NEWSLETTER_FLOW ) {
 			return __( 'Your domain. Your identity.' );
 		}
 
@@ -232,7 +224,7 @@ const DomainsStep: Step = function DomainsStep( { navigation, flow } ) {
 			},
 		} );
 
-		dispatch( recordAddDomainButtonClickInTransferDomain( domain, getAnalyticsSection() ) );
+		dispatch( recordAddDomainButtonClickInTransferDomain( domain, getAnalyticsSection(), flow ) );
 
 		setDomainCartItem( domainCartItem );
 
@@ -242,7 +234,7 @@ const DomainsStep: Step = function DomainsStep( { navigation, flow } ) {
 	const handleAddMapping = ( domain: string ) => {
 		const domainCartItem = domainMapping( { domain } );
 
-		dispatch( recordAddDomainButtonClickInMapDomain( domain, getAnalyticsSection() ) );
+		dispatch( recordAddDomainButtonClickInMapDomain( domain, getAnalyticsSection(), flow ) );
 
 		setDomainCartItem( domainCartItem );
 
@@ -255,11 +247,23 @@ const DomainsStep: Step = function DomainsStep( { navigation, flow } ) {
 				suggestion.domain_name,
 				getAnalyticsSection(),
 				position,
-				suggestion?.is_premium
+				suggestion?.is_premium,
+				flow,
+				suggestion?.vendor
 			)
 		);
 
 		submitWithDomain( suggestion );
+	};
+
+	const onUseYourDomainClick = ( domain?: string ) => {
+		if ( domain && isHundredYearDomainFlow( flow ) ) {
+			const leaveFlowFunction = exitFlow ?? window.location.assign;
+			leaveFlowFunction( `/setup/hundred-year-domain-transfer/domains?new=${ domain }` );
+			return;
+		}
+
+		setShowUseYourDomain( true );
 	};
 
 	const renderContent = () => (
@@ -270,7 +274,7 @@ const DomainsStep: Step = function DomainsStep( { navigation, flow } ) {
 			onAddMapping={ handleAddMapping }
 			onAddTransfer={ handleAddTransfer }
 			onSkip={ handleSkip }
-			onUseYourDomainClick={ () => setShowUseYourDomain( true ) }
+			onUseYourDomainClick={ onUseYourDomainClick }
 			showUseYourDomain={ showUseYourDomain }
 			isCartPendingUpdate={ isCartPendingUpdate }
 			isCartPendingUpdateDomain={ isCartPendingUpdateDomain }
@@ -282,21 +286,21 @@ const DomainsStep: Step = function DomainsStep( { navigation, flow } ) {
 			return setShowUseYourDomain( false );
 		}
 
-		if ( isDomainUpsellFlow( flow ) || isSiteAssemblerFlow( flow ) ) {
+		if ( isDomainUpsellFlow( flow ) ) {
 			return goBack?.();
 		}
 		return exitFlow?.( '/sites' );
 	};
 
 	const getBackLabelText = () => {
-		if ( isDomainUpsellFlow( flow ) || isSiteAssemblerFlow( flow ) ) {
+		if ( isDomainUpsellFlow( flow ) ) {
 			return __( 'Back' );
 		}
 		return __( 'Back to sites' );
 	};
 
 	const shouldHideBackButton = () => {
-		if ( isDomainUpsellFlow( flow ) || isSiteAssemblerFlow( flow ) ) {
+		if ( isDomainUpsellFlow( flow ) ) {
 			return false;
 		}
 		return ! isCopySiteFlow( flow );
@@ -321,16 +325,7 @@ const DomainsStep: Step = function DomainsStep( { navigation, flow } ) {
 			formattedHeader={
 				<FormattedHeader
 					id="domains-header"
-					align={
-						[ HUNDRED_YEAR_PLAN_FLOW, HUNDRED_YEAR_DOMAIN_FLOW ].includes( flow )
-							? 'center'
-							: 'left'
-					}
-					subHeaderAlign={
-						[ HUNDRED_YEAR_PLAN_FLOW, HUNDRED_YEAR_DOMAIN_FLOW ].includes( flow )
-							? 'center'
-							: undefined
-					}
+					align="center"
 					headerText={ getHeaderText() }
 					subHeaderText={ getSubHeaderText() }
 				/>

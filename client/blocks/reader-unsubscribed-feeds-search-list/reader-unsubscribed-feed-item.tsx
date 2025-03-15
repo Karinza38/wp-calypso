@@ -1,4 +1,4 @@
-import { Button } from '@automattic/components';
+import { Button, ExternalLink } from '@automattic/components';
 import {
 	__experimentalHStack as HStack,
 	__experimentalVStack as VStack,
@@ -7,10 +7,8 @@ import { filterURLForDisplay } from '@wordpress/url';
 import { useTranslate } from 'i18n-calypso';
 import { useSelector, useDispatch } from 'react-redux';
 import { SiteIcon } from 'calypso/blocks/site-icon';
-import ExternalLink from 'calypso/components/external-link';
 import { isCurrentUserEmailVerified } from 'calypso/state/current-user/selectors';
 import { errorNotice } from 'calypso/state/notices/actions';
-import { useResendEmailVerification } from '../../landing/stepper/hooks/use-resend-email-verification';
 
 type ReaderUnsubscribedFeedItemProps = {
 	defaultIcon?: JSX.Element | null;
@@ -48,18 +46,15 @@ const ReaderUnsubscribedFeedItem = ( {
 	const translate = useTranslate();
 	const isEmailVerified = useSelector( isCurrentUserEmailVerified );
 	const dispatch = useDispatch();
-	const resendEmailVerification = useResendEmailVerification();
 	const filteredDisplayUrl = filterURLForDisplay( displayUrl );
 
 	const onSubscribeClickEvent = ! isEmailVerified
 		? () => {
 				dispatch(
-					errorNotice( translate( 'Your email has not been verified yet.' ), {
+					errorNotice( translate( 'Please verify your email before subscribing.' ), {
 						id: 'resend-verification-email',
-						button: translate( 'Resend Email' ),
-						onClick: () => {
-							resendEmailVerification();
-						},
+						button: translate( 'Account Settings' ),
+						href: '/me/account',
 					} )
 				);
 		  }

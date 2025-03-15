@@ -1,14 +1,13 @@
 import path from 'path';
-import { Dialog, Gridicon, Spinner } from '@automattic/components';
+import { Dialog, Gridicon, Spinner, ExternalLink } from '@automattic/components';
 import clsx from 'clsx';
-import { localize } from 'i18n-calypso';
+import i18n, { localize } from 'i18n-calypso';
 import PropTypes from 'prop-types';
 import { Component } from 'react';
 import { connect } from 'react-redux';
 import ImageEditor from 'calypso/blocks/image-editor';
 import DropZone from 'calypso/components/drop-zone';
 import VerifyEmailDialog from 'calypso/components/email-verification/email-verification-dialog';
-import ExternalLink from 'calypso/components/external-link';
 import FilePicker from 'calypso/components/file-picker';
 import Gravatar from 'calypso/components/gravatar';
 import InfoPopover from 'calypso/components/info-popover';
@@ -121,6 +120,12 @@ export class EditGravatar extends Component {
 	};
 
 	renderImageEditor() {
+		const doneButtonText = i18n.fixMe( {
+			text: 'Upload photo',
+			newCopy: i18n.translate( 'Upload photo' ),
+			oldCopy: i18n.translate( 'Change My Photo' ),
+		} );
+
 		if ( this.state.isEditingImage ) {
 			return (
 				<Dialog additionalClassNames="edit-gravatar-modal" isVisible>
@@ -129,7 +134,7 @@ export class EditGravatar extends Component {
 						media={ { src: this.state.image } }
 						onDone={ this.onImageEditorDone }
 						onCancel={ this.hideImageEditor }
-						doneButtonText={ this.props.translate( 'Change My Photo' ) }
+						doneButtonText={ doneButtonText }
 					/>
 				</Dialog>
 			);
@@ -193,14 +198,7 @@ export class EditGravatar extends Component {
 								' them from appearing on any site.{{/p}}',
 							{
 								components: {
-									ExternalLink: (
-										<ExternalLink
-											href={ gravatarLink }
-											target="_blank"
-											rel="noopener noreferrer"
-											icon
-										/>
-									),
+									ExternalLink: <ExternalLink href={ gravatarLink } target="_blank" icon />,
 									p: <p />,
 								},
 							}
@@ -280,14 +278,7 @@ export class EditGravatar extends Component {
 								' If you do not have a Gravatar account, one will be created for you when you upload your first image.{{/p}}',
 							{
 								components: {
-									ExternalLink: (
-										<ExternalLink
-											href={ gravatarLink }
-											target="_blank"
-											rel="noopener noreferrer"
-											icon
-										/>
-									),
+									ExternalLink: <ExternalLink href={ gravatarLink } target="_blank" icon />,
 									p: <p />,
 								},
 							}

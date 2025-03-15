@@ -602,7 +602,6 @@ const ComparisonGridFeatureGroupRowCell: React.FunctionComponent< {
 						planSlug={ planSlug }
 						onStorageAddOnClick={ onStorageAddOnClick }
 						showUpgradeableStorage={ showUpgradeableStorage }
-						priceOnSeparateLine
 					/>
 				</>
 			) : (
@@ -662,7 +661,9 @@ const ComparisonGridFeatureGroupRowCell: React.FunctionComponent< {
 									{ feature.getCompareSubtitle() }
 								</span>
 							) }
-							{ hasFeature && ! featureLabel && <Gridicon icon="checkmark" color="#0675C4" /> }
+							{ hasFeature && ! featureLabel && (
+								<Gridicon icon="checkmark" color="var(--studio-wordpress-blue-50)" />
+							) }
 							{ ! hasFeature && ! featureLabel && <Gridicon icon="minus-small" color="#C3C4C7" /> }
 						</>
 					) }
@@ -935,11 +936,11 @@ const ComparisonGrid = ( {
 	const [ visiblePlans, setVisiblePlans ] = useState< PlanSlug[] >( [] );
 
 	const displayedGridPlans = useMemo( () => {
-		return sortPlans( gridPlans, currentSitePlanSlug, 'small' === gridSize );
-	}, [ gridPlans, currentSitePlanSlug, gridSize ] );
+		return sortPlans( gridPlans, currentSitePlanSlug );
+	}, [ gridPlans, currentSitePlanSlug ] );
 
 	useEffect( () => {
-		setVisiblePlans( ( prev ) => {
+		setVisiblePlans( () => {
 			let visibleLength = displayedGridPlans.length;
 			switch ( gridSize ) {
 				case 'large':
@@ -954,27 +955,7 @@ const ComparisonGrid = ( {
 					break;
 			}
 
-			// visible length changed, update with the current gridPlans
-			// - we don't care about previous order
-			if ( prev.length !== visibleLength ) {
-				return displayedGridPlans.slice( 0, visibleLength ).map( ( { planSlug } ) => planSlug );
-			}
-
-			// prev state out of sync with current gridPlans (e.g. gridPlans updated to a different term)
-			// - we care about previous order
-			const isPrevStale = prev.some( ( planSlug ) => ! gridPlansIndex[ planSlug ] );
-			if ( isPrevStale ) {
-				return prev.map( ( planSlug ) => {
-					const gridPlan = displayedGridPlans.find(
-						( gridPlan ) => getPlanClass( gridPlan.planSlug ) === getPlanClass( planSlug )
-					);
-
-					return gridPlan?.planSlug ?? planSlug;
-				} );
-			}
-
-			// nothing to update
-			return prev;
+			return displayedGridPlans.slice( 0, visibleLength ).map( ( { planSlug } ) => planSlug );
 		} );
 	}, [ gridSize, displayedGridPlans, gridPlansIndex ] );
 
@@ -1156,6 +1137,7 @@ const WrappedComparisonGrid = ( {
 	enableFeatureTooltips,
 	featureGroupMap,
 	enableTermSavingsPriceDisplay,
+	reflectStorageSelectionInPlanPrices,
 	...otherProps
 }: ComparisonGridExternalProps ) => {
 	const gridContainerRef = useRef< HTMLDivElement >( null );
@@ -1190,6 +1172,7 @@ const WrappedComparisonGrid = ( {
 				featureGroupMap={ featureGroupMap }
 				hideUnsupportedFeatures={ hideUnsupportedFeatures }
 				enableTermSavingsPriceDisplay={ enableTermSavingsPriceDisplay }
+				reflectStorageSelectionInPlanPrices={ reflectStorageSelectionInPlanPrices }
 			>
 				<ComparisonGrid
 					intervalType={ intervalType }

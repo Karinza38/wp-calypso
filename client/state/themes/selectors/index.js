@@ -65,6 +65,7 @@ export { isSiteEligibleForBundledSoftware } from 'calypso/state/themes/selectors
 export { isSiteEligibleForManagedExternalThemes } from 'calypso/state/themes/selectors/is-site-eligible-for-managed-external-themes';
 export { isThemeActivationSyncStarted } from 'calypso/state/themes/selectors/is-theme-activation-sync-started';
 export { isThemeActive } from 'calypso/state/themes/selectors/is-theme-active';
+export { isThemeAllowedOnSite } from 'calypso/state/themes/selectors/is-theme-allowed-on-site';
 export { isThemeGutenbergFirst } from 'calypso/state/themes/selectors/is-theme-gutenberg-first';
 export { isThemePremium } from 'calypso/state/themes/selectors/is-theme-premium';
 export { isThemePurchased } from 'calypso/state/themes/selectors/is-theme-purchased';
@@ -77,11 +78,6 @@ export { isWporgTheme } from 'calypso/state/themes/selectors/is-wporg-theme';
 export { prependThemeFilterKeys } from 'calypso/state/themes/selectors/prepend-theme-filter-keys';
 export { shouldShowAtomicTransferDialog } from 'calypso/state/themes/selectors/should-show-atomic-transfer-dialog';
 export { shouldShowTryAndCustomize } from 'calypso/state/themes/selectors/should-show-try-and-customize';
-export {
-	getThemeIdToActivate,
-	hasActivationModalAccepted,
-	shouldShowActivationModal,
-} from 'calypso/state/themes/selectors/theme-activation-modal';
 export { themePreviewVisibility } from 'calypso/state/themes/selectors/theme-preview-visibility';
 export { getThemeFiltersRequestError } from 'calypso/state/themes/selectors/get-theme-filters-request-error';
 export { canPublishThemeReview } from 'calypso/state/themes/selectors/can-publish-theme-review';

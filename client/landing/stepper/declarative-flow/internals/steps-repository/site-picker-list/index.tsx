@@ -1,4 +1,4 @@
-import { StepContainer, isSiteAssemblerFlow } from '@automattic/onboarding';
+import { StepContainer } from '@automattic/onboarding';
 import { useTranslate } from 'i18n-calypso';
 import QuerySites from 'calypso/components/data/query-sites';
 import FormattedHeader from 'calypso/components/formatted-header';
@@ -40,16 +40,12 @@ const SitePicker: Step = function SitePicker( { navigation, flow } ) {
 					</div>
 				}
 				formattedHeader={
-					<FormattedHeader
-						align="center"
-						subHeaderAlign="center"
-						headerText={ translate( 'Select your site' ) }
-					/>
+					<FormattedHeader align="center" headerText={ translate( 'Select your site' ) } />
 				}
 				recordTracksEvent={ recordTracksEvent }
 				flowName={ flow }
-				hideBack={ ! isSiteAssemblerFlow( flow ) }
 				goBack={ goBack }
+				hideBack
 			/>
 		</>
 	);

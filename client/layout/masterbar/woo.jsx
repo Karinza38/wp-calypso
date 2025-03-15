@@ -3,7 +3,7 @@ import { Button } from '@wordpress/components';
 import { createInterpolateElement, Fragment } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { localize } from 'i18n-calypso';
-import WooLogo from 'calypso/assets/images/icons/woocommerce-logo.svg';
+import WooLogo from 'calypso/assets/images/icons/Woo_logo_color.svg';
 import SVGIcon from 'calypso/components/svg-icon';
 import './typekit';
 import './woo.scss';
@@ -56,9 +56,9 @@ const WooOauthMasterbar = () => {
 									name="woocommerce-logo"
 									icon={ WooLogo }
 									classes="masterbar__woo-client-logo"
-									width="38"
-									height="23"
-									viewBox="0 0 38 23"
+									width="64"
+									height="24"
+									viewBox="0 0 64 24"
 								/>
 							</a>
 						</li>

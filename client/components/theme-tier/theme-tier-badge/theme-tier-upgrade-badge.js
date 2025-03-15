@@ -1,58 +1,85 @@
-import { getPlan } from '@automattic/calypso-products';
+import {
+	getPlan,
+	PLAN_ECOMMERCE,
+	PLAN_ECOMMERCE_TRIAL_MONTHLY,
+} from '@automattic/calypso-products';
 import { PremiumBadge } from '@automattic/components';
 import { Plans } from '@automattic/data-stores';
-import { createInterpolateElement } from '@wordpress/element';
+import clsx from 'clsx';
 import { useTranslate } from 'i18n-calypso';
+import { useMemo } from 'react';
+import { useSelector } from 'calypso/state';
+import { getSitePlanSlug } from 'calypso/state/sites/selectors';
 import { useThemeTierForTheme } from 'calypso/state/themes/hooks/use-theme-tier-for-theme';
+import { getMarketplaceThemeSubscriptionPrices } from 'calypso/state/themes/selectors';
 import { THEME_TIERS } from '../constants';
-import ThemeTierBadgeCheckoutLink from './theme-tier-badge-checkout-link';
 import { useThemeTierBadgeContext } from './theme-tier-badge-context';
-import ThemeTierBadgeTracker from './theme-tier-badge-tracker';
-import ThemeTierTooltipTracker from './theme-tier-tooltip-tracker';
 
-export default function ThemeTierUpgradeBadge() {
+const MAX_LABEL_LENGTH = 45;
+
+const useUpgradeLabel = ( showPartnerPrice, planName, subscriptionPrices, translate ) => {
+	const { siteId } = useThemeTierBadgeContext();
+	const planSlug = useSelector( ( state ) => getSitePlanSlug( state, siteId ) ?? '' );
+	const isEcommerceTrialMonthly = planSlug === PLAN_ECOMMERCE_TRIAL_MONTHLY;
+
+	const displayPlanName = isEcommerceTrialMonthly
+		? getPlan( PLAN_ECOMMERCE )?.getTitle() ?? planName
+		: planName;
+
+	return useMemo( () => {
+		if ( showPartnerPrice && subscriptionPrices.month ) {
+			const fullLabel = translate( 'On %(planName)s + %(price)s/month', {
+				args: {
+					planName: displayPlanName,
+					price: subscriptionPrices.month,
+				},
+			} );
+
+			return fullLabel.length > MAX_LABEL_LENGTH
+				? /* translators: This is a shorter version of the text "Available on %(planName)s plus %(price)s/month". */
+				  translate( '%(planName)s + %(price)s/mo', {
+						args: {
+							planName: displayPlanName,
+							price: subscriptionPrices.month,
+						},
+				  } )
+				: fullLabel;
+		}
+
+		return translate( 'Available on %(planName)s', {
+			args: { planName: displayPlanName },
+		} );
+	}, [ translate, showPartnerPrice, subscriptionPrices.month, displayPlanName ] );
+};
+
+export default function ThemeTierPlanUpgradeBadge( { showPartnerPrice, hideBackgroundOnUpgrade } ) {
 	const translate = useTranslate();
 	const { themeId } = useThemeTierBadgeContext();
 	const themeTier = useThemeTierForTheme( themeId );
 
-	const tierMinimumUpsellPlan = THEME_TIERS[ themeTier?.slug ]?.minimumUpsellPlan;
-	const mappedPlan = getPlan( tierMinimumUpsellPlan );
-	const planPathSlug = mappedPlan?.getPathSlug();
+	const subscriptionPrices = useSelector(
+		( state ) => getMarketplaceThemeSubscriptionPrices( state, themeId ),
+		( prev, next ) => prev.month === next.month && prev.year === next.year
+	);
 
-	// Using API plans because the updated getTitle() method doesn't take the experiment assignment into account.
+	const tierMinimumUpsellPlan = THEME_TIERS[ themeTier?.slug ]?.minimumUpsellPlan;
+	const mappedPlan = useMemo( () => getPlan( tierMinimumUpsellPlan ), [ tierMinimumUpsellPlan ] );
 	const plans = Plans.usePlans( { coupon: undefined } );
 	const planName = plans?.data?.[ mappedPlan.getStoreSlug() ]?.productNameShort;
 
-	const tooltipContent = (
-		<>
-			<ThemeTierTooltipTracker />
-			<div data-testid="upsell-message">
-				{ createInterpolateElement(
-					// Translators: %(planName)s is the name of the plan that includes this theme. Examples: "Personal" or "Premium".
-					translate( 'This theme is included in the <Link>%(planName)s plan</Link>.', {
-						args: { planName },
-						textOnly: true,
-					} ),
-					{
-						Link: <ThemeTierBadgeCheckoutLink plan={ planPathSlug } />,
-					}
-				) }
-			</div>
-		</>
-	);
+	const labelText = useUpgradeLabel( showPartnerPrice, planName, subscriptionPrices, translate );
 
 	return (
-		<>
-			<ThemeTierBadgeTracker themeId={ themeId } />
-			<PremiumBadge
-				className="theme-tier-badge__content"
-				focusOnShow={ false }
-				isClickable
-				labelText={ translate( 'Upgrade' ) }
-				tooltipClassName="theme-tier-badge-tooltip"
-				tooltipContent={ tooltipContent }
-				tooltipPosition="top"
-			/>
-		</>
+		<PremiumBadge
+			className={ clsx( 'theme-tier-badge__content', {
+				'theme-tier-badge__without-background': hideBackgroundOnUpgrade,
+			} ) }
+			focusOnShow={ false }
+			labelText={ labelText }
+			tooltipClassName="theme-tier-badge-tooltip"
+			tooltipPosition="top"
+			shouldHideTooltip
+			isClickable={ false }
+		/>
 	);
 }

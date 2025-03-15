@@ -636,6 +636,33 @@ export function convertProductSlugToResponseProduct( productSlug: string ): Resp
 				bill_period: 'bi-yearly',
 				currency: 'USD',
 			};
+		case 'jetpack_growth_monthly':
+			return {
+				...getEmptyResponseCartProduct(),
+				product_id: 2021,
+				product_name: 'Jetpack Growth',
+				product_slug: productSlug,
+				bill_period: 'monthly',
+				currency: 'USD',
+			};
+		case 'jetpack_growth_bi_yearly':
+			return {
+				...getEmptyResponseCartProduct(),
+				product_id: 2023,
+				product_name: 'Jetpack Growth',
+				product_slug: productSlug,
+				bill_period: 'bi-yearly',
+				currency: 'USD',
+			};
+		case 'jetpack_growth_yearly':
+			return {
+				...getEmptyResponseCartProduct(),
+				product_id: 2022,
+				product_name: 'Jetpack Growth',
+				product_slug: productSlug,
+				bill_period: 'yearly',
+				currency: 'USD',
+			};
 		case 'jetpack_scan_monthly':
 			return {
 				...getEmptyResponseCartProduct(),
@@ -1921,10 +1948,10 @@ export const expectedCreateAccountRequest = {
 	},
 };
 
-export function mockCachedContactDetailsEndpoint( responseData ): void {
+export function mockCachedContactDetailsEndpoint( responseData, responseCode = 200 ): void {
 	const endpoint = jest.fn();
 	endpoint.mockReturnValue( true );
-	const mockDomainContactResponse = () => [ 200, responseData ];
+	const mockDomainContactResponse = () => [ responseCode, responseData ];
 	nock( 'https://public-api.wordpress.com' )
 		.get( '/rest/v1.1/me/domain-contact-information' )
 		.reply( mockDomainContactResponse );
@@ -2015,7 +2042,7 @@ expect.extend( {
 		}
 		if ( pass ) {
 			return {
-				message: () => `expected element to appear but it did not.`,
+				message: () => 'expected element to appear but it did not.',
 				pass: true,
 			};
 		}

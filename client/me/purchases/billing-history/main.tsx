@@ -8,7 +8,7 @@ import Main from 'calypso/components/main';
 import NavigationHeader from 'calypso/components/navigation-header';
 import { useGeoLocationQuery } from 'calypso/data/geo/use-geolocation-query';
 import PageViewTracker from 'calypso/lib/analytics/page-view-tracker';
-import BillingHistoryList from 'calypso/me/purchases/billing-history/billing-history-list';
+import BillingHistoryListDataView from 'calypso/me/purchases/billing-history/billing-history-list-data-view';
 import { vatDetails as vatDetailsPath, billingHistoryReceipt } from 'calypso/me/purchases/paths';
 import PurchasesNavigation from 'calypso/me/purchases/purchases-navigation';
 import titles from 'calypso/me/purchases/titles';
@@ -25,8 +25,8 @@ export function BillingHistoryContent( {
 	getReceiptUrlFor: ( receiptId: string | number ) => string;
 } ) {
 	return (
-		<Card className="billing-history__receipts">
-			<BillingHistoryList header siteId={ siteId } getReceiptUrlFor={ getReceiptUrlFor } />
+		<Card id="billing-history" className="section-content" tagName="section">
+			<BillingHistoryListDataView siteId={ siteId } getReceiptUrlFor={ getReceiptUrlFor } />
 		</Card>
 	);
 }
@@ -54,7 +54,7 @@ function BillingHistory() {
 	const vatText = vatDetails.id ? editVatText : addVatText;
 
 	return (
-		<Main wideLayout className="billing-history">
+		<Main id="purchases" wideLayout>
 			<DocumentHead title={ titles.billingHistory } />
 			<PageViewTracker path="/me/purchases/billing" title="Me > Billing History" />
 			<NavigationHeader

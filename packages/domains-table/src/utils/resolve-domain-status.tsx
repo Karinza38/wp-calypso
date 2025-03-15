@@ -15,7 +15,6 @@ import {
 import { isExpiringSoon } from './is-expiring-soon';
 import { isRecentlyRegistered } from './is-recently-registered';
 import {
-	domainManagementEdit,
 	domainManagementEditContactInfo,
 	domainManagementTransfer,
 	domainMappingSetup,
@@ -41,6 +40,7 @@ export type ResolveDomainStatusReturn = {
 		href?: string;
 		onClick?: React.MouseEventHandler< HTMLAnchorElement | HTMLButtonElement >;
 		label: string;
+		showBusyButton?: boolean;
 	};
 };
 
@@ -54,6 +54,8 @@ export type ResolveDomainStatusOptionsBag = {
 	isCreditCardExpiring?: boolean | null;
 	monthsUtilCreditCardExpires?: number | null;
 	isVipSite?: boolean | null;
+	onPointToWpcomClick?: () => void;
+	showBusyButton?: boolean;
 };
 
 export type DomainStatusPurchaseActions = {
@@ -75,6 +77,8 @@ export function resolveDomainStatus(
 		isCreditCardExpiring = false,
 		monthsUtilCreditCardExpires = null,
 		isVipSite = false,
+		onPointToWpcomClick,
+		showBusyButton = false,
 	}: ResolveDomainStatusOptionsBag
 ): ResolveDomainStatusReturn | null {
 	const transferOptions = {
@@ -103,6 +107,15 @@ export function resolveDomainStatus(
 		label: translate( 'Fix' ),
 		onClick: ( e: React.MouseEvent< HTMLAnchorElement | HTMLButtonElement, MouseEvent > ) =>
 			e.stopPropagation(),
+	};
+
+	const pointToWpcomCallToAction = {
+		label: translate( 'Point to WordPress.com' ),
+		showBusyButton,
+		onClick: ( e: React.MouseEvent< HTMLAnchorElement | HTMLButtonElement, MouseEvent > ) => {
+			e.stopPropagation();
+			onPointToWpcomClick && onPointToWpcomClick();
+		},
 	};
 
 	switch ( domain.type ) {
@@ -486,28 +499,21 @@ export function resolveDomainStatus(
 			}
 
 			if ( domain.transferStatus === transferStatus.COMPLETED && ! domain.pointsToWpcom ) {
-				const ctaLink = domainManagementEdit( siteSlug as string, domain.domain, currentRoute, {
-					nameservers: true,
-				} );
-
 				return {
 					statusText: translate( 'Action required' ),
 					statusClass: 'status-success',
 					status: translate( 'Active' ),
 					icon: 'info',
 					noticeText: translate(
-						'{{strong}}Transfer successful!{{/strong}} To make this domain work with your WordPress.com site you need to {{a}}point it to WordPress.com name servers.{{/a}}',
+						'{{strong}}Transfer successful!{{/strong}} To make this domain work with your WordPress.com site you need to {{b}}point it to WordPress.com{{/b}}.',
 						{
 							components: {
 								strong: <strong />,
-								a: <a href={ ctaLink } />,
+								b: <b />,
 							},
 						}
 					),
-					callToAction: {
-						href: ctaLink,
-						label: translate( 'Point to WordPress.com' ),
-					},
+					callToAction: pointToWpcomCallToAction,
 					listStatusWeight: 600,
 				};
 			}

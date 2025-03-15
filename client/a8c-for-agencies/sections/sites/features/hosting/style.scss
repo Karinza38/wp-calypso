@@ -1,11 +1,14 @@
-.item-preview__content .hosting__wrapper {
+@import "@wordpress/base-styles/mixins";
+@import "@wordpress/base-styles/variables";
+
+.hosting-dashboard-item-view__content .hosting__wrapper {
 	.hosting__card {
 		box-shadow: none;
 		padding: 0;
 	}
 
 	.hosting__title {
-		@include a4a-font-heading-lg;
+		@include heading-large;
 		padding: 0 0 16px;
 	}
 

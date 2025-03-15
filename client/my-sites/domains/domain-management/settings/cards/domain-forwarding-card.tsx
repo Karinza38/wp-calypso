@@ -32,7 +32,7 @@ import './style.scss';
 
 const noticeOptions = {
 	duration: 5000,
-	id: `domain-forwarding-notification`,
+	id: 'domain-forwarding-notification',
 };
 
 export default function DomainForwardingCard( {
@@ -626,14 +626,15 @@ export default function DomainForwardingCard( {
 						},
 					} ) }
 			</form>
-
-			<Button
-				borderless
-				className="add-forward-button  link-button"
-				onClick={ () => handleAddForward() }
-			>
-				{ translate( '+ Add forward' ) }
-			</Button>
+			{ editingId !== -1 && (
+				<Button
+					borderless
+					className="add-forward-button  link-button"
+					onClick={ () => handleAddForward() }
+				>
+					{ translate( '+ Add forward' ) }
+				</Button>
+			) }
 		</>
 	);
 }

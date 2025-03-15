@@ -47,3 +47,44 @@ export const trackStatsAnalyticsEvent = ( eventName, properties = {} ) => {
 	const event_from = isOdysseyStats ? 'jetpack_odyssey' : 'calypso';
 	recordTracksEvent( `${ event_from }_${ eventName }`, properties );
 };
+
+/**
+ * Prepare query string for redirection on both Calypso and Odyssey Stats
+ * Make sure to append the query if we are working inside wp-admin.
+ * @param {string} pathname base pathname
+ * @param {Object} query query object
+ * @returns pathname concatenated with query string
+ */
+export const appendQueryStringForRedirection = ( pathname, query = {} ) => {
+	const queryString = new URLSearchParams( query ).toString();
+
+	return `${ pathname }${ queryString ? '?' : '' }${ queryString }`;
+};
+
+/**
+ * Parse a date string into a Date object in the timezone of browser.
+ * @param {string|number} dateString YYYY-MM-DD format or a timestamp
+ * @returns {Date} A Date object in the timezone of the browser.
+ */
+export const parseLocalDate = ( dateString ) => {
+	let validDateString = dateString;
+
+	const dateStringSplits = dateString.split( ' ' );
+	// For date strings like '2025-01-01 01:00:00'.
+	if ( dateStringSplits.length === 2 ) {
+		validDateString = `${ dateStringSplits[ 0 ] }T${ dateStringSplits[ 1 ] }Z`;
+	} else if ( dateStringSplits.length === 1 ) {
+		validDateString = `${ dateStringSplits[ 0 ] }T00:00:00Z`;
+	}
+
+	// Compatible with Date object.
+	const date = new Date( validDateString );
+	if ( isNaN( date.getTime() ) ) {
+		return date;
+	}
+
+	// Adjust the date to the timezone of the browser.
+	date.setMinutes( date.getMinutes() + date.getTimezoneOffset() );
+
+	return date;
+};

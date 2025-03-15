@@ -1,12 +1,11 @@
 import { recordTracksEvent } from '@automattic/calypso-analytics';
 import {
-	LaunchpadNavigator,
 	Site,
 	type SiteSelect,
 	sortLaunchpadTasksByCompletionStatus,
 	useSortedLaunchpadTasks,
 } from '@automattic/data-stores';
-import { useDispatch, useSelect } from '@wordpress/data';
+import { useSelect } from '@wordpress/data';
 import { useState } from 'react';
 import { ShareSiteModal } from './action-components';
 import LaunchpadInternal from './launchpad-internal';
@@ -22,6 +21,7 @@ type LaunchpadProps = {
 	onSiteLaunched?: () => void;
 	onTaskClick?: EventHandlers[ 'onTaskClick' ];
 	onPostFilterTasks?: ( tasks: Task[] ) => Task[];
+	highlightNextAction?: boolean;
 };
 
 const Launchpad = ( {
@@ -31,11 +31,11 @@ const Launchpad = ( {
 	onSiteLaunched,
 	onTaskClick,
 	onPostFilterTasks,
+	highlightNextAction,
 }: LaunchpadProps ) => {
 	const {
 		data: { checklist },
 	} = useSortedLaunchpadTasks( siteSlug, checklistSlug, launchpadContext );
-	const { setActiveChecklist } = useDispatch( LaunchpadNavigator.store );
 
 	const tasklistCompleted = checklist?.every( ( task: Task ) => task.completed ) || false;
 
@@ -55,7 +55,6 @@ const Launchpad = ( {
 			siteSlug,
 			tracksData,
 			extraActions: {
-				setActiveChecklist,
 				setShareSiteModalIsOpen,
 			},
 			eventHandlers: {
@@ -75,10 +74,18 @@ const Launchpad = ( {
 		onSuccess: sortLaunchpadTasksByCompletionStatus,
 	};
 
+	if ( ! launchpadContext ) {
+		return null;
+	}
+	const shareSiteTask = checklist?.find( ( task: Task ) => task.id === 'share_site' ) ?? null;
 	return (
 		<>
 			{ shareSiteModalIsOpen && site && (
-				<ShareSiteModal setModalIsOpen={ setShareSiteModalIsOpen } site={ site } />
+				<ShareSiteModal
+					setModalIsOpen={ setShareSiteModalIsOpen }
+					site={ site }
+					task={ shareSiteTask }
+				/>
 			) }
 			<LaunchpadInternal
 				site={ site }
@@ -87,6 +94,7 @@ const Launchpad = ( {
 				taskFilter={ taskFilter }
 				useLaunchpadOptions={ launchpadOptions }
 				launchpadContext={ launchpadContext }
+				highlightNextAction={ highlightNextAction }
 			/>
 		</>
 	);

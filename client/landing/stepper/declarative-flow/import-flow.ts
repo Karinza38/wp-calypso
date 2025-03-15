@@ -1,24 +1,22 @@
-import { Design, isAssemblerDesign, isAssemblerSupported } from '@automattic/design-picker';
 import { IMPORT_FOCUSED_FLOW } from '@automattic/onboarding';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { useEffect } from 'react';
-import { isTargetSitePlanCompatible } from 'calypso/blocks/importer/util';
 import useAddTempSiteToSourceOptionMutation from 'calypso/data/site-migration/use-add-temp-site-mutation';
 import { useSourceMigrationStatusQuery } from 'calypso/data/site-migration/use-source-migration-status-query';
 import { ProcessingResult } from 'calypso/landing/stepper/declarative-flow/internals/steps-repository/processing-step/constants';
 import { useIsSiteAdmin } from 'calypso/landing/stepper/hooks/use-is-site-admin';
 import { useQuery } from 'calypso/landing/stepper/hooks/use-query';
-import { useSite } from 'calypso/landing/stepper/hooks/use-site';
 import { useSiteSlugParam } from 'calypso/landing/stepper/hooks/use-site-slug-param';
 import { ONBOARD_STORE, USER_STORE } from 'calypso/landing/stepper/stores';
 import { ImporterMainPlatform } from 'calypso/lib/importer/types';
 import { stepsWithRequiredLogin } from '../utils/steps-with-required-login';
+import { useRedirectDesignSetupOldSlug } from './helpers/use-redirect-design-setup-old-slug';
 import { STEPS } from './internals/steps';
 import {
 	AssertConditionState,
-	Flow,
-	ProvidedDependencies,
-	AssertConditionResult,
+	type Flow,
+	type ProvidedDependencies,
+	type AssertConditionResult,
 } from './internals/types';
 import type { OnboardSelect, UserSelect } from '@automattic/data-stores';
 import type { SiteExcerptData } from '@automattic/sites';
@@ -41,7 +39,6 @@ const importFlow: Flow = {
 			STEPS.IMPORTER_SQUARESPACE,
 			STEPS.IMPORTER_WORDPRESS,
 			STEPS.DESIGN_SETUP,
-			STEPS.PATTERN_ASSEMBLER,
 			STEPS.PROCESSING,
 			STEPS.SITE_CREATION_STEP,
 			STEPS.MIGRATION_HANDLER,
@@ -75,15 +72,9 @@ const importFlow: Flow = {
 		const { setPendingAction } = useDispatch( ONBOARD_STORE );
 		const { addTempSiteToSourceOption } = useAddTempSiteToSourceOptionMutation();
 		const urlQueryParams = useQuery();
-		const site = useSite();
-		const isSitePlanCompatible = site && isTargetSitePlanCompatible( site );
 		const fromParam = urlQueryParams.get( 'from' );
 		const { data: migrationStatus } = useSourceMigrationStatusQuery( fromParam );
 		const siteSlugParam = useSiteSlugParam();
-		const selectedDesign = useSelect(
-			( select ) => ( select( ONBOARD_STORE ) as OnboardSelect ).getSelectedDesign(),
-			[]
-		);
 		const isMigrateFromWp = useSelect(
 			( select ) => ( select( ONBOARD_STORE ) as OnboardSelect ).getIsMigrateFromWp(),
 			[]
@@ -122,6 +113,8 @@ const importFlow: Flow = {
 			);
 		};
 
+		useRedirectDesignSetupOldSlug( _currentStep, navigate );
+
 		const submit = ( providedDependencies: ProvidedDependencies = {}, ...params: string[] ) => {
 			switch ( _currentStep ) {
 				case 'importList':
@@ -130,15 +123,9 @@ const importFlow: Flow = {
 
 					if (
 						depUrl.startsWith( 'http' ) ||
-						[
-							'blogroll',
-							'ghost',
-							'tumblr',
-							'livejournal',
-							'movabletype',
-							'xanga',
-							'substack',
-						].indexOf( providedDependencies?.platform as ImporterMainPlatform ) !== -1
+						[ 'ghost', 'tumblr', 'livejournal', 'movabletype', 'xanga', 'substack' ].indexOf(
+							providedDependencies?.platform as ImporterMainPlatform
+						) !== -1
 					) {
 						return exitFlow( providedDependencies?.url as string );
 					}
@@ -175,17 +162,9 @@ const importFlow: Flow = {
 					}
 				}
 
-				case 'designSetup': {
-					const { selectedDesign: _selectedDesign } = providedDependencies;
-					if ( isAssemblerDesign( _selectedDesign as Design ) && isAssemblerSupported() ) {
-						return navigate( 'pattern-assembler' );
-					}
-
+				case 'design-setup': {
 					return navigate( 'processing' );
 				}
-
-				case 'pattern-assembler':
-					return navigate( 'processing' );
 
 				case 'createSite':
 					return navigate( 'processing' );
@@ -207,11 +186,6 @@ const importFlow: Flow = {
 							return navigate( `importerWordpress?${ urlQueryParams.toString() }` );
 						}
 						return navigate( `import?siteSlug=${ providedDependencies?.siteSlug }` );
-					}
-
-					// End of Pattern Assembler flow
-					if ( isAssemblerDesign( selectedDesign ) ) {
-						return exitFlow( `/site-editor/${ siteSlugParam }` );
 					}
 
 					return exitFlow( `/home/${ siteSlugParam }` );
@@ -277,7 +251,7 @@ const importFlow: Flow = {
 							return navigate( 'createSite' );
 
 						default:
-							return navigate( `migrationHandler` );
+							return navigate( 'migrationHandler' );
 					}
 				}
 			}
@@ -307,24 +281,16 @@ const importFlow: Flow = {
 						return navigate( `importList?siteSlug=${ siteSlugParam }` );
 					} else if ( isMigrateFromWp && fromParam ) {
 						return navigate( `sitePicker?from=${ fromParam }` );
-					} else if ( urlQueryParams.has( 'showModal' ) ) {
-						urlQueryParams.delete( 'showModal' );
-						return navigate( `import?siteSlug=${ siteSlugParam }` );
 					}
 
-					// In this case, it means that we are in the Upgrade Plan page
-					if ( ! isSitePlanCompatible ) {
-						urlQueryParams.set( 'showModal', 'true' );
-						return navigate( `importerWordpress?${ urlQueryParams.toString() }` );
-					}
-
-					return navigate( `import?siteSlug=${ siteSlugParam }` );
+					// Ensure we override from and option, as we end up in a loop if we don't.
+					return navigate( `import?siteSlug=${ siteSlugParam }&option=&from` );
 				case 'importerWix':
 				case 'importReady':
 				case 'importReadyNot':
 				case 'importReadyWpcom':
 				case 'importReadyPreview':
-				case 'designSetup':
+				case 'design-setup':
 					return navigate( `import?siteSlug=${ siteSlugParam }` );
 
 				case 'verifyEmail':
