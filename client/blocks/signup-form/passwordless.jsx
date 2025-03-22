@@ -15,6 +15,7 @@ import Notice from 'calypso/components/notice';
 import { recordRegistration } from 'calypso/lib/analytics/signup';
 import { getLocaleSlug } from 'calypso/lib/i18n-utils';
 import { isExistingAccountError } from 'calypso/lib/signup/is-existing-account-error';
+import { isThrottledError, getThrottledErrorMessage } from 'calypso/lib/signup/is-throttled-error';
 import wpcom from 'calypso/lib/wp';
 import ValidationFieldset from 'calypso/signup/validation-fieldset';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
@@ -105,7 +106,7 @@ class PasswordlessSignupForm extends Component {
 		const signup_flow_name = queryArgs.variationName === 'entrepreneur' ? 'entrepreneur' : flowName;
 
 		try {
-			const response = await wpcom.req.post( '/users/new', {
+			const body = {
 				email: typeof this.state.email === 'string' ? this.state.email.trim() : '',
 				is_passwordless: true,
 				signup_flow_name: signup_flow_name,
@@ -120,7 +121,17 @@ class PasswordlessSignupForm extends Component {
 				anon_id: getTracksAnonymousUserId(),
 				is_dev_account: isDevAccount,
 				extra: { has_segmentation_survey: queryArgs.variationName === 'entrepreneur' },
-			} );
+			};
+
+			const { search = '' } = typeof window !== 'undefined' ? window.location : {};
+			const queryParams = new URLSearchParams( search );
+			const ref = queryParams.get( 'ref' );
+
+			if ( ref ) {
+				body.ref = ref;
+			}
+
+			const response = await wpcom.req.post( '/users/new', body );
 
 			this.createAccountCallback( response );
 		} catch ( error ) {
@@ -132,13 +143,19 @@ class PasswordlessSignupForm extends Component {
 		this.submitTracksEvent( false, { action_message: error.message, error_code: error.error } );
 
 		if ( ! isExistingAccountError( error.error ) ) {
-			this.setState( {
-				errorMessages: [
-					this.props.translate(
-						'Sorry, something went wrong when trying to create your account. Please try again.'
-					),
-				],
-			} );
+			if ( isThrottledError( error.error ) ) {
+				this.setState( {
+					errorMessages: [ getThrottledErrorMessage( this.props.translate ) ],
+				} );
+			} else {
+				this.setState( {
+					errorMessages: [
+						this.props.translate(
+							'Sorry, something went wrong when trying to create your account. Please try again.'
+						),
+					],
+				} );
+			}
 		}
 
 		this.setState( {
@@ -303,6 +320,7 @@ class PasswordlessSignupForm extends Component {
 				>
 					{ submitButtonText }
 				</Button>
+				{ this.props.secondaryFooterButton }
 			</LoggedOutFormFooter>
 		);
 	}
@@ -313,6 +331,12 @@ class PasswordlessSignupForm extends Component {
 
 	render() {
 		const { errorMessages, isSubmitting } = this.state;
+
+		const terms = ! this.props.disableTosText && this.props.renderTerms?.();
+
+		const elements = this.props.secondaryFooterButton
+			? [ this.formFooter(), terms ]
+			: [ terms, this.formFooter() ];
 
 		return (
 			<div className="signup-form__passwordless-form-wrapper">
@@ -336,8 +360,7 @@ class PasswordlessSignupForm extends Component {
 						/>
 						{ this.props.children }
 					</ValidationFieldset>
-					{ ! this.props.disableTosText && this.props.renderTerms?.() }
-					{ this.formFooter() }
+					{ elements }
 				</LoggedOutForm>
 			</div>
 		);

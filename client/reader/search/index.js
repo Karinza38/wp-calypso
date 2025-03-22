@@ -7,7 +7,7 @@ import {
 	render as clientRender,
 } from 'calypso/controller';
 import { setLocaleMiddleware } from 'calypso/controller/shared';
-import { sidebar, updateLastRoute } from 'calypso/reader/controller';
+import { sidebar } from 'calypso/reader/controller';
 import { isUserLoggedIn } from 'calypso/state/current-user/selectors';
 import { fetchTrendingTags } from '../tags/controller';
 import { search } from './controller';
@@ -23,16 +23,15 @@ export default function () {
 	const langParam = getLanguageRouteParam();
 	const anyLangParam = getAnyLanguageRouteParam();
 	// Old recommendations page
-	page( '/recommendations', '/read/search' );
+	page( '/recommendations', '/reader/search' );
 	// Invalid language
-	page( `/${ anyLangParam }/read/search/`, redirectInvalidLanguage );
+	page( `/${ anyLangParam }/reader/search/`, redirectInvalidLanguage );
 
 	page(
-		[ '/read/search', `/${ langParam }/read/search` ],
+		[ '/reader/search', `/${ langParam }/reader/search` ],
 		redirectWithoutLocaleParamInFrontIfLoggedIn,
 		setLocaleMiddleware(),
 		fetchTrendingTagsIfLoggedOut,
-		updateLastRoute,
 		sidebar,
 		search,
 		makeLayout,

@@ -3,13 +3,17 @@ import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
 
 // Flows to redirect
 const REMOVED_TAILORED_FLOWS = [
+	{ flow: 'ai-assembler', to: '/start:lang?' },
 	{ flow: BLOG_FLOW, to: '/start:lang?' },
 	{ flow: 'free', to: '/start/free:lang?' },
 	{ flow: 'link-in-bio', to: '/start:lang?' },
+	{ flow: 'link-in-bio-tld', to: '/start:lang?' },
 	{ flow: 'sensei', to: ':lang?/plugins/sensei-pro/' },
 	{ flow: 'videopress', to: '/start:lang?' },
 	{ flow: 'videopress-tv', to: '/start:lang?' },
 	{ flow: 'videopress-tv-purchase', to: '/start:lang?' },
+	{ flow: 'site-setup-wg', to: '/setup/site-setup' },
+	{ flow: 'migration-signup', to: '/setup/hosted-site-migration' },
 ];
 
 export const isRemovedFlow = ( flowToCheck: string ) =>

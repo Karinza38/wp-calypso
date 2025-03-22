@@ -4,6 +4,7 @@ import { StepContainer } from '@automattic/onboarding';
 import { canInstallPlugins } from '@automattic/sites';
 import { getQueryArg } from '@wordpress/url';
 import { useTranslate } from 'i18n-calypso';
+import { useMemo } from 'react';
 import DocumentHead from 'calypso/components/data/document-head';
 import FormattedHeader from 'calypso/components/formatted-header';
 import { useMigrationCancellation } from 'calypso/data/site-migration/landing/use-migration-cancellation';
@@ -15,44 +16,53 @@ import FlowCard from '../components/flow-card';
 import type { Step } from '../../types';
 import './style.scss';
 
-const SiteMigrationImportOrMigrate: Step = function ( { navigation } ) {
+const SiteMigrationImportOrMigrate: Step< {
+	submits: {
+		destination: 'migrate' | 'import' | 'upgrade';
+	};
+} > = function ( { navigation } ) {
 	const translate = useTranslate();
 	const site = useSite();
 	const importSiteQueryParam = getQueryArg( window.location.href, 'from' )?.toString() || '';
 	const { deleteMigrationSticker } = useMigrationStickerMutation();
 	const { mutate: cancelMigration } = useMigrationCancellation( site?.ID );
+	const siteCanInstallPlugins = canInstallPlugins( site );
+	const isUpgradeRequired = ! siteCanInstallPlugins;
 
-	const options = [
-		{
-			label: translate( 'Migrate site' ),
-			description: translate(
-				"All your site's content, themes, plugins, users and customizations."
-			),
-			value: 'migrate',
-			badge: {
-				type: 'info-blue' as BadgeType,
-				// translators: %(planName)s is a plan name (e.g. Commerce plan).
-				text: translate( 'Requires %(planName)s plan', {
-					args: { planName: getPlan( PLAN_BUSINESS )?.getTitle() ?? '' },
-				} ) as string,
+	const options = useMemo( () => {
+		const upgradeRequiredLabel = translate( '50% off %(planName)s', {
+			args: { planName: getPlan( PLAN_BUSINESS )?.getTitle() ?? '' },
+		} );
+
+		const migrateOptionDescription = translate(
+			"For WordPress sites. Move all your site's content, themes, plugins, and users to WordPress.com."
+		);
+
+		return [
+			{
+				label: translate( 'Migrate site' ),
+				description: migrateOptionDescription,
+				value: 'migrate' as const,
+				badge: {
+					type: 'info-blue' as BadgeType,
+					text: isUpgradeRequired ? upgradeRequiredLabel : translate( 'Included with your plan' ),
+				},
+				selected: true,
 			},
-			selected: true,
-		},
-		{
-			label: translate( 'Import content only' ),
-			description: translate( 'Import just posts, pages, comments and media.' ),
-			value: 'import',
-		},
-	];
+			{
+				label: translate( 'Import content only' ),
+				description: translate( 'Import just posts, pages, comments and media.' ),
+				value: 'import' as const,
+			},
+		];
+	}, [ isUpgradeRequired, translate ] );
 
 	const { data: hostingProviderDetails } = useHostingProviderUrlDetails( importSiteQueryParam );
 	const hostingProviderName = hostingProviderDetails.name;
 	const shouldDisplayHostIdentificationMessage =
 		! hostingProviderDetails.is_unknown && ! hostingProviderDetails.is_a8c;
 
-	const siteCanInstallPlugins = canInstallPlugins( site );
-
-	const handleClick = ( destination: string ) => {
+	const handleClick = ( destination: 'migrate' | 'import' | 'upgrade' ) => {
 		if ( destination === 'migrate' && ! siteCanInstallPlugins ) {
 			return navigation.submit?.( { destination: 'upgrade' } );
 		}

@@ -8,8 +8,10 @@ import { useMediaQuery } from '@wordpress/compose';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { useCallback, useEffect, useState, useReducer } from '@wordpress/element';
 import { registerPlugin } from '@wordpress/plugins';
+import { useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useCanvasMode } from './hooks/use-canvas-mode';
+import { getEditorType } from './utils';
 import './help-center.scss';
 
 const queryClient = new QueryClient();
@@ -23,12 +25,14 @@ function HelpCenterContent() {
 	const show = useSelect( ( select ) => select( 'automattic/help-center' ).isHelpCenterShown() );
 
 	const canvasMode = useCanvasMode();
+	const previousCanvasMode = useRef( canvasMode );
 
 	const handleToggleHelpCenter = useCallback( () => {
 		recordTracksEvent( `calypso_inlinehelp_${ show ? 'close' : 'show' }`, {
 			force_site_id: true,
 			location: 'help-center',
 			section: 'gutenberg-editor',
+			editor_type: getEditorType(),
 			canvas_mode: canvasMode,
 		} );
 
@@ -42,13 +46,16 @@ function HelpCenterContent() {
 
 	useEffect( () => {
 		// Close the Help Center when the canvas mode changes.
-		setShowHelpCenter( false );
+		if ( previousCanvasMode.current !== canvasMode ) {
+			setShowHelpCenter( false );
 
-		// Force to re-render to ensure the sidebar is available.
-		if ( canvasMode === 'view' ) {
-			forceUpdate();
+			// Force to re-render to ensure the sidebar is available.
+			if ( canvasMode === 'view' ) {
+				forceUpdate();
+			}
+			previousCanvasMode.current = canvasMode;
 		}
-	}, [ canvasMode ] );
+	}, [ canvasMode, previousCanvasMode, setShowHelpCenter ] );
 
 	const closeCallback = useCallback( () => setShowHelpCenter( false ), [ setShowHelpCenter ] );
 

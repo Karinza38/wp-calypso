@@ -17,6 +17,10 @@ import {
 	magicLoginUse,
 	redirectJetpack,
 	redirectDefaultLocale,
+	redirectLostPassword,
+	desktopLogin,
+	desktopLoginFinalize,
+	googleAuth,
 } from './controller';
 import redirectLoggedIn from './redirect-logged-in';
 import { setShouldServerSideRenderLogin, ssrSetupLocaleLogin, setMetaTags } from './ssr';
@@ -65,6 +69,26 @@ const makeLoggedOutLayout = makeLayoutMiddleware( ReduxWrappedLayout );
 export default ( router ) => {
 	const lang = getLanguageRouteParam();
 
+	// The /log-in/desktop routes are only used by the WordPress.com Desktop app.
+	router(
+		[ `/log-in/desktop/${ lang }` ],
+		redirectLoggedIn,
+		setLocaleMiddleware(),
+		setMetaTags,
+		setSectionMiddleware( { ...LOGIN_SECTION_DEFINITION, isomorphic: false } ),
+		desktopLogin,
+		makeLoggedOutLayout
+	);
+	router(
+		[ `/log-in/desktop/finalize` ],
+		redirectLoggedIn,
+		setLocaleMiddleware(),
+		setMetaTags,
+		setSectionMiddleware( { ...LOGIN_SECTION_DEFINITION, isomorphic: false } ),
+		desktopLoginFinalize,
+		makeLoggedOutLayout
+	);
+
 	if ( config.isEnabled( 'login/magic-login' ) ) {
 		router(
 			[ `/log-in/link/use/${ lang }`, `/log-in/jetpack/link/use/${ lang }` ],
@@ -97,6 +121,16 @@ export default ( router ) => {
 	);
 
 	router(
+		[ `/log-in/jetpack/google/${ lang }` ],
+		redirectLoggedIn,
+		setLocaleMiddleware(),
+		setMetaTags,
+		setSectionMiddleware( LOGIN_SECTION_DEFINITION ),
+		googleAuth,
+		makeLoggedOutLayout
+	);
+
+	router(
 		[
 			`/log-in/:twoFactorAuthType(authenticator|backup|sms|push|webauthn)/${ lang }`,
 			`/log-in/:flow(social-connect|private-site)/${ lang }`,
@@ -118,6 +152,7 @@ export default ( router ) => {
 		login,
 		setShouldServerSideRenderLogin,
 		ssrSetupLocaleLogin,
-		makeLoggedOutLayout
+		makeLoggedOutLayout,
+		redirectLostPassword
 	);
 };

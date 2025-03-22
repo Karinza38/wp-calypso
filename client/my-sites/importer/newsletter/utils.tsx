@@ -27,8 +27,8 @@ export function getStepsProgress(
 	paidNewsletterData?: PaidNewsletterData
 ) {
 	const summaryStatus = getImporterStatus(
-		paidNewsletterData?.steps.content.status,
-		paidNewsletterData?.steps.subscribers.status
+		paidNewsletterData?.steps?.content?.status,
+		paidNewsletterData?.steps?.subscribers?.status
 	);
 
 	const result: ClickHandler[] = [
@@ -42,7 +42,7 @@ export function getStepsProgress(
 				);
 			},
 			show: 'onComplete',
-			indicator: getStepProgressIndicator( paidNewsletterData?.steps.content.status ),
+			indicator: getStepProgressIndicator( paidNewsletterData?.steps?.content?.status ),
 		},
 		{
 			message: __( 'Subscribers' ),
@@ -54,7 +54,7 @@ export function getStepsProgress(
 				);
 			},
 			show: 'onComplete',
-			indicator: getStepProgressIndicator( paidNewsletterData?.steps.subscribers.status ),
+			indicator: getStepProgressIndicator( paidNewsletterData?.steps?.subscribers?.status ),
 		},
 		{
 			message: __( 'Summary' ),
@@ -73,27 +73,34 @@ export function getStepsProgress(
 	return result;
 }
 
+/*
+ * Gather entire engine's status by combining "content" and "subscribers" steps status
+ */
 export function getImporterStatus(
 	contentStepStatus?: StepStatus,
 	subscribersStepStatus?: StepStatus
 ): StepStatus {
-	if ( contentStepStatus === 'done' && subscribersStepStatus === 'done' ) {
+	// Initialize both statuses to 'initial' if undefined.
+	const content = contentStepStatus || 'initial';
+	const subscribers = subscribersStepStatus || 'initial';
+
+	if ( content === 'done' && subscribers === 'done' ) {
 		return 'done';
 	}
 
-	if ( contentStepStatus === 'done' && subscribersStepStatus === 'skipped' ) {
+	if ( content === 'done' && subscribers === 'skipped' ) {
 		return 'done';
 	}
 
-	if ( contentStepStatus === 'skipped' && subscribersStepStatus === 'done' ) {
+	if ( content === 'skipped' && subscribers === 'done' ) {
 		return 'done';
 	}
 
-	if ( contentStepStatus === 'skipped' && subscribersStepStatus === 'skipped' ) {
+	if ( content === 'skipped' && subscribers === 'skipped' ) {
 		return 'skipped';
 	}
 
-	if ( contentStepStatus === 'importing' || subscribersStepStatus === 'importing' ) {
+	if ( content === 'importing' || subscribers === 'importing' ) {
 		return 'importing';
 	}
 
@@ -101,6 +108,9 @@ export function getImporterStatus(
 }
 
 export function normalizeFromSite( fromSite: string ) {
+	if ( ! fromSite ) {
+		return '';
+	}
 	const result = fromSite.match( /\/@(?<slug>\w+)$/ );
 	if ( result?.groups?.slug ) {
 		return result.groups.slug + '.substack.com';

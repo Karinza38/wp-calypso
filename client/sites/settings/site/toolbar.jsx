@@ -5,8 +5,9 @@ import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import QueryJetpackConnection from 'calypso/components/data/query-jetpack-connection';
 import FormFieldset from 'calypso/components/forms/form-fieldset';
-import { PanelHeading, PanelSection } from 'calypso/components/panel';
+import { PanelCard, PanelCardHeading } from 'calypso/components/panel';
 import SupportInfo from 'calypso/components/support-info';
+import { useRemoveDuplicateViewsExperimentEnabled } from 'calypso/lib/remove-duplicate-views-experiment';
 import JetpackModuleToggle from 'calypso/my-sites/site-settings/jetpack-module-toggle';
 import SettingsSectionHeader from 'calypso/my-sites/site-settings/settings-section-header';
 import isJetpackModuleUnavailableInDevelopmentMode from 'calypso/state/selectors/is-jetpack-module-unavailable-in-development-mode';
@@ -14,7 +15,6 @@ import isJetpackSiteInDevelopmentMode from 'calypso/state/selectors/is-jetpack-s
 import isSiteAutomatedTransfer from 'calypso/state/selectors/is-site-automated-transfer';
 import { useSelectedSiteSelector } from 'calypso/state/sites/hooks';
 import { getSelectedSiteId } from 'calypso/state/ui/selectors';
-import { isHostingMenuUntangled } from '../utils';
 
 const Masterbar = ( {
 	isRequestingSettings,
@@ -25,6 +25,7 @@ const Masterbar = ( {
 } ) => {
 	const siteIsJetpack = useSelectedSiteSelector( isJetpackSite );
 	const siteIsAtomic = useSelectedSiteSelector( isSiteAutomatedTransfer );
+	const isUntangled = useRemoveDuplicateViewsExperimentEnabled();
 
 	const isNonAtomicJetpackSite = siteIsJetpack && ! siteIsAtomic;
 
@@ -61,7 +62,7 @@ const Masterbar = ( {
 		);
 	};
 
-	if ( ! isHostingMenuUntangled() ) {
+	if ( ! isUntangled ) {
 		return (
 			<div>
 				<QueryJetpackConnection siteId={ selectedSiteId } />
@@ -73,11 +74,11 @@ const Masterbar = ( {
 	}
 
 	return (
-		<PanelSection>
+		<PanelCard>
 			<QueryJetpackConnection siteId={ selectedSiteId } />
-			<PanelHeading>{ translate( 'WordPress.com toolbar' ) }</PanelHeading>
+			<PanelCardHeading>{ translate( 'WordPress.com toolbar' ) }</PanelCardHeading>
 			{ renderForm() }
-		</PanelSection>
+		</PanelCard>
 	);
 };
 

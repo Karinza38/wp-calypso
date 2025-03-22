@@ -1,14 +1,23 @@
 import { recordTracksEvent } from '@automattic/calypso-analytics';
 import { Gridicon } from '@automattic/components';
 import { HelpCenter, HelpCenterSelect } from '@automattic/data-stores';
+import {
+	useProductsCustomOptions,
+	useProductsWithPremiumSupport,
+} from '@automattic/help-center/src/hooks';
+import { useShoppingCart } from '@automattic/shopping-cart';
 import styled from '@emotion/styled';
 import { Button } from '@wordpress/components';
 import {
 	useDispatch as useDataStoreDispatch,
 	useSelect as useDataStoreSelect,
 } from '@wordpress/data';
+import { addQueryArgs } from '@wordpress/url';
 import { useTranslate } from 'i18n-calypso';
 import { useEffect } from 'react';
+import useCartKey from 'calypso/my-sites/checkout/use-cart-key';
+import { useSelector } from 'calypso/state';
+import { getSelectedSiteId, getSelectedSiteSlug } from 'calypso/state/ui/selectors';
 
 const HELP_CENTER_STORE = HelpCenter.register();
 
@@ -56,9 +65,24 @@ const ContactContainer = styled.div`
 `;
 
 export function DefaultMasterbarContact() {
-	const translate = useTranslate();
+	const siteId = useSelector( getSelectedSiteId );
+	const siteSlug = useSelector( getSelectedSiteSlug );
 
-	const { setShowHelpCenter } = useDataStoreDispatch( HELP_CENTER_STORE );
+	const translate = useTranslate();
+	const cartKey = useCartKey();
+	const { responseCart } = useShoppingCart( cartKey );
+
+	const {
+		hasPremiumSupport,
+		userFieldMessage,
+		userFieldFlowName,
+		helpCenterButtonCopy,
+		helpCenterButtonLink,
+	} = useProductsWithPremiumSupport( responseCart.products, 'checkout' );
+	const helpCenterOptions = useProductsCustomOptions( responseCart.products );
+
+	const { setShowHelpCenter, setNavigateToRoute } = useDataStoreDispatch( HELP_CENTER_STORE );
+
 	const isShowingHelpCenter = useDataStoreSelect(
 		( select ) => ( select( HELP_CENTER_STORE ) as HelpCenterSelect ).isHelpCenterShown(),
 		[]
@@ -69,7 +93,18 @@ export function DefaultMasterbarContact() {
 			location: 'thank-you-help-center',
 		} );
 
-		setShowHelpCenter( ! isShowingHelpCenter );
+		if ( hasPremiumSupport ) {
+			setShowHelpCenter( ! isShowingHelpCenter, hasPremiumSupport, helpCenterOptions );
+			const urlWithQueryArgs = addQueryArgs( '/odie?provider=zendesk', {
+				userFieldMessage,
+				userFieldFlowName,
+				siteUrl: siteSlug,
+				siteId,
+			} );
+			setNavigateToRoute( urlWithQueryArgs );
+		} else {
+			setShowHelpCenter( ! isShowingHelpCenter, hasPremiumSupport );
+		}
 	};
 
 	useEffect( () => {
@@ -80,10 +115,10 @@ export function DefaultMasterbarContact() {
 
 	return (
 		<ContactContainer>
-			<label>{ translate( 'Need extra help?' ) }</label>
+			<label>{ helpCenterButtonCopy ?? translate( 'Need extra help?' ) }</label>
 			<Button className="thank-you-help-center" variant="link" onClick={ toggleHelpCenter }>
 				<Gridicon icon="help-outline" />
-				<span>{ translate( 'Visit Help Center' ) }</span>
+				<span>{ helpCenterButtonLink ?? translate( 'Visit Help Center' ) }</span>
 			</Button>
 		</ContactContainer>
 	);

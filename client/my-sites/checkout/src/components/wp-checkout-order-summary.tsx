@@ -22,12 +22,12 @@ import {
 	WPCOM_FEATURES_ATOMIC,
 	isWooExpressPlan,
 	isSenseiProduct,
+	PLAN_100_YEARS,
 } from '@automattic/calypso-products';
 import { Gridicon } from '@automattic/components';
 import { FormStatus, useFormStatus } from '@automattic/composite-checkout';
-import { formatCurrency } from '@automattic/format-currency';
 import { useHasEnTranslation } from '@automattic/i18n-utils';
-import { isNewsletterOrLinkInBioFlow, isAnyHostingFlow } from '@automattic/onboarding';
+import { isNewsletterFlow, isAnyHostingFlow } from '@automattic/onboarding';
 import { useShoppingCart } from '@automattic/shopping-cart';
 import {
 	isBillingInfoEmpty,
@@ -38,9 +38,8 @@ import {
 import { keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
 import { Icon, reusableBlock } from '@wordpress/icons';
-import { useTranslate } from 'i18n-calypso';
+import { formatCurrency, useTranslate } from 'i18n-calypso';
 import * as React from 'react';
-import { getAcceptedAssistedFreeMigration } from 'calypso/blocks/importer/wordpress/utils';
 import { hasFreeCouponTransfersOnly } from 'calypso/lib/cart-values/cart-items';
 import { isWcMobileApp } from 'calypso/lib/mobile-app';
 import useCartKey from 'calypso/my-sites/checkout/use-cart-key';
@@ -146,14 +145,10 @@ export function CheckoutSummaryFeaturedList( {
 						? translate( 'WordPress.com Gift Subscription' )
 						: translate( 'Included with your purchase' ) }
 				</CheckoutSummaryFeaturesTitle>
-				{ isCartUpdating ? (
-					<LoadingCheckoutSummaryFeaturesList />
-				) : (
-					<CheckoutSummaryFeaturesWrapper
-						siteId={ siteId }
-						nextDomainIsFree={ responseCart.next_domain_is_free }
-					/>
-				) }
+				<CheckoutSummaryFeaturesWrapper
+					siteId={ siteId }
+					nextDomainIsFree={ responseCart.next_domain_is_free }
+				/>
 			</CheckoutSummaryFeatures>
 			{ ! isCartUpdating && ! hasRenewalInCart && ! isWcMobile && plan && hasMonthlyPlanInCart && (
 				<CheckoutSummaryAnnualUpsell plan={ plan } onChangeSelection={ onChangeSelection } />
@@ -283,7 +278,7 @@ function CheckoutSummaryFeaturesWrapper( props: {
 		isSenseiProduct( product )
 	);
 	const shouldUseFlowFeatureList =
-		isNewsletterOrLinkInBioFlow( signupFlowName ) ||
+		isNewsletterFlow( signupFlowName ) ||
 		hasSenseiProductInCart ||
 		( isAnyHostingFlow( signupFlowName ) && planHasHostingFeature );
 	const giftSiteSlug = responseCart.gift_details?.receiver_blog_slug;
@@ -407,15 +402,11 @@ export function CheckoutSummaryRefundWindows( {
 	} else {
 		const shortestRefundWindow = Math.min( ...refundWindows );
 
-		text = translate(
-			'%(days)d-day full money back guarantee',
-			'%(days)d-day full money back guarantee',
-			{
-				count: shortestRefundWindow,
-				args: { days: shortestRefundWindow },
-				comment: 'The number of days until the shortest refund window in the cart expires.',
-			}
-		);
+		text = translate( '%(days)d-day money back guarantee', '%(days)d-day money back guarantee', {
+			count: shortestRefundWindow,
+			args: { days: shortestRefundWindow },
+			comment: 'The number of days until the shortest refund window in the cart expires.',
+		} );
 	}
 
 	return (
@@ -476,16 +467,8 @@ export function CheckoutSummaryFeaturesList( props: {
 		isDomainTransfer( product )
 	);
 
-	const hasFreeMigrationAssistance = getAcceptedAssistedFreeMigration();
-
 	return (
 		<CheckoutSummaryFeaturesListWrapper>
-			{ hasFreeMigrationAssistance && (
-				<CheckoutSummaryFeaturesListItem>
-					<WPCheckoutCheckIcon id="features-list-support-free-migration-assistance" />
-					{ translate( 'Assisted free site migration' ) }
-				</CheckoutSummaryFeaturesListItem>
-			) }
 			{ hasDomainsInCart &&
 				domains.map( ( domain ) => {
 					return <CheckoutSummaryFeaturesListDomainItem domain={ domain } key={ domain.uuid } />;
@@ -719,12 +702,14 @@ function CheckoutSummaryPlanFeatures( props: {
 
 	const showPricingGridFeatures = ! hasRenewalInCart;
 
+	const isHundredYearPlan = PLAN_100_YEARS === planInCart?.product_slug;
+
 	const planFeatures = getPlanFeatures(
 		planInCart,
 		translate,
 		hasDomainsInCart,
 		hasRenewalInCart,
-		nextDomainIsFree,
+		nextDomainIsFree && ! isHundredYearPlan,
 		showPricingGridFeatures
 	);
 

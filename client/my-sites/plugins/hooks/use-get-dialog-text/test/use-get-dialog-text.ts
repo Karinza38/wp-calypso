@@ -58,7 +58,7 @@ describe( 'useGetDialogText', () => {
 
 		// Therefore, we should see a message appropriate to two sites being affected
 		const { message } = getDialogText( PluginActions.ACTIVATE, [ testPlugin ], testSites );
-		expect( message ).toContain( ` 2 sites` );
+		expect( message ).toContain( ' 2 sites' );
 	} );
 
 	it( 'only counts sites on which the given plugin(s) are installed', () => {
@@ -89,7 +89,7 @@ describe( 'useGetDialogText', () => {
 			const testPlugin = createFakePlugin( 'test1', 'Test Plugin', testSites );
 
 			const { heading } = getDialogText( action, [ testPlugin ], testSites );
-			expect( heading ).toEqual( `${ text } ${ testPlugin.name }` );
+			expect( heading ).toEqual( `${ text } plugin` );
 		}
 	);
 
@@ -105,7 +105,7 @@ describe( 'useGetDialogText', () => {
 			const testPlugin = createFakePlugin( 'test1', undefined, testSites );
 
 			const { heading } = getDialogText( action, [ testPlugin ], testSites );
-			expect( heading ).toEqual( `${ text } ${ testPlugin.slug }` );
+			expect( heading ).toEqual( `${ text } plugin` );
 		}
 	);
 

@@ -1,26 +1,33 @@
-import type { Flow, StepperStep } from '../declarative-flow/internals/types';
+import { PRIVATE_STEPS } from '../declarative-flow/internals/steps';
+import type { FlowV1, StepperStep } from '../declarative-flow/internals/types';
 
-const USER_STEP: StepperStep = {
-	slug: 'user',
-	asyncComponent: () => import( '../declarative-flow/internals/steps-repository/__user' ),
-};
-
-function useInjectUserStepIfNeeded( flow: Flow ): StepperStep[] {
+function useInjectUserStepIfNeededForV1( flow: FlowV1 ): readonly StepperStep[] {
 	const steps = flow.useSteps();
+	return injectUserStepInSteps( steps ) as readonly StepperStep[];
+}
+
+export function injectUserStepInSteps< T extends readonly StepperStep[] >(
+	steps: T
+): T | [ ...T, typeof PRIVATE_STEPS.USER ] {
 	const firstAuthWalledStep = steps.findIndex( ( step ) => step.requiresLoggedInUser );
 
 	if ( firstAuthWalledStep === -1 ) {
 		return steps;
 	}
 
-	const newSteps = [ ...steps ];
-	newSteps.splice( firstAuthWalledStep, 0, USER_STEP );
-	return newSteps;
+	// For logged-out users, we will redirect steps that require auth to the user step,
+	// and then redirect back to the original steps after auth.
+	// Therefore, we must avoid placing the user step as the first step,
+	// as it would prevent us from knowing which step to redirect back to.
+	return [ ...steps, PRIVATE_STEPS.USER ] as const;
 }
 
-export function enhanceFlowWithAuth( flow: Flow ): Flow {
+/**
+ * @deprecated should be removed once #97999 is merged and all flows are migrated to V2.
+ */
+export function enhanceFlowWithAuth( flow: FlowV1 ): FlowV1 {
 	return {
 		...flow,
-		useSteps: () => useInjectUserStepIfNeeded( flow ),
+		useSteps: () => useInjectUserStepIfNeededForV1( flow ) as StepperStep[],
 	};
 }

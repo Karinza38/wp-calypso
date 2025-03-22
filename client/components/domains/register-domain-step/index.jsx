@@ -2,6 +2,7 @@ import { isBlogger, isFreeWordPressComDomain } from '@automattic/calypso-product
 import page from '@automattic/calypso-router';
 import { Button, CompactCard, ResponsiveToolbarGroup } from '@automattic/components';
 import {
+	AI_SITE_BUILDER_FLOW,
 	HUNDRED_YEAR_DOMAIN_FLOW,
 	HUNDRED_YEAR_PLAN_FLOW,
 	isHundredYearDomainFlow,
@@ -126,7 +127,10 @@ class RegisterDomainStep extends Component {
 		deemphasiseTlds: PropTypes.array,
 		recordFiltersSubmit: PropTypes.func.isRequired,
 		recordFiltersReset: PropTypes.func.isRequired,
-		isReskinned: PropTypes.bool,
+		/**
+		 * A flag signalling if the step is being used in the onboarding flow
+		 */
+		isOnboarding: PropTypes.bool,
 		showSkipButton: PropTypes.bool,
 		onSkip: PropTypes.func,
 		promoTlds: PropTypes.array,
@@ -334,9 +338,22 @@ class RegisterDomainStep extends Component {
 		return strippedHostname ?? hostname;
 	}
 
+	getInitialQueryFromSiteName() {
+		return this.props.selectedSite?.name || undefined;
+	}
+
 	componentDidMount() {
 		const storedQuery = globalThis?.sessionStorage?.getItem( SESSION_STORAGE_QUERY_KEY );
-		const query = this.state.lastQuery || storedQuery || this.getInitialQueryInLaunchFlow();
+		let query = this.state.lastQuery || storedQuery;
+
+		// Flow specific query fallbacks.
+		if ( ! query && this.props.flowName === AI_SITE_BUILDER_FLOW ) {
+			query = this.getInitialQueryFromSiteName();
+		}
+
+		if ( ! query && this.props.isInLaunchFlow ) {
+			query = this.getInitialQueryInLaunchFlow();
+		}
 
 		if ( query && ! this.state.searchResults && ! this.state.subdomainSearchResults ) {
 			this.onSearch( query );
@@ -348,7 +365,7 @@ class RegisterDomainStep extends Component {
 			this.save();
 		}
 		this._isMounted = true;
-		this.props.recordSearchFormView( this.props.analyticsSection );
+		this.props.recordSearchFormView( this.props.analyticsSection, this.props.flowName );
 	}
 
 	componentDidUpdate( prevProps ) {
@@ -537,11 +554,15 @@ class RegisterDomainStep extends Component {
 			! Array.isArray( this.state.searchResults ) &&
 			! this.state.loadingResults &&
 			! this.props.showExampleSuggestions;
-		const showFilters = ! isRenderingInitialSuggestions || this.props.isReskinned;
+		const showFilters = ! isRenderingInitialSuggestions || this.props.isOnboarding;
 
 		const showTldFilter =
 			( Array.isArray( this.state.availableTlds ) && this.state.availableTlds.length > 0 ) ||
 			this.state.loadingResults;
+
+		if ( [ HUNDRED_YEAR_PLAN_FLOW, HUNDRED_YEAR_DOMAIN_FLOW ].includes( this.props.flowName ) ) {
+			return null;
+		}
 
 		return (
 			showFilters && (
@@ -576,7 +597,8 @@ class RegisterDomainStep extends Component {
 			return { key: `${ tld }`, text: `.${ tld }` };
 		} );
 
-		items.unshift( { key: 'all', text: 'All' } );
+		// translators: filter label displayed when all TLDs are enabled
+		items.unshift( { key: 'all', text: this.props.translate( 'All' ) } );
 
 		const handleClick = ( index ) => {
 			const option = items[ index ].key;
@@ -618,7 +640,7 @@ class RegisterDomainStep extends Component {
 			onSearch: this.onSearch,
 			onSearchChange: this.onSearchChange,
 			ref: this.bindSearchCardReference,
-			isReskinned: this.props.isReskinned,
+			isOnboarding: this.props.isOnboarding,
 			childrenBeforeCloseButton:
 				this.props.isDomainAndPlanPackageFlow && this.renderSearchFilters(),
 		};
@@ -774,13 +796,22 @@ class RegisterDomainStep extends Component {
 
 	removeUnavailablePremiumDomain = ( domainName ) => {
 		this.setState( ( state ) => {
-			const newPremiumDomains = { ...state.premiumDomains };
-			delete newPremiumDomains[ domainName ];
-			return {
-				premiumDomains: newPremiumDomains,
-				searchResults: state.searchResults.filter(
+			const premiumDomains = Object.fromEntries(
+				Object.entries( state.premiumDomains ).filter( ( [ key ] ) => key !== domainName )
+			);
+			const { searchResults } = state;
+			if ( Array.isArray( searchResults ) ) {
+				const newSearchResults = searchResults.filter(
 					( suggestion ) => suggestion.domain_name !== domainName
-				),
+				);
+				return {
+					premiumDomains,
+					searchResults: newSearchResults,
+				};
+			}
+			return {
+				premiumDomains,
+				searchResults,
 			};
 		} );
 	};
@@ -925,7 +956,12 @@ class RegisterDomainStep extends Component {
 	};
 
 	onFiltersReset = ( ...keysToReset ) => {
-		this.props.recordFiltersReset( this.state.filters, keysToReset, this.props.analyticsSection );
+		this.props.recordFiltersReset(
+			this.state.filters,
+			keysToReset,
+			this.props.analyticsSection,
+			this.props.flowName
+		);
 		const filters = {
 			...this.state.filters,
 			...( Array.isArray( keysToReset ) && keysToReset.length > 0
@@ -940,7 +976,11 @@ class RegisterDomainStep extends Component {
 	};
 
 	onFiltersSubmit = () => {
-		this.props.recordFiltersSubmit( this.state.filters, this.props.analyticsSection );
+		this.props.recordFiltersSubmit(
+			this.state.filters,
+			this.props.analyticsSection,
+			this.props.flowName
+		);
 		this.repeatSearch( { pageNumber: 1 } );
 	};
 
@@ -1199,7 +1239,8 @@ class RegisterDomainStep extends Component {
 						domain,
 						status,
 						timeDiff,
-						this.props.analyticsSection
+						this.props.analyticsSection,
+						this.props.flowName
 					);
 
 					this.props.onDomainsAvailabilityChange( true );
@@ -1245,7 +1286,8 @@ class RegisterDomainStep extends Component {
 					analyticsResults,
 					timeDiff,
 					domainSuggestions.length,
-					this.props.analyticsSection
+					this.props.analyticsSection,
+					this.props.flowName
 				);
 
 				return domainSuggestions;
@@ -1270,7 +1312,8 @@ class RegisterDomainStep extends Component {
 					analyticsResults,
 					timeDiff,
 					-1,
-					this.props.analyticsSection
+					this.props.analyticsSection,
+					this.props.flowName
 				);
 				throw error;
 			} );
@@ -1374,7 +1417,8 @@ class RegisterDomainStep extends Component {
 			analyticsResults,
 			timeDiff,
 			subdomainSuggestions.length,
-			this.props.analyticsSection
+			this.props.analyticsSection,
+			this.props.flowName
 		);
 
 		// This part handles the other end of the condition handled by the line 282:
@@ -1412,7 +1456,8 @@ class RegisterDomainStep extends Component {
 			analyticsResults,
 			timeDiff,
 			-1,
-			this.props.analyticsSection
+			this.props.analyticsSection,
+			this.props.flowName
 		);
 
 		this.setState( {
@@ -1431,6 +1476,15 @@ class RegisterDomainStep extends Component {
 				lastQuery: domain,
 				lastFilters: this.state.filters,
 				hideInitialQuery: false,
+				showAvailabilityNotice: false,
+				showSuggestionNotice: false,
+				availabilityError: null,
+				availabilityErrorData: null,
+				availabilityErrorDomain: null,
+				suggestionError: null,
+				suggestionErrorData: null,
+				suggestionErrorDomain: null,
+				lastDomainStatus: null,
 			},
 			this.save
 		);
@@ -1442,7 +1496,12 @@ class RegisterDomainStep extends Component {
 		}
 
 		enqueueSearchStatReport(
-			{ query: searchQuery, section: this.props.analyticsSection, vendor: this.props.vendor },
+			{
+				query: searchQuery,
+				section: this.props.analyticsSection,
+				vendor: this.props.vendor,
+				flowName: this.props.flowName,
+			},
 			this.props.recordSearchFormSubmit
 		);
 
@@ -1483,7 +1542,8 @@ class RegisterDomainStep extends Component {
 		this.props.recordShowMoreResults(
 			this.state.lastQuery,
 			pageNumber,
-			this.props.analyticsSection
+			this.props.analyticsSection,
+			this.props.flowName
 		);
 
 		this.setState( { pageNumber, pageSize: PAGE_SIZE }, this.save );
@@ -1500,10 +1560,9 @@ class RegisterDomainStep extends Component {
 	}
 
 	renderExampleSuggestions() {
-		const { isReskinned, domainsWithPlansOnly, offerUnavailableOption, products, path } =
-			this.props;
+		const { isOnboarding, domainsWithPlansOnly, offerUnavailableOption, products } = this.props;
 
-		if ( isReskinned ) {
+		if ( isOnboarding ) {
 			return this.renderBestNamesPrompt();
 		}
 
@@ -1512,7 +1571,6 @@ class RegisterDomainStep extends Component {
 				domainsWithPlansOnly={ domainsWithPlansOnly }
 				offerUnavailableOption={ offerUnavailableOption }
 				onClickExampleSuggestion={ this.handleClickExampleSuggestion }
-				path={ path }
 				products={ products }
 				url={ this.getUseYourDomainUrl() }
 			/>
@@ -1525,6 +1583,7 @@ class RegisterDomainStep extends Component {
 
 	onAddDomain = async ( suggestion, position, previousState ) => {
 		const domain = get( suggestion, 'domain_name' );
+		const rootVendor = get( suggestion, 'vendor' );
 		const { premiumDomains } = this.state;
 		const { includeOwnedDomainInSuggestions } = this.props;
 		const {
@@ -1560,7 +1619,9 @@ class RegisterDomainStep extends Component {
 					this.props.recordDomainAddAvailabilityPreCheck(
 						domain,
 						status,
-						this.props.analyticsSection
+						this.props.analyticsSection,
+						this.props.flowName,
+						rootVendor
 					);
 
 					const skipAvailabilityErrors =
@@ -1646,7 +1707,6 @@ class RegisterDomainStep extends Component {
 				onClickResult={ this.onAddDomain }
 				onClickMapping={ this.goToMapDomainStep }
 				onAddTransfer={ this.props.onAddTransfer }
-				onClickTransfer={ this.goToTransferDomainStep }
 				onClickUseYourDomain={ this.props.handleClickUseYourDomain ?? this.useYourDomainFunction() }
 				tracksButtonClickSource="exact-match-top"
 				suggestions={ suggestions }
@@ -1669,7 +1729,7 @@ class RegisterDomainStep extends Component {
 				unavailableDomains={ this.state.unavailableDomains }
 				onSkip={ this.props.onSkip }
 				showSkipButton={ this.props.showSkipButton }
-				isReskinned={ this.props.isReskinned }
+				hideMatchReasons={ this.props.isOnboarding }
 				domainAndPlanUpsellFlow={ this.props.domainAndPlanUpsellFlow }
 				useProvidedProductsList={ this.props.useProvidedProductsList }
 				isCartPendingUpdateDomain={ this.props.isCartPendingUpdateDomain }
@@ -1677,7 +1737,7 @@ class RegisterDomainStep extends Component {
 				temporaryCart={ this.props.temporaryCart }
 				domainRemovalQueue={ this.props.domainRemovalQueue }
 			>
-				{ ! this.props.isReskinned &&
+				{ ! this.props.isOnboarding &&
 					hasResults &&
 					isFreeDomainExplainerVisible &&
 					this.renderFreeDomainExplainer() }
@@ -1686,7 +1746,7 @@ class RegisterDomainStep extends Component {
 	}
 
 	renderSideContent() {
-		return this.props.isReskinned && ! this.state.loadingResults && this.props.reskinSideContent;
+		return this.props.isOnboarding && ! this.state.loadingResults && this.props.sideContent;
 	}
 
 	getFetchAlgo() {
@@ -1717,22 +1777,6 @@ class RegisterDomainStep extends Component {
 		return mapDomainUrl;
 	}
 
-	getTransferDomainUrl() {
-		let transferDomainUrl;
-
-		if ( this.props.transferDomainUrl ) {
-			transferDomainUrl = this.props.transferDomainUrl;
-		} else {
-			const query = stringify( { initialQuery: this.state.lastQuery.trim() } );
-			transferDomainUrl = `${ this.props.basePath }/transfer`;
-			if ( this.props.selectedSite ) {
-				transferDomainUrl += `/${ this.props.selectedSite.slug }?${ query }`;
-			}
-		}
-
-		return transferDomainUrl;
-	}
-
 	getUseYourDomainUrl() {
 		let useYourDomainUrl;
 
@@ -1753,25 +1797,19 @@ class RegisterDomainStep extends Component {
 	goToMapDomainStep = ( event ) => {
 		event.preventDefault();
 
-		this.props.recordMapDomainButtonClick( this.props.analyticsSection );
+		this.props.recordMapDomainButtonClick( this.props.analyticsSection, this.props.flowName );
 
 		page( this.getMapDomainUrl() );
-	};
-
-	goToTransferDomainStep = ( event ) => {
-		event.preventDefault();
-
-		const source = event.currentTarget.dataset.tracksButtonClickSource;
-
-		this.props.recordTransferDomainButtonClick( this.props.analyticsSection, source );
-
-		page( this.getTransferDomainUrl() );
 	};
 
 	goToUseYourDomainStep = ( event ) => {
 		event.preventDefault();
 
-		this.props.recordUseYourDomainButtonClick( this.props.analyticsSection );
+		this.props.recordUseYourDomainButtonClick(
+			this.props.analyticsSection,
+			null,
+			this.props.flowName
+		);
 
 		page( this.getUseYourDomainUrl() );
 	};

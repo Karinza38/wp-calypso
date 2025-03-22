@@ -1,4 +1,3 @@
-import { isEnabled } from '@automattic/calypso-config';
 import { isDefaultGlobalStylesVariationSlug } from '@automattic/design-picker';
 import {
 	GlobalStylesVariations,
@@ -18,7 +17,6 @@ interface Props {
 	stylesheet: string;
 	isVirtual?: boolean;
 	isExternallyManaged?: boolean;
-	disableGlobalStyles?: boolean;
 	limitGlobalStyles?: boolean;
 	variations?: StyleVariation[];
 	splitDefaultVariation: boolean;
@@ -39,7 +37,6 @@ const useScreens = ( {
 	stylesheet,
 	isVirtual,
 	isExternallyManaged,
-	disableGlobalStyles,
 	limitGlobalStyles,
 	variations,
 	splitDefaultVariation,
@@ -90,8 +87,7 @@ const useScreens = ( {
 					variations.length === 0 &&
 					// Disable Colors for themes that don't play well with them. See pbxlJb-4cl-p2 for more context.
 					! isVirtual &&
-					! COLOR_VARIATIONS_BLOCK_LIST.includes( stylesheet ) &&
-					isEnabled( 'signup/design-picker-preview-colors' ) && {
+					! COLOR_VARIATIONS_BLOCK_LIST.includes( stylesheet ) && {
 						slug: 'color-palettes',
 						checked: !! selectedColorVariation,
 						icon: color,
@@ -119,8 +115,7 @@ const useScreens = ( {
 						onSubmit: onScreenSubmit,
 					},
 				variations &&
-					variations.length === 0 &&
-					isEnabled( 'signup/design-picker-preview-fonts' ) && {
+					variations.length === 0 && {
 						slug: 'font-pairings',
 						checked: !! selectedFontVariation,
 						icon: typography,
@@ -155,7 +150,7 @@ const useScreens = ( {
 		]
 	);
 
-	if ( isExternallyManaged || disableGlobalStyles ) {
+	if ( isExternallyManaged ) {
 		return [];
 	}
 

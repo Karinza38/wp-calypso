@@ -6,9 +6,8 @@ import {
 	isWpcomEnterpriseGridPlan,
 } from '@automattic/calypso-products';
 import { AddOns, WpcomPlansUI } from '@automattic/data-stores';
-import { formatCurrency } from '@automattic/format-currency';
 import { useSelect } from '@wordpress/data';
-import { useTranslate } from 'i18n-calypso';
+import { formatCurrency, useTranslate } from 'i18n-calypso';
 import { usePlansGridContext } from '../../../grid-context';
 import useIsLargeCurrency from '../../../hooks/use-is-large-currency';
 import { usePlanPricingInfoFromGridPlans } from '../../../hooks/use-plan-pricing-info-from-grid-plans';
@@ -63,7 +62,7 @@ const ActionButton = ( {
 	const storageAddOns = AddOns.useStorageAddOns( { siteId } );
 	const selectedStorageOptionForPlan = useSelect(
 		( select ) => select( WpcomPlansUI.store ).getSelectedStorageOptionForPlan( planSlug, siteId ),
-		[ planSlug ]
+		[ planSlug, siteId ]
 	);
 	const selectedStorageAddOn = storageAddOns?.find( ( addOn ) => {
 		return selectedStorageOptionForPlan && addOn
@@ -115,7 +114,7 @@ const ActionButton = ( {
 
 	const defaultStorageOption = useDefaultStorageOption( { planSlug } );
 	const canPurchaseStorageAddOns = storageAddOns?.some(
-		( storageAddOn ) => ! storageAddOn?.purchased && ! storageAddOn?.exceedsSiteStorageLimits
+		( storageAddOn ) => ! storageAddOn?.purchased
 	);
 
 	const storageAddOnCheckoutHref = storageAddOns?.find(

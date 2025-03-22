@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { waitFor } from '@testing-library/react';
-import transferringHostedSite from '../transferring-hosted-site-flow';
+import transferringHostedSite from '../flows/transferring-hosted-site-flow/transferring-hosted-site-flow';
 import { getFlowLocation, renderFlow } from './helpers';
 
 // we need to save the original object for later to not affect tests from other files
@@ -64,7 +64,7 @@ describe( 'Transferring hosted site flow submit redirects', () => {
 
 			await waitFor( () => {
 				expect( getFlowLocation() ).toEqual( {
-					path: `/setup/hosted-site-migration`,
+					path: '/setup/hosted-site-migration',
 					state: null,
 				} );
 			} );

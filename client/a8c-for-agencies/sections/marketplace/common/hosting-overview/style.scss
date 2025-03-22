@@ -1,7 +1,8 @@
 @import "@wordpress/base-styles/breakpoints";
 @import "@wordpress/base-styles/mixins";
+@import "@wordpress/base-styles/variables";
 
-.hosting-overview .a4a-layout__body-wrapper {
+.hosting-overview .hosting-dashboard-layout__body-wrapper {
 	display: flex;
 	flex-direction: column;
 	gap: 64px;
@@ -23,16 +24,12 @@
 }
 
 .hosting-overview__banner-title {
-	font-size: 2.25rem;
-	font-weight: 600;
-	line-height: 1.1;
+	@include heading-2x-large;
 	margin-block-end: 8px;
 }
 
 .hosting-overview__banner-subtitle {
-	font-size: 1rem;
-	font-weight: 400;
-	line-height: 1.1;
+	@include body-large;
 }
 
 .hosting-overview__footer {
@@ -41,12 +38,11 @@
 
 .hosting-overview__learn-more-link {
 	border-radius: 4px;
-	font-weight: 600;
-	font-size: 0.875rem;
+	@include heading-medium;
 	min-height: 40px;
 }
 
-.a4a-layout__header-breadcrumb {
+.hosting-dashboard-layout__header-breadcrumb {
 	@include breakpoint-deprecated( "<660px" ) {
 		display: none;
 	}

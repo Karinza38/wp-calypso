@@ -10,6 +10,7 @@ const useGridPlansForFeaturesGrid = ( {
 	eligibleForFreeHostingTrial,
 	hasRedeemedDomainCredit,
 	hiddenPlans,
+	hideCurrentPlan,
 	intent,
 	isDisplayingPlansNeededForFeature,
 	isInSignup,
@@ -18,12 +19,12 @@ const useGridPlansForFeaturesGrid = ( {
 	selectedPlan,
 	showLegacyStorageFeature,
 	siteId,
-	storageAddOns,
 	term,
 	useCheckPlanAvailabilityForPurchase,
 	useFreeTrialPlanSlugs,
 	highlightLabelOverrides,
 	isDomainOnlySite,
+	reflectStorageSelectionInPlanPrices,
 }: UseGridPlansParams ): GridPlan[] | null => {
 	const gridPlans = useGridPlans( {
 		allFeaturesList,
@@ -38,12 +39,12 @@ const useGridPlansForFeaturesGrid = ( {
 		selectedPlan,
 		showLegacyStorageFeature,
 		siteId,
-		storageAddOns,
 		term,
 		useCheckPlanAvailabilityForPurchase,
 		useFreeTrialPlanSlugs,
 		highlightLabelOverrides,
 		isDomainOnlySite,
+		reflectStorageSelectionInPlanPrices,
 	} );
 
 	const planFeaturesForFeaturesGrid = usePlanFeaturesForGridPlans( {
@@ -62,18 +63,21 @@ const useGridPlansForFeaturesGrid = ( {
 		}
 
 		return gridPlans.reduce( ( acc, gridPlan ) => {
-			if ( gridPlan.isVisible ) {
-				return [
-					...acc,
-					{
-						...gridPlan,
-						features: planFeaturesForFeaturesGrid[ gridPlan.planSlug ],
-					},
-				];
+			if ( ! gridPlan.isVisible ) {
+				return acc;
 			}
-			return acc;
+			if ( hideCurrentPlan && gridPlan.current ) {
+				return acc;
+			}
+			return [
+				...acc,
+				{
+					...gridPlan,
+					features: planFeaturesForFeaturesGrid[ gridPlan.planSlug ],
+				},
+			];
 		}, [] as GridPlan[] );
-	}, [ gridPlans, planFeaturesForFeaturesGrid ] );
+	}, [ gridPlans, planFeaturesForFeaturesGrid, hideCurrentPlan ] );
 };
 
 export default useGridPlansForFeaturesGrid;

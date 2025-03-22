@@ -12,7 +12,9 @@ import type { Step } from '../../types';
 
 import './styles.scss';
 
-const HundredYearPlanDIYOrDIFM: Step = function HundredYearPlanDIYOrDIFM( { navigation, flow } ) {
+const HundredYearPlanDIYOrDIFM: Step< {
+	submits: { nextStep: 'thank-you' } | { diyOrDifmChoice: 'diy' };
+} > = function HundredYearPlanDIYOrDIFM( { navigation, flow } ) {
 	const translate = useTranslate();
 	const { submit } = navigation;
 
@@ -39,8 +41,8 @@ const HundredYearPlanDIYOrDIFM: Step = function HundredYearPlanDIYOrDIFM( { navi
 			<HundredYearPlanStepWrapper
 				stepContent={
 					<>
-						<div>
-							<ul>
+						<div className="hundred-year-plan__benefits-wrapper">
+							<ul className="hundred-year-plan__benefits">
 								<li>
 									<Icon size={ 18 } icon={ check } />{ ' ' }
 									<span>
@@ -78,7 +80,6 @@ const HundredYearPlanDIYOrDIFM: Step = function HundredYearPlanDIYOrDIFM( { navi
 						brandFont
 						headerText={ translate( "Let's craft your next century" ) }
 						subHeaderText={ translate( "Join us for an exclusive strategy session where we'll:" ) }
-						subHeaderAlign="center"
 					/>
 				}
 				stepName="hundred-year-plan-setup hundred-year-plan-setup__diy-or-difm"

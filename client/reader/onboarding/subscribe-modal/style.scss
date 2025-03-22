@@ -14,6 +14,8 @@ body.is-reader-page .subscribe-modal__preview-column .reader__card.card.is-place
 	}
 }
 
+$actions-height: 64px;
+
 .subscribe-modal {
 	&__title {
 		font-family: Recoleta, sans-serif;
@@ -29,6 +31,13 @@ body.is-reader-page .subscribe-modal__preview-column .reader__card.card.is-place
 	}
 
 	&__content {
+		// Since the actions container is positioned absolutely,
+		// this padding bottom ensures that the content wrapper will properly
+		// detect overflowing content and start showing scrollbars at the right
+		// moment. Without this padding, the content would render under the actions
+		// bar without causing the wrapper to show a scrollbar.
+		padding-bottom: $actions-height;
+
 		display: flex;
 		flex-direction: column;
 		height: calc( 100vh - 200px );
@@ -78,6 +87,12 @@ body.is-reader-page .subscribe-modal__preview-column .reader__card.card.is-place
 					background-color: #e6f3fa;
 					border: 1px solid #0087be;
 					border-radius: 6px; /* stylelint-disable-line scales/radii */
+				}
+			}
+
+			.reader-subscription-list-item__site-url-timestamp {
+				&:not( .is-placeholder )::after {
+					background: none;
 				}
 			}
 		}
@@ -141,6 +156,22 @@ body.is-reader-page .subscribe-modal__preview-column .reader__card.card.is-place
 			&.is-primary {
 				margin-left: 16px;
 			}
+		}
+	}
+
+	&.is-disabled {
+		.subscribe-modal__container {
+			height: calc( 100vh - 188px ); // Modal margin + modal padding + modal heading
+			overflow: hidden;
+			padding: 1px;
+		}
+		.subscribe-modal__content {
+			opacity: 0.5;
+			pointer-events: none;
+		}
+		.subscribe-modal__preview-stream-container,
+		.subscribe-modal__site-list-column {
+			overflow-y: hidden;
 		}
 	}
 }

@@ -16,11 +16,12 @@ import EnvironmentBadge, {
 } from 'calypso/components/environment-badge';
 import Head from 'calypso/components/head';
 import JetpackLogo from 'calypso/components/jetpack-logo';
+import Loading from 'calypso/components/loading';
 import { LoadingEllipsis } from 'calypso/components/loading-ellipsis';
 import WooCommerceLogo from 'calypso/components/woocommerce-logo';
 import WordPressLogo from 'calypso/components/wordpress-logo';
 import isA8CForAgencies from 'calypso/lib/a8c-for-agencies/is-a8c-for-agencies';
-import { isGravPoweredOAuth2Client } from 'calypso/lib/oauth2-clients';
+import { isGravPoweredOAuth2Client, isWooOAuth2Client } from 'calypso/lib/oauth2-clients';
 import { jsonStringifyForHtml } from 'calypso/server/sanitize';
 import { initialClientsData, gravatarClientData } from 'calypso/state/oauth2-clients/reducer';
 import { isBilmurEnabled, getBilmurUrl } from './utils/bilmur';
@@ -51,6 +52,7 @@ class Document extends Component {
 			initialReduxState,
 			inlineScriptNonce,
 			isSupportSession,
+			disableHelpCenterAutoOpen,
 			isWooDna,
 			lang,
 			languageRevisions,
@@ -60,7 +62,6 @@ class Document extends Component {
 			query,
 			reactQueryDevtoolsHelper,
 			renderedLayout,
-			requestFrom,
 			sectionGroup,
 			sectionName,
 			storeSandboxHelper,
@@ -79,6 +80,7 @@ class Document extends Component {
 			`var BUILD_TARGET = ${ jsonStringifyForHtml( target ) };\n` +
 			( user ? `var currentUser = ${ jsonStringifyForHtml( user ) };\n` : '' ) +
 			( isSupportSession ? 'var isSupportSession = true;\n' : '' ) +
+			( disableHelpCenterAutoOpen ? 'var disableHelpCenterAutoOpen = true;\n' : '' ) +
 			( app ? `var app = ${ jsonStringifyForHtml( app ) };\n` : '' ) +
 			( initialReduxState
 				? `var initialReduxState = ${ jsonStringifyForHtml( initialReduxState ) };\n`
@@ -96,19 +98,15 @@ class Document extends Component {
 				? `var localeFromRoute = ${ jsonStringifyForHtml( params.lang ?? '' ) };\n`
 				: '' );
 
-		const isJetpackWooCommerceFlow =
-			'jetpack-connect' === sectionName && 'woocommerce-onboarding' === requestFrom;
-
 		const isJetpackWooDnaFlow = 'jetpack-connect' === sectionName && isWooDna;
 
 		const theme = config( 'theme' );
-
-		const LoadingLogo = chooseLoadingLogo( this.props, app?.isWpMobileApp, app?.isWcMobileApp );
 
 		const isRTL = isLocaleRtl( lang );
 
 		let headTitle = head.title;
 		let headFaviconUrl;
+		let isWCCOM = false;
 
 		// To customize the page title and favicon for Gravatar-related login pages.
 		if ( sectionName === 'login' && typeof query?.redirect_to === 'string' ) {
@@ -116,15 +114,32 @@ class Document extends Component {
 			// To cover the case where the `client_id` is not provided, e.g. /log-in/link/use
 			const oauth2Client = initialClientsData[ searchParams.get( 'client_id' ) ] || {};
 
-			if ( isGravPoweredOAuth2Client( oauth2Client ) ) {
-				headTitle = oauth2Client.title;
-				headFaviconUrl = oauth2Client.favicon;
-			} else if ( query?.gravatar_flow ) {
-				// Use Gravatar's favicon + title for the Gravatar-related OAuth2 clients in SSR.
-				headTitle = gravatarClientData.title;
-				headFaviconUrl = gravatarClientData.favicon;
+			switch ( true ) {
+				case isGravPoweredOAuth2Client( oauth2Client ):
+					headTitle = oauth2Client.title;
+					headFaviconUrl = oauth2Client.favicon;
+					break;
+				case query?.gravatar_flow:
+					// Use Gravatar's favicon + title for the Gravatar-related OAuth2 clients in SSR.
+					headTitle = gravatarClientData.title;
+					headFaviconUrl = gravatarClientData.favicon;
+					break;
+				case isWooOAuth2Client( oauth2Client ):
+					isWCCOM = true;
+					headTitle = oauth2Client.title;
+					headFaviconUrl = oauth2Client.favicon;
+					break;
 			}
 		}
+
+		const shouldNotShowLoadingLogo =
+			sectionName === 'checkout' || sectionName === 'stepper' || sectionName === 'signup';
+
+		const LoadingLogo = chooseLoadingLogo( this.props, {
+			isWpMobileApp: app?.isWpMobileApp,
+			isWcMobileApp: app?.isWcMobileApp,
+			isWCCOM,
+		} );
 
 		return (
 			<html
@@ -146,6 +161,9 @@ class Document extends Component {
 					) ) }
 					{ chunkCssLinks( entrypoint, isRTL ) }
 					{ chunkCssLinks( chunkFiles, isRTL ) }
+					{ chunkFiles.js.map( ( chunk ) => (
+						<link key={ chunk } rel="preload" as="script" href={ chunk } />
+					) ) }
 				</Head>
 				<body
 					className={ clsx( {
@@ -154,7 +172,6 @@ class Document extends Component {
 						[ 'theme-' + theme ]: theme,
 						[ 'is-group-' + sectionGroup ]: sectionGroup,
 						[ 'is-section-' + sectionName ]: sectionName,
-						'is-white-signup': sectionName === 'signup',
 						'is-mobile-app-view': app?.isWpMobileApp || app?.isWcMobileApp,
 					} ) }
 				>
@@ -174,12 +191,15 @@ class Document extends Component {
 								className={ clsx( 'layout', {
 									[ 'is-group-' + sectionGroup ]: sectionGroup,
 									[ 'is-section-' + sectionName ]: sectionName,
-									'is-jetpack-woocommerce-flow': isJetpackWooCommerceFlow,
 									'is-jetpack-woo-dna-flow': isJetpackWooDnaFlow,
 								} ) }
 							>
 								<div className="layout__content">
-									<LoadingLogo size={ 72 } className="wpcom-site__logo" />
+									{ shouldNotShowLoadingLogo ? (
+										<Loading className="wpcom-loading__boot" />
+									) : (
+										<LoadingLogo size={ 72 } className="wpcom-site__logo" />
+									) }
 								</div>
 							</div>
 						</div>
@@ -231,6 +251,7 @@ class Document extends Component {
 							data-provider="wordpress.com"
 							data-service="calypso"
 							data-customproperties={ `{"route_name": "${ sectionName }"}` }
+							data-site-tz="Etc/UTC"
 						/>
 					) }
 
@@ -243,13 +264,6 @@ class Document extends Component {
 					{ entrypoint.js.map( ( asset ) => (
 						<script key={ asset } src={ asset } />
 					) ) }
-
-					{ chunkFiles.js.map( ( chunk ) => (
-						<script key={ chunk } src={ chunk } />
-					) ) }
-					<script nonce={ inlineScriptNonce } type="text/javascript">
-						window.AppBoot();
-					</script>
 					<script
 						nonce={ inlineScriptNonce }
 						dangerouslySetInnerHTML={ {
@@ -291,12 +305,12 @@ class Document extends Component {
 	}
 }
 
-function chooseLoadingLogo( { useLoadingEllipsis }, isWpMobileApp, isWcMobileApp ) {
+function chooseLoadingLogo( { useLoadingEllipsis }, { isWpMobileApp, isWcMobileApp, isWCCOM } ) {
 	if ( useLoadingEllipsis ) {
 		return LoadingEllipsis;
 	}
 
-	if ( isWcMobileApp ) {
+	if ( isWcMobileApp || isWCCOM ) {
 		return WooCommerceLogo;
 	}
 

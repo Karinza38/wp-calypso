@@ -1,0 +1,19 @@
+@import '../../mixins';
+
+.step-container-v2__content--centered-column-layout-4 {
+	@include step-medium-viewport {
+		max-width: 404px;
+	}
+}
+
+.step-container-v2__content--centered-column-layout-6 {
+	@include step-medium-viewport {
+		max-width: 615px;
+	}
+}
+
+.step-container-v2__content--centered-column-layout-8 {
+	@include step-medium-viewport {
+		max-width: 826px;
+	}
+}
