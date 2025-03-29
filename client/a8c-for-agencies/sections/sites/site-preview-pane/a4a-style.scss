@@ -1,6 +1,10 @@
-.item-preview__pane {
+@import "@wordpress/base-styles/mixins";
+@import "@wordpress/base-styles/variables";
+@import "@wordpress/base-styles/breakpoints";
 
-	.preview-pane__navigation {
+.hosting-dashboard-item-view {
+
+	.hosting-dashboard-item-view__navigation {
 		.section-nav-tabs__list {
 			padding: 0 0 0 32px;
 			width: unset;
@@ -18,7 +22,7 @@
 	}
 }
 
-.item-preview__content {
+.hosting-dashboard-item-view__content {
 	& > * {
 		width: 100%;
 		max-width: 1400px;
@@ -35,7 +39,7 @@
 
 		.backup__header-title,
 		.activity-log-v2__header-title {
-			@include a4a-font-heading-lg;
+			@include heading-large;
 		}
 
 		.backup-getting-started {
@@ -57,7 +61,7 @@
 		}
 
 		.expanded-card__header {
-			@include a4a-font-heading-lg;
+			@include heading-large;
 		}
 
 		.site-expanded-content__card-content-score {
@@ -74,7 +78,7 @@
 
 	.site-preview-pane__plugins-caption {
 		padding-top: 16px;
-		font-size: small;
+		@include body-small;
 	}
 
 	.site-preview-pane__plugins-icon {
@@ -129,7 +133,7 @@
 .site-preview-pane__stats-content {
 
 	.shortened-number {
-		font-size: 2rem;
+		@include body-x-large;
 	}
 
 	.site-expanded-content__card-content-column {

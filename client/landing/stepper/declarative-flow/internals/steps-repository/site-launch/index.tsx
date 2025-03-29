@@ -1,20 +1,21 @@
 import { StepContainer } from '@automattic/onboarding';
 import { useDispatch } from '@wordpress/data';
+import { useEffect } from '@wordpress/element';
 import { useI18n } from '@wordpress/react-i18n';
-import { useEffect } from 'react';
 import DocumentHead from 'calypso/components/data/document-head';
-import { LoadingEllipsis } from 'calypso/components/loading-ellipsis';
+import Loading from 'calypso/components/loading';
 import { useSite } from 'calypso/landing/stepper/hooks/use-site';
 import { ONBOARD_STORE, SITE_STORE } from 'calypso/landing/stepper/stores';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
 import { urlToSlug } from 'calypso/lib/url';
-import type { StepProps } from '../../types';
-interface SiteLaunchStepProps extends StepProps {
-	title?: string;
-	subtitle?: string;
-}
+import type { Step } from '../../types';
 
-const SiteLaunchStep: React.FC< SiteLaunchStepProps > = function ( props ) {
+const SiteLaunchStep: Step< {
+	accepts: {
+		title?: string;
+		subtitle?: string;
+	};
+} > = function ( props ) {
 	const { submit } = props.navigation;
 
 	const { __ } = useI18n();
@@ -45,14 +46,7 @@ const SiteLaunchStep: React.FC< SiteLaunchStepProps > = function ( props ) {
 				shouldHideNavButtons
 				hideFormattedHeader
 				stepName="processing-step"
-				stepContent={
-					<>
-						<div className="processing-step">
-							<h1 className="processing-step__progress-step">{ __( 'Launching blog' ) }</h1>
-							<LoadingEllipsis />
-						</div>
-					</>
-				}
+				stepContent={ <Loading title={ __( 'Launching blog' ) } /> }
 				recordTracksEvent={ recordTracksEvent }
 			/>
 		</>

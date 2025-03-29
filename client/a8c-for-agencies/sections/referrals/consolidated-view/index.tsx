@@ -1,139 +1,104 @@
-import { Card, Gridicon } from '@automattic/components';
-import { formatCurrency } from '@automattic/format-currency';
-import { useTranslate } from 'i18n-calypso';
-import { useEffect, useState, useRef } from 'react';
-import A4APopover from 'calypso/a8c-for-agencies/components/a4a-popover';
-import TextPlaceholder from 'calypso/a8c-for-agencies/components/text-placeholder';
+import { useTranslate, formatCurrency } from 'i18n-calypso';
+import {
+	ConsolidatedStatsCard,
+	ConsolidatedStatsGroup,
+} from 'calypso/a8c-for-agencies/components/consolidated-stats-card';
 import useProductsQuery from 'calypso/a8c-for-agencies/data/marketplace/use-products-query';
-import { getConsolidatedData } from '../lib/commissions';
-import type { Referral, ReferralInvoice } from '../types';
+import useGetConsolidatedPayoutData from '../hooks/use-get-consolidated-payout-data';
+import useGetPayoutData from '../hooks/use-get-payout-data';
+import type { Referral } from '../types';
 
-import './style.scss';
-
-const InfoIconWithPopover = ( { children }: { children: React.ReactNode } ) => {
-	const [ showPopover, setShowPopover ] = useState( false );
-	const wrapperRef = useRef< HTMLSpanElement | null >( null );
-
-	return (
-		<span
-			className="consolidated-view__info-icon"
-			onClick={ () => setShowPopover( true ) }
-			role="button"
-			tabIndex={ 0 }
-			ref={ wrapperRef }
-			onKeyDown={ ( event ) => {
-				if ( event.key === 'Enter' ) {
-					setShowPopover( true );
-				}
-			} }
-		>
-			<Gridicon icon="info-outline" size={ 16 } />
-			{ showPopover && (
-				<A4APopover
-					title=""
-					offset={ 12 }
-					wrapperRef={ wrapperRef }
-					onFocusOutside={ () => setShowPopover( false ) }
-				>
-					{ children }
-				</A4APopover>
-			) }
-		</span>
-	);
+type ConsolidatedViewsProps = {
+	referrals: Referral[];
+	totalPayouts?: number;
 };
 
-export default function ConsolidatedViews( {
-	referrals,
-	referralInvoices,
-	isFetchingInvoices,
-}: {
-	referrals: Referral[];
-	referralInvoices: ReferralInvoice[];
-	isFetchingInvoices?: boolean;
-} ) {
+export default function ConsolidatedViews( { referrals, totalPayouts }: ConsolidatedViewsProps ) {
 	const translate = useTranslate();
+	const { data: productsData, isFetching } = useProductsQuery( false, false, true );
+	const { expectedCommission, pendingOrders } = useGetConsolidatedPayoutData(
+		referrals,
+		productsData
+	);
+	const { nextPayoutActivityWindow, nextPayoutDate } = useGetPayoutData();
 
-	const date = new Date();
-	const month = date.toLocaleString( 'default', { month: 'long' } );
-	const { data, isFetching } = useProductsQuery( false, false, true );
-
-	const [ consolidatedData, setConsolidatedData ] = useState( {
-		allTimeCommissions: 0,
-		pendingOrders: 0,
-		pendingCommission: 0,
-	} );
-
-	useEffect( () => {
-		if ( data?.length ) {
-			const consolidatedData = getConsolidatedData( referrals, data || [], referralInvoices );
-			setConsolidatedData( consolidatedData );
-		}
-	}, [ referrals, data, referralInvoices ] );
-
-	const link =
-		'https://agencieshelp.automattic.com/knowledge-base/about-automattic-for-agencies/#payout-calculation-and-schedule';
-
-	const showLoader = isFetching || isFetchingInvoices;
+	const learnMoreLink =
+		'https://agencieshelp.automattic.com/knowledge-base/automattic-for-agencies-earnings/';
 
 	return (
-		<div className="consolidated-view">
-			<Card compact>
-				<div className="consolidated-view__value">
-					{ showLoader ? (
-						<TextPlaceholder />
-					) : (
-						formatCurrency( consolidatedData.allTimeCommissions, 'USD' )
+		<ConsolidatedStatsGroup className="consolidated-view">
+			{ totalPayouts !== undefined && (
+				<ConsolidatedStatsCard
+					value={ formatCurrency( totalPayouts, 'USD' ) }
+					footerText={ translate( 'All time referral payouts' ) }
+					popoverTitle={ translate( 'Total payouts' ) }
+					popoverContent={ translate(
+						'The exact amount your agency has been paid out for referrals.' +
+							'{{br/}}{{br/}}{{a}}Learn more{{/a}} ↗',
+						{
+							components: {
+								a: <a href={ learnMoreLink } target="_blank" rel="noreferrer noopener" />,
+								br: <br />,
+							},
+						}
 					) }
-				</div>
-				<div className="consolidated-view__label">
-					{ translate( 'All time commissions' ) }
-					<InfoIconWithPopover>
-						<div className="consolidated-view__popover-content">
-							{ translate(
-								'Every 60 days, we pay out commissions. {{a}}Learn more about payouts and commissions{{/a}}.',
-								{
-									components: {
-										a: <a href={ link } target="_blank" rel="noreferrer noopener" />,
-									},
-								}
-							) }
-						</div>
-					</InfoIconWithPopover>
-				</div>
-			</Card>
-			<Card compact>
-				<div className="consolidated-view__value">
-					{ showLoader ? (
-						<TextPlaceholder />
-					) : (
-						formatCurrency( consolidatedData.pendingCommission, 'USD' )
-					) }
-				</div>
-				<div className="consolidated-view__label">
-					{ translate( 'Commissions expected in %(month)s', {
-						args: { month },
-						comment: 'month is the name of the current month',
-					} ) }
-					<InfoIconWithPopover>
-						<div className="consolidated-view__popover-content">
-							{ translate(
-								'When your client buys products or hosting from Automattic for Agencies, they are billed on the first of every month rather than immediately.' +
-									' We estimate the commission based on the active use for the current month. {{a}}Learn more about payouts and commissions{{/a}}.',
-								{
-									components: {
-										a: <a href={ link } target="_blank" rel="noreferrer noopener" />,
-									},
-									comment: 'This is a tooltip explaining how the commission is calculated',
-								}
-							) }
-						</div>
-					</InfoIconWithPopover>
-				</div>
-			</Card>
-			<Card compact>
-				<div className="consolidated-view__value">{ consolidatedData.pendingOrders }</div>
-				<div className="consolidated-view__label">{ translate( 'Pending orders' ) }</div>
-			</Card>
-		</div>
+				/>
+			) }
+			<ConsolidatedStatsCard
+				value={ formatCurrency( expectedCommission, 'USD' ) }
+				footerText={ translate( 'Next estimated payout amount' ) }
+				popoverTitle={ translate( 'Estimated amount' ) }
+				popoverContent={ translate(
+					'When your client buys products or hosting from Automattic for Agencies, they are billed on the first of every month rather than immediately. ' +
+						'We estimate the commission based on the active use for the current month. ' +
+						'{{br/}}{{br}}{{/br}}The next payout range is for:' +
+						'{{br/}}{{b}}%(nextPayoutActivityWindow)s{{/b}}' +
+						'{{br/}}{{br/}}{{a}}Learn more{{/a}} ↗',
+					{
+						components: {
+							a: <a href={ learnMoreLink } target="_blank" rel="noreferrer noopener" />,
+							br: <br />,
+							b: <b />,
+						},
+						args: {
+							nextPayoutActivityWindow,
+						},
+					}
+				) }
+				isLoading={ isFetching }
+			/>
+			<ConsolidatedStatsCard
+				value={ nextPayoutDate + '*' }
+				footerText={ translate( 'Next estimated payout date' ) }
+				popoverTitle={ translate( 'Estimated date' ) }
+				popoverContent={ translate(
+					'*Commissions are paid quarterly, after a 60-day waiting period, excluding refunds and chargebacks. ' +
+						'Payout dates mark the start of processing, which may take a few extra days. Payments scheduled on weekends are processed the next business day. ' +
+						'{{br/}}{{br/}}{{a}}Learn more{{/a}} ↗',
+					{
+						components: {
+							a: <a href={ learnMoreLink } target="_blank" rel="noreferrer noopener" />,
+							br: <br />,
+						},
+					}
+				) }
+			/>
+			<ConsolidatedStatsCard
+				value={ pendingOrders }
+				footerText={ translate( 'Pending referral orders' ) }
+				popoverTitle={ translate( 'Pending orders' ) }
+				popoverContent={ translate(
+					'These are the number of pending referrals (unpaid carts). ' +
+						'{{br/}}{{br/}}{{a}}Learn more{{/a}} ↗',
+					{
+						components: {
+							a: <a href={ learnMoreLink } target="_blank" rel="noreferrer noopener" />,
+							br: <br />,
+						},
+					}
+				) }
+				isLoading={ isFetching }
+			/>
+		</ConsolidatedStatsGroup>
 	);
 }

@@ -1,0 +1,68 @@
+@import "@wordpress/base-styles/breakpoints";
+@import "@wordpress/base-styles/mixins";
+@import "@wordpress/base-styles/variables";
+
+.hosting-features-section-v2 {
+	overflow: hidden;
+
+	.a4a-carousel__navigation {
+		display: none;
+
+		@include break-large {
+			display: flex;
+		}
+	}
+
+	.a4a-carousel-wrapper.is-with-navigation {
+		@include break-large {
+			margin-block-start: -64px;
+		}
+	}
+
+	.a4a-carousel__content {
+		width: 100%;
+
+		@include break-large {
+			width: max-content;
+		}
+	}
+
+	.a4a-carousel__navigation-button {
+		border: 1px solid var(--color-neutral-50);
+	}
+}
+
+.hosting-features-section-v2__cards {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: 1fr;
+	min-width: 100%;
+
+	@include break-large {
+		grid-template-columns: repeat(4, 350px);
+		gap: 32px;
+		overflow-x: auto;
+		margin-inline: -40px;
+		margin-block-end: -80px;
+		padding-inline: 40px;
+		padding-block-end: 80px;
+	}
+}
+
+.components-card.hosting-features-section-v2__card {
+	padding: 24px;
+	border: 1px solid var( --color-primary-5 );
+	box-shadow: none;
+	position: inherit;
+}
+
+.hosting-features-section-v2__card-header {
+	display: flex;
+	flex-direction: row;
+	gap: 8px;
+	margin-block-end: 14px;
+}
+
+.hosting-features-section-v2__card-title {
+	@include heading-large;
+}

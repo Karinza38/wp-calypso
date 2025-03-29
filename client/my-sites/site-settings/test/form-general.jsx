@@ -32,8 +32,10 @@ import userEvent from '@testing-library/user-event';
 import moment from 'moment';
 import SiteSettingPrivacyForm from 'calypso/sites/settings/site/privacy/form';
 import editorReducer from 'calypso/state/editor/reducer';
+import explatExperimentsReducer from 'calypso/state/explat-experiments/reducers';
 import jetpackReducer from 'calypso/state/jetpack/reducer';
 import mediaReducer from 'calypso/state/media/reducer';
+import preferencesReducer from 'calypso/state/preferences/reducer';
 import isSiteP2Hub from 'calypso/state/selectors/is-site-p2-hub';
 import siteSettingsReducer from 'calypso/state/site-settings/reducer';
 import timezonesReducer from 'calypso/state/timezones/reducer';
@@ -65,6 +67,7 @@ const initialState = {
 	},
 	ui: {},
 	jetpack: {},
+	preferences: {},
 };
 
 function renderWithRedux( ui, customInitialState = {} ) {
@@ -80,6 +83,8 @@ function renderWithRedux( ui, customInitialState = {} ) {
 			timezones: timezonesReducer,
 			ui: uiReducer,
 			jetpack: jetpackReducer,
+			explatExperiments: explatExperimentsReducer,
+			preferences: preferencesReducer,
 		},
 	} );
 }
@@ -100,9 +105,30 @@ const props = {
 	uniqueEventTracker: () => ( z ) => z,
 	fields: {},
 	moment,
+	getRemoveDuplicateViewsExperimentAssignment: jest.fn(),
 };
 
 describe( 'SiteSettingsFormGeneral', () => {
+	const SELECTORS = {
+		LAUNCH_SITE: '.site-settings__general-settings-launch-site',
+
+		COMING_SOON:
+			'label.site-settings__visibility-label.is-coming-soon input[name="blog_public"][value="0"]',
+		PUBLIC: 'label.site-settings__visibility-label input[name="blog_public"][value="1"]',
+		DISCOURAGE_SEARCH_ENGINE:
+			'label.site-settings__visibility-label.is-checkbox input[name="blog_public"][value="0"]',
+		PREVENT_THIRD_PARTY_SHARING: 'input[name="wpcom_data_sharing_opt_out"]',
+		PRIVATE: 'label.site-settings__visibility-label input[name="blog_public"][value="-1"]',
+	};
+
+	const getPublicBlogElementCount = ( { fields, isWpcomStagingSite } ) => {
+		const blogPublic = Number( fields.blog_public );
+		const wpcomPublicComingSoon = 1 === Number( fields.wpcom_public_coming_soon );
+		const isPublicChecked = ( blogPublic === 0 && ! wpcomPublicComingSoon ) || blogPublic === 1;
+
+		return isPublicChecked && ! isWpcomStagingSite ? 4 : 3;
+	};
+
 	test( 'should not blow up and have proper CSS class', () => {
 		const { container } = renderWithRedux( <SiteSettingsFormGeneral { ...props } /> );
 		expect( container.getElementsByClassName( 'site-settings__site-options' ) ).toHaveLength( 1 );
@@ -241,9 +267,7 @@ describe( 'SiteSettingsFormGeneral', () => {
 				},
 			};
 			const { container } = renderWithRedux( <SiteSettingsFormGeneral { ...testProps } /> );
-			expect(
-				container.querySelectorAll( '.site-settings__general-settings-launch-site' ).length
-			).toBe( 1 );
+			expect( container.querySelectorAll( SELECTORS.LAUNCH_SITE ).length ).toBe( 1 );
 			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 0 );
 		} );
 
@@ -259,22 +283,20 @@ describe( 'SiteSettingsFormGeneral', () => {
 					wpcom_data_sharing_opt_out: false,
 				},
 			};
-			const { container, getByLabelText } = renderWithRedux(
+			const { container, getByLabelText, rerender } = renderWithRedux(
 				<SiteSettingsFormGeneral { ...testProps } />
 			);
-			expect(
-				container.querySelectorAll( '.site-settings__general-settings-launch-site' ).length
-			).toBe( 0 );
-			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 4 );
+			expect( container.querySelectorAll( SELECTORS.LAUNCH_SITE ).length ).toBe( 0 );
+			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe(
+				getPublicBlogElementCount( testProps )
+			);
 
-			const publicRadio = getByLabelText( 'Public' );
-			const discourageRadio = getByLabelText( 'Discourage search engines from indexing this site', {
-				exact: false,
-			} );
+			const publicRadio = container.querySelector( SELECTORS.PUBLIC );
+			let discourageRadio = container.querySelector( SELECTORS.DISCOURAGE_SEARCH_ENGINE );
 
 			expect( getByLabelText( 'Coming Soon' ) ).not.toBeChecked();
 			expect( publicRadio ).not.toBeChecked();
-			expect( discourageRadio ).not.toBeChecked();
+			expect( discourageRadio ).toBe( null );
 			expect( getByLabelText( 'Private' ) ).toBeChecked();
 
 			await userEvent.click( publicRadio );
@@ -285,6 +307,15 @@ describe( 'SiteSettingsFormGeneral', () => {
 				wpcom_data_sharing_opt_out: false,
 			} );
 
+			testProps.fields = {
+				blog_public: '1',
+				wpcom_coming_soon: 0,
+				wpcom_public_coming_soon: 0,
+				wpcom_data_sharing_opt_out: false,
+			};
+			rerender( <SiteSettingsFormGeneral { ...testProps } /> );
+
+			discourageRadio = container.querySelector( SELECTORS.DISCOURAGE_SEARCH_ENGINE );
 			await userEvent.click( discourageRadio );
 			expect( testProps.updateFields ).toHaveBeenCalledWith( {
 				blog_public: 0,
@@ -311,12 +342,12 @@ describe( 'SiteSettingsFormGeneral', () => {
 			expect(
 				container.querySelectorAll( '.site-settings__general-settings-launch-site' ).length
 			).toBe( 0 );
-			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 4 );
+			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe(
+				getPublicBlogElementCount( testProps )
+			);
 			expect( getByLabelText( 'Coming Soon' ) ).toBeChecked();
 			expect( getByLabelText( 'Public' ) ).not.toBeChecked();
-			expect(
-				getByLabelText( 'Discourage search engines from indexing this site', { exact: false } )
-			).not.toBeChecked();
+			expect( container.querySelector( SELECTORS.DISCOURAGE_SEARCH_ENGINE ) ).toBe( null );
 			expect( getByLabelText( 'Private' ) ).not.toBeChecked();
 		} );
 
@@ -337,12 +368,12 @@ describe( 'SiteSettingsFormGeneral', () => {
 			expect(
 				container.querySelectorAll( '.site-settings__general-settings-launch-site' ).length
 			).toBe( 0 );
-			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 4 );
+			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe(
+				getPublicBlogElementCount( testProps )
+			);
 			expect( getByLabelText( 'Coming Soon' ) ).not.toBeChecked();
 			expect( getByLabelText( 'Public' ) ).toBeChecked();
-			expect(
-				getByLabelText( 'Discourage search engines from indexing this site', { exact: false } )
-			).not.toBeChecked();
+			expect( container.querySelector( SELECTORS.DISCOURAGE_SEARCH_ENGINE ) ).not.toBeChecked();
 			expect( getByLabelText( 'Private' ) ).not.toBeChecked();
 		} );
 
@@ -408,14 +439,11 @@ describe( 'SiteSettingsFormGeneral', () => {
 					wpcom_data_sharing_opt_out: false,
 				},
 			};
-			const { container, getByLabelText } = renderWithRedux(
-				<SiteSettingsFormGeneral { ...testProps } />,
-				{
-					ui: {
-						selectedSiteId: 1234,
-					},
-				}
-			);
+			const { container } = renderWithRedux( <SiteSettingsFormGeneral { ...testProps } />, {
+				ui: {
+					selectedSiteId: 1234,
+				},
+			} );
 			expect(
 				container.querySelectorAll( '.site-settings__general-settings-launch-site' ).length
 			).toBe( 0 );
@@ -423,9 +451,7 @@ describe( 'SiteSettingsFormGeneral', () => {
 				1
 			);
 
-			const discourageRadio = getByLabelText( 'Prevent third-party sharing for', {
-				exact: false,
-			} );
+			const discourageRadio = container.querySelector( SELECTORS.PREVENT_THIRD_PARTY_SHARING );
 			expect( discourageRadio ).not.toBeChecked();
 
 			await userEvent.click( discourageRadio );
@@ -474,12 +500,12 @@ describe( 'SiteSettingsFormGeneral', () => {
 			expect(
 				container.querySelectorAll( '.site-settings__general-settings-launch-site' ).length
 			).toBe( 0 );
-			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 4 );
+			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe(
+				getPublicBlogElementCount( testProps )
+			);
 			expect( getByLabelText( 'Coming Soon' ) ).not.toBeChecked();
 			expect( getByLabelText( 'Public' ) ).toBeChecked();
-			expect(
-				getByLabelText( 'Discourage search engines from indexing this site', { exact: false } )
-			).toBeChecked();
+			expect( container.querySelector( SELECTORS.DISCOURAGE_SEARCH_ENGINE ) ).toBeChecked();
 			expect( getByLabelText( 'Private' ) ).not.toBeChecked();
 		} );
 
@@ -501,12 +527,12 @@ describe( 'SiteSettingsFormGeneral', () => {
 			expect(
 				container.querySelectorAll( '.site-settings__general-settings-launch-site' ).length
 			).toBe( 0 );
-			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 4 );
+			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe(
+				getPublicBlogElementCount( testProps )
+			);
 			expect( getByLabelText( 'Coming Soon' ) ).not.toBeChecked();
 			expect( getByLabelText( 'Public' ) ).toBeChecked();
-			expect(
-				getByLabelText( 'Discourage search engines from indexing this site', { exact: false } )
-			).not.toBeChecked();
+			expect( container.querySelector( SELECTORS.DISCOURAGE_SEARCH_ENGINE ) ).not.toBeChecked();
 			expect( getByLabelText( 'Private' ) ).not.toBeChecked();
 		} );
 
@@ -544,7 +570,9 @@ describe( 'SiteSettingsFormGeneral', () => {
 			const { container, getByLabelText } = renderWithRedux(
 				<SiteSettingPrivacyForm { ...testProps } />
 			);
-			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 3 );
+			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe(
+				getPublicBlogElementCount( testProps )
+			);
 			expect( getByLabelText( 'Coming Soon' ) ).toBeChecked();
 		} );
 
@@ -582,7 +610,9 @@ describe( 'SiteSettingsFormGeneral', () => {
 			const { container, getByLabelText } = renderWithRedux(
 				<SiteSettingPrivacyForm { ...testProps } />
 			);
-			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 3 );
+			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe(
+				getPublicBlogElementCount( testProps )
+			);
 
 			const publicRadio = getByLabelText( 'Public' );
 
@@ -632,7 +662,9 @@ describe( 'SiteSettingsFormGeneral', () => {
 			const { container, getByLabelText } = renderWithRedux(
 				<SiteSettingPrivacyForm { ...testProps } />
 			);
-			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 3 );
+			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe(
+				getPublicBlogElementCount( testProps )
+			);
 			expect( getByLabelText( 'Coming Soon' ) ).not.toBeChecked();
 			expect( getByLabelText( 'Public' ) ).toBeChecked();
 			expect( getByLabelText( 'Private' ) ).not.toBeChecked();
@@ -671,7 +703,9 @@ describe( 'SiteSettingsFormGeneral', () => {
 			const { container, getByLabelText } = renderWithRedux(
 				<SiteSettingPrivacyForm { ...testProps } />
 			);
-			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 3 );
+			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe(
+				getPublicBlogElementCount( testProps )
+			);
 			expect( getByLabelText( 'Coming Soon' ) ).not.toBeChecked();
 			expect( getByLabelText( 'Public' ) ).toBeChecked();
 			expect( getByLabelText( 'Private' ) ).not.toBeChecked();
@@ -690,6 +724,7 @@ describe( 'SiteSettingsFormGeneral', () => {
 					blog_public: 1,
 					wpcom_coming_soon: 0,
 				},
+				isUnlaunchedSite: false,
 				withComingSoonOption: true,
 				updateFields: jest.fn( ( fields ) => {
 					testProps.fields = fields;
@@ -697,30 +732,27 @@ describe( 'SiteSettingsFormGeneral', () => {
 			};
 		} );
 
-		test( `Should have 4 visibility options`, () => {
+		test( `Should have 4 visibility options if public`, () => {
 			const { container } = renderWithRedux( <SiteSettingsFormGeneral { ...testProps } /> );
-			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe( 4 );
+			expect( container.querySelectorAll( '[name="blog_public"]' ).length ).toBe(
+				getPublicBlogElementCount( testProps )
+			);
 		} );
 
-		test( `Selecting Hidden should switch radio to Public`, async () => {
+		test( `Selecting Public should display the public details`, async () => {
 			testProps.fields.blog_public = -1;
-			const { getByLabelText } = renderWithRedux( <SiteSettingsFormGeneral { ...testProps } /> );
+			const { container, rerender } = renderWithRedux(
+				<SiteSettingsFormGeneral { ...testProps } />
+			);
 
-			const hiddenCheckbox = getByLabelText( 'Discourage search engines from indexing this site', {
-				exact: false,
-			} );
-			expect( hiddenCheckbox ).not.toBeChecked();
+			expect( container.querySelector( SELECTORS.DISCOURAGE_SEARCH_ENGINE ) ).toBe( null );
+			expect( container.querySelector( SELECTORS.PREVENT_THIRD_PARTY_SHARING ) ).toBe( null );
 
-			const publicRadio = getByLabelText( 'Public' );
-			expect( publicRadio ).not.toBeChecked();
+			testProps.fields.blog_public = 1;
+			rerender( <SiteSettingsFormGeneral { ...testProps } /> );
 
-			await userEvent.click( hiddenCheckbox );
-			expect( testProps.updateFields ).toHaveBeenCalledWith( {
-				blog_public: 0,
-				wpcom_coming_soon: 0,
-				wpcom_public_coming_soon: 0,
-				wpcom_data_sharing_opt_out: true,
-			} );
+			expect( container.querySelector( SELECTORS.DISCOURAGE_SEARCH_ENGINE ) ).not.toBe( null );
+			expect( container.querySelector( SELECTORS.PREVENT_THIRD_PARTY_SHARING ) ).not.toBe( null );
 		} );
 
 		test( `Hidden checkbox should be possible to unselect`, async () => {
@@ -765,17 +797,6 @@ describe( 'SiteSettingsFormGeneral', () => {
 						blog_public: 1,
 						wpcom_coming_soon: 0,
 						wpcom_data_sharing_opt_out: false,
-						wpcom_public_coming_soon: 0,
-					},
-				],
-				[
-					'Hidden',
-					'Discourage search engines from indexing this site',
-					-1,
-					{
-						blog_public: 0,
-						wpcom_coming_soon: 0,
-						wpcom_data_sharing_opt_out: true,
 						wpcom_public_coming_soon: 0,
 					},
 				],

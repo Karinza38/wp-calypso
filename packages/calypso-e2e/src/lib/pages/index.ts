@@ -24,6 +24,7 @@ export * from './revisions-page';
 export * from './shared-types';
 export * from './signup/user-signup-page';
 export * from './site-import-page';
+export * from './site-settings-page';
 export * from './stats-page';
 export * from './themes-detail-page';
 export * from './themes-page';
@@ -36,7 +37,6 @@ export * from './blaze-campaign-page';
 export * from './feedback-inbox-page';
 export * from './subscribers-page';
 export * from './subscription-management-page';
-export * from './hosting-configuration-page';
 
 export * from './external';
 export * from './me';

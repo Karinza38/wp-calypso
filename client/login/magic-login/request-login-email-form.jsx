@@ -1,6 +1,4 @@
 import { FormLabel } from '@automattic/components';
-import { englishLocales } from '@automattic/i18n-utils';
-import { hasTranslation } from '@wordpress/i18n';
 import { localize } from 'i18n-calypso';
 import PropTypes from 'prop-types';
 import { createRef, Component } from 'react';
@@ -8,6 +6,7 @@ import { connect } from 'react-redux';
 import FormButton from 'calypso/components/forms/form-button';
 import FormFieldset from 'calypso/components/forms/form-fieldset';
 import FormTextInput from 'calypso/components/forms/form-text-input';
+import { LoadingEllipsis } from 'calypso/components/loading-ellipsis';
 import LoggedOutForm from 'calypso/components/logged-out-form';
 import Notice from 'calypso/components/notice';
 import wpcom from 'calypso/lib/wp';
@@ -58,6 +57,7 @@ class RequestLoginEmailForm extends Component {
 		onSubmitEmail: PropTypes.func,
 		onSendEmailLogin: PropTypes.func,
 		createAccountForNewUser: PropTypes.bool,
+		shouldShowLoadingEllipsis: PropTypes.bool,
 		blogId: PropTypes.string,
 		errorMessage: PropTypes.string,
 		onErrorDismiss: PropTypes.func,
@@ -70,6 +70,7 @@ class RequestLoginEmailForm extends Component {
 	state = {
 		usernameOrEmail: this.props.userEmail || '',
 		site: {},
+		isLoadingSite: !! this.props.blogId,
 	};
 
 	usernameOrEmailRef = createRef();
@@ -79,7 +80,8 @@ class RequestLoginEmailForm extends Component {
 		if ( blogId ) {
 			wpcom.req
 				.get( `/sites/${ this.props.blogId }` )
-				.then( ( result ) => this.setState( { site: result } ) );
+				.then( ( result ) => this.setState( { site: result, isLoadingSite: false } ) )
+				.catch( () => this.setState( { isLoadingSite: false } ) );
 		}
 	}
 
@@ -132,23 +134,16 @@ class RequestLoginEmailForm extends Component {
 	}
 
 	getSubHeaderText() {
-		const { translate, locale, subHeaderText } = this.props;
+		const { translate, subHeaderText } = this.props;
 		const siteName = this.state.site?.name;
 
 		if ( subHeaderText ) {
 			return subHeaderText;
 		}
 
-		// If we have a siteName and new translation is available
-		if (
-			siteName &&
-			( englishLocales.includes( locale ) ||
-				hasTranslation(
-					'We’ll send you an email with a login link that will log you in right away to {site name}.'
-				) )
-		) {
+		if ( siteName ) {
 			return translate(
-				'We’ll send you an email with a login link that will log you in right away to %(siteName)s.',
+				'We’ll send you an email with a link that will log you in right away to %(siteName)s.',
 				{
 					args: {
 						siteName,
@@ -157,20 +152,7 @@ class RequestLoginEmailForm extends Component {
 			);
 		}
 
-		// If no siteName but new translation is available
-		if (
-			englishLocales.includes( locale ) ||
-			hasTranslation( 'We’ll send you an email with a login link that will log you in right away.' )
-		) {
-			return translate(
-				'We’ll send you an email with a login link that will log you in right away.'
-			);
-		}
-
-		// Fallback is old text
-		return translate(
-			'Get a link sent to the email address associated with your account to log in instantly without your password.'
-		);
+		return translate( 'We’ll send you an email with a link that will log you in right away.' );
 	}
 
 	render() {
@@ -187,7 +169,6 @@ class RequestLoginEmailForm extends Component {
 			hideSubHeaderText,
 			inputPlaceholder,
 			submitButtonLabel,
-			locale,
 			customFormLabel,
 			onSubmitEmail,
 			errorMessage,
@@ -196,7 +177,12 @@ class RequestLoginEmailForm extends Component {
 			isEmailInputError,
 			isSubmitButtonDisabled,
 			isSubmitButtonBusy,
+			shouldShowLoadingEllipsis,
 		} = this.props;
+
+		if ( shouldShowLoadingEllipsis ) {
+			return <LoadingEllipsis className="magic-login__loading-ellipsis--jetpack" />;
+		}
 
 		const usernameOrEmail = this.getUsernameOrEmailFromState();
 		const siteIcon = this.state.site?.icon?.img ?? this.state.site?.icon?.ico ?? null;
@@ -223,16 +209,11 @@ class RequestLoginEmailForm extends Component {
 				? requestError
 				: translate( 'Unable to complete request' );
 
-		const buttonLabel =
-			englishLocales.includes( locale ) || hasTranslation( 'Send Link' )
-				? translate( 'Send link' )
-				: translate( 'Get Link' );
+		const buttonLabel = translate( 'Send link' );
 
-		const formLabel =
-			customFormLabel ||
-			( hasTranslation( 'Email address or username' )
-				? this.props.translate( 'Email address or username' )
-				: this.props.translate( 'Email Address or Username' ) );
+		const formLabel = customFormLabel
+			? this.props.translate( 'Email address or username' )
+			: this.props.translate( 'Email Address or Username' );
 
 		const onSubmit = onSubmitEmail
 			? ( e ) => onSubmitEmail( this.getUsernameOrEmailFromState(), e )

@@ -8,7 +8,6 @@ import { getSiteSlug, isJetpackSite } from 'calypso/state/sites/selectors';
 import {
 	acceptAtomicTransferDialog,
 	dismissAtomicTransferDialog,
-	acceptActivationModal,
 	activate as activateTheme,
 	initiateThemeTransfer,
 } from 'calypso/state/themes/actions';
@@ -37,7 +36,6 @@ interface AtomicTransferDialogProps {
 	isJetpack?: boolean;
 	dispatchAcceptAtomicTransferDialog: typeof acceptAtomicTransferDialog;
 	dispatchDismissAtomicTransferDialog: typeof dismissAtomicTransferDialog;
-	dispatchAcceptActivationModal: typeof acceptActivationModal;
 	dispatchActivateTheme: typeof activateTheme;
 	dispatchInitiateThemeTransfer: typeof initiateThemeTransfer;
 }
@@ -91,27 +89,30 @@ class AtomicTransferDialog extends Component< AtomicTransferDialogProps > {
 	}
 
 	continueToActivate() {
-		const {
-			siteId,
-			theme,
-			dispatchActivateTheme,
-			dispatchAcceptAtomicTransferDialog,
-			dispatchAcceptActivationModal,
-		} = this.props;
+		const { siteId, theme, dispatchActivateTheme, dispatchAcceptAtomicTransferDialog } = this.props;
 		if ( siteId ) {
 			dispatchAcceptAtomicTransferDialog( theme.id );
-			dispatchAcceptActivationModal( theme.id );
 			dispatchActivateTheme( theme.id, siteId );
 		}
 	}
 
 	componentDidUpdate( prevProps: Readonly< AtomicTransferDialogProps > ): void {
 		const { siteId, siteSlug, uploadError, isJetpack } = this.props;
-		if ( siteId && siteSlug && prevProps.isJetpack !== isJetpack ) {
+		if (
+			siteId &&
+			siteSlug &&
+			prevProps.isJetpack !== undefined &&
+			prevProps.isJetpack !== isJetpack
+		) {
 			this.continueToActivate();
 		}
 
-		if ( siteId && uploadError && prevProps.uploadError !== uploadError ) {
+		if (
+			siteId &&
+			uploadError &&
+			prevProps.uploadError !== undefined &&
+			prevProps.uploadError !== uploadError
+		) {
 			setTimeout( () => {
 				this.initiateTransfer();
 			}, 2000 );
@@ -233,7 +234,6 @@ export default connect(
 	{
 		dispatchAcceptAtomicTransferDialog: acceptAtomicTransferDialog,
 		dispatchDismissAtomicTransferDialog: dismissAtomicTransferDialog,
-		dispatchAcceptActivationModal: acceptActivationModal,
 		dispatchActivateTheme: activateTheme,
 		dispatchInitiateThemeTransfer: initiateThemeTransfer,
 	}

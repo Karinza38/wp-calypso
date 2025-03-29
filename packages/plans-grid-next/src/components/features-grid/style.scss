@@ -222,6 +222,7 @@
 		line-height: 16px;
 		padding-bottom: 8px;
 		min-height: 50px;
+		text-wrap: balance;
 	}
 }
 
@@ -240,8 +241,10 @@
 	&.is-top-buttons {
 		padding: 0 20px;
 		@include plans-grid-medium-large {
-			padding-top: 16px;
-			padding-bottom: 16px;
+			button {
+				margin-top: 16px;
+				margin-bottom: 16px;
+			}
 		}
 	}
 
@@ -268,15 +271,18 @@
 	margin-bottom: 64px;
 	border: 1px solid #e0e0e0;
 	/* stylelint-disable-next-line scales/radii */
-	border-radius: 0 0 5px 5px;
+	border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+
+	div.spotlight-plan__buttons  {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
 	div.plan-features-2023-grid__table-item {
 		border: none;
-		&.is-top-buttons {
-			position: absolute;
-			top: 46px;
-			right: 0;
-			border-left: 0;
-		}
 
 		&.plan-features-2023-grid__header-billing-info {
 			padding-bottom: 16px;
@@ -288,6 +294,10 @@
 
 		&.popular-plan-parent-class .plan-features-2023-grid__popular-badge {
 			padding-bottom: 23px;
+			@include plans-grid-medium-large {
+				position: unset;
+				border: none;
+			}
 		}
 
 		.plan-features-2023-grid__header-title {
@@ -342,6 +352,7 @@
 		font-weight: 400;
 		line-height: 20px;
 		overflow-wrap: break-word;
+		text-wrap: balance;
 		margin: 0;
 		flex: 1 0 0;
 		width: 100%;
@@ -434,18 +445,6 @@
 		@include plans-grid-medium-large {
 			padding-bottom: 0;
 		}
-
-		.plans-grid-next__billing-timeframe-vip-price {
-			@include plans-grid-medium-large {
-				font-size: $font-body-small;
-				line-height: 20px;
-			}
-
-			@include plans-grid-large {
-				font-size: $font-body-extra-small;
-				line-height: 16px;
-			}
-		}
 	}
 
 	&.popular-plan-parent-class {
@@ -494,13 +493,6 @@
 			font-weight: 400;
 			font-size: $font-body-extra-small;
 			padding: 0 19px 24px 20px;
-
-			.plans-grid-next__billing-timeframe-vip-price {
-				font-size: $font-body;
-				line-height: 24px;
-				font-weight: 400;
-				color: var(--studio-gray-80);
-			}
 		}
 
 		&.popular-plan-parent-class {

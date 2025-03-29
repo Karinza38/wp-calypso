@@ -1,5 +1,6 @@
 @import "@wordpress/base-styles/breakpoints";
 @import "@wordpress/base-styles/mixins";
+@import "@wordpress/base-styles/variables";
 
 $data-view-border-color: #f1f1f1;
 
@@ -11,28 +12,27 @@ $data-view-border-color: #f1f1f1;
 .referrals-overview__button-popover {
 	.a4a-popover__content {
 		.a4a-popover__title {
-			@include a4a-font-heading-md;
+			@include heading-medium;
 			color: var(--studio-gray-80);
 		}
 
 		.referrals-overview__button-popover-description {
-			@include a4a-font-body-md;
+			@include body-small;
 		}
 	}
 }
 
 .referrals-overview__section-heading {
 	margin-block-start: 24px;
-	font-size: rem(24px);
+	@include heading-x-large;
 	margin-block-end: 8px;
-	font-weight: 600;
 }
+
 .referrals-overview__section-subtitle {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
-	font-size: rem(14px);
-	font-weight: 400;
+	@include body-medium;
 	margin-block-end: 48px;
 	color: var(--color-neutral-50);
 }
@@ -56,7 +56,7 @@ $data-view-border-color: #f1f1f1;
 	gap: 48px;
 }
 
-.referrals-layout:not(.full-width-layout-with-table) .a4a-layout__body-wrapper {
+.referrals-layout:not(.full-width-layout-with-table) .hosting-dashboard-layout__body-wrapper {
 	max-width: 900px;
 }
 
@@ -96,7 +96,7 @@ $data-view-border-color: #f1f1f1;
 		margin-block-end: 32px;
 	}
 
-	&:not(.full-width-layout-with-table) .a4a-layout__body-wrapper {
+	&:not(.full-width-layout-with-table) .hosting-dashboard-layout__body-wrapper {
 		max-width: 700px;
 	}
 
@@ -118,7 +118,7 @@ $data-view-border-color: #f1f1f1;
 		}
 	}
 
-	.consolidated-view {
+	.consolidated-view, .a4a-feedback__wrapper {
 		padding: 16px;
 
 		@include breakpoint-deprecated( ">660px" ) {
@@ -130,7 +130,7 @@ $data-view-border-color: #f1f1f1;
 		margin-block-start: 32px;
 	}
 
-	&.main.a4a-layout {
+	&.main.hosting-dashboard-layout {
 		@include break-large {
 			background: inherit;
 		}
@@ -150,7 +150,7 @@ $data-view-border-color: #f1f1f1;
 			gap: 0;
 		}
 
-		.a4a-layout__top-wrapper > * {
+		.hosting-dashboard-layout__top-wrapper > * {
 			padding-inline: 24px;
 		}
 
@@ -166,7 +166,7 @@ $data-view-border-color: #f1f1f1;
 			}
 		}
 
-		.a4a-layout__header-actions a.button {
+		.hosting-dashboard-layout__header-actions a.button {
 			text-wrap: nowrap;
 		}
 	}
@@ -196,27 +196,16 @@ $data-view-border-color: #f1f1f1;
 	}
 }
 
-.a4a-layout__header-actions {
+.hosting-dashboard-layout__header-actions {
 	a.button {
 		text-wrap: pretty;
-	}
-}
-
-.referrals-overview__link {
-	color: var(--color-accent-100);
-	text-decoration: underline;
-
-	&:hover,
-	&:visited,
-	&:focus {
-		color: var(--color-accent-100);
 	}
 }
 
 /* FIXME: This is a temporary fix to make the referral
  * layout columns the same height
  */
-.main.a4a-layout-column.referrals-layout__column {
+.main.hosting-dashboard-layout-column.referrals-layout__column {
 	height: auto;
 	overflow-y: scroll;
 }
@@ -231,7 +220,7 @@ $data-view-border-color: #f1f1f1;
 	display: flex;
 }
 
-.referrals-layout .item-preview__pane {
+.referrals-layout .hosting-dashboard-item-view {
 	display: flex;
 	flex-direction: column;
 	height: calc(100vh - 32px);

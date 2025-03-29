@@ -18,6 +18,7 @@ export {
 	FormLabel,
 	Tooltip,
 	SelectDropdown,
+	TimeSince,
 } from '@automattic/components';
 
 /**
@@ -45,7 +46,6 @@ export { default as EmptyContent } from 'calypso/components/empty-content';
 export { default as FAQ } from 'calypso/components/faq';
 export { default as FeatureGate } from 'calypso/components/feature-example';
 export { default as FilePickers } from 'calypso/components/file-picker';
-export { default as Focusable } from 'calypso/components/focusable';
 export { default as FormattedDate } from 'calypso/components/formatted-date';
 export { default as FormattedHeader } from 'calypso/components/formatted-header';
 export { default as FormButton } from 'calypso/components/forms/form-button';
@@ -69,11 +69,9 @@ export { default as FormTextarea } from 'calypso/components/forms/form-textarea'
 export { default as FormTextInput } from 'calypso/components/forms/form-text-input';
 export { default as FormTextInputWithAction } from 'calypso/components/forms/form-text-input-with-action';
 export { default as FormTextInputWithAffixes } from 'calypso/components/forms/form-text-input-with-affixes';
-export { default as Gauge } from 'calypso/components/gauge';
 export { default as GlobalNotices } from 'calypso/components/global-notices';
 export { default as Gravatar } from 'calypso/components/gravatar';
 export { default as HeaderCake } from 'calypso/components/header-cake';
-export { default as HeaderButton } from 'calypso/components/header-button';
 export { default as ImagePreloader } from 'calypso/components/image-preloader';
 export { default as InfoPopover } from 'calypso/components/info-popover';
 export { default as InputChrono } from 'calypso/components/input-chrono';
@@ -107,7 +105,6 @@ export { default as TextareaAutosize } from 'calypso/components/textarea-autosiz
 export { default as TextDiff } from 'calypso/components/text-diff';
 export { default as TileGrid } from 'calypso/components/tile-grid';
 export { default as Timeline } from 'calypso/components/timeline';
-export { default as TimeSince } from 'calypso/components/time-since';
 export { default as Timezone } from 'calypso/components/timezone';
 export { default as TokenFields } from 'calypso/components/token-field';
 export { default as VerticalMenu } from 'calypso/components/vertical-menu';

@@ -23,7 +23,7 @@ import EmptyContent from './empty';
 const emptyContent = () => <EmptyContent />;
 
 const SiteStream = ( props ) => {
-	const { className = 'is-site-stream', showBack = true, siteId } = props;
+	const { className = 'is-site-stream', siteId } = props;
 	const translate = useTranslate();
 	const site = useSelector( ( state ) => getSite( state, siteId ) );
 	const feed = useSelector( ( state ) => site && site.feed_ID && getFeed( state, site.feed_ID ) );
@@ -35,7 +35,7 @@ const SiteStream = ( props ) => {
 	// check for redirect
 	useEffect( () => {
 		if ( site && site.prefer_feed && site.feed_ID ) {
-			page.replace( '/read/feeds/' + site.feed_ID );
+			page.replace( '/reader/feeds/' + site.feed_ID );
 		}
 	}, [ site ] );
 
@@ -80,12 +80,7 @@ const SiteStream = ( props ) => {
 					comment: '%s is the section name. For example: "My Likes"',
 				} ) }
 			/>
-			<ReaderFeedHeader
-				site={ site }
-				feed={ feed }
-				showBack={ showBack }
-				streamKey={ props.streamKey }
-			/>
+			<ReaderFeedHeader site={ site } feed={ feed } streamKey={ props.streamKey } />
 			{ siteId && <QueryPostCounts siteId={ siteId } type="post" /> }
 			{ ! site && <QueryReaderSite siteId={ siteId } /> }
 			{ ! feed && site && site.feed_ID && <QueryReaderFeed feedId={ site.feed_ID } /> }

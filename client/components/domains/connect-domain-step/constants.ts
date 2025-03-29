@@ -58,6 +58,7 @@ export const defaultDomainSetupInfo = {
 	data: {
 		default_ip_addresses: [ '192.0.78.24', '192.0.78.25' ],
 		wpcom_name_servers: [ 'ns1.wordpress.com', 'ns2.wordpress.com', 'ns3.wordpress.com' ],
+		is_subdomain: false,
 	},
 } as const;
 
@@ -101,12 +102,15 @@ export const authCodeStepDefaultDescription = {
 } as const;
 
 export const useMyDomainInputMode = {
-	domainInput: 'domain-input',
-	transferOrConnect: 'transfer-or-connect',
-	ownershipVerification: 'ownership-verification',
-	transferDomain: 'transfer-domain',
-	startPendingTransfer: 'start-pending-transfer',
+	domainInput: 'domain-input' as const,
+	transferOrConnect: 'transfer-or-connect' as const,
+	ownershipVerification: 'ownership-verification' as const,
+	transferDomain: 'transfer-domain' as const,
+	startPendingTransfer: 'start-pending-transfer' as const,
 } as const;
+
+export type UseMyDomainInputMode =
+	( typeof useMyDomainInputMode )[ keyof typeof useMyDomainInputMode ];
 
 export const transferDomainError = {
 	get AUTH_CODE() {

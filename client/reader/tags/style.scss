@@ -68,10 +68,19 @@
 		}
 	}
 
+	&.is-group-reader .layout__content .layout__primary > div {
+		overflow-y: auto;
+	}
+
 	.tags__main {
 		box-sizing: border-box;
-		max-width: none;
+		max-width: 968px; // Max width of dual column reader stream.
 		padding: 24px 0;
+
+		.navigation-header {
+			// Align the header text with the text in tags page content below.
+			padding-inline: 35px;
+		}
 
 		.tags__header h4 {
 			margin: -4px 0 19px;
@@ -80,6 +89,16 @@
 		.alphabetic-tags__header {
 			padding-bottom: 24px;
 			padding-top: 24px;
+		}
+
+		.tags__header,
+		.trending-tags__container,
+		.sticky-container,
+		.alphabetic-tags__table {
+			// Apply max-width at this level so we still have the full width content frame
+			// and scroll containers.
+			max-width: 1140px;
+			margin: 0 auto;
 		}
 
 		@include break-small {

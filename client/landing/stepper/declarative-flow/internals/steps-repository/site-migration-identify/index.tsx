@@ -1,7 +1,13 @@
-import { useHasEnTranslation } from '@automattic/i18n-utils';
-import { StepContainer, Title, SubTitle, HOSTED_SITE_MIGRATION_FLOW } from '@automattic/onboarding';
+import {
+	StepContainer,
+	Title,
+	SubTitle,
+	HOSTED_SITE_MIGRATION_FLOW,
+	Step,
+} from '@automattic/onboarding';
+import { Icon, next, published, shield } from '@wordpress/icons';
 import { useTranslate } from 'i18n-calypso';
-import { type FC, useEffect, useState, useCallback } from 'react';
+import { type FC, ReactElement, useEffect, useState, useCallback } from 'react';
 import CaptureInput from 'calypso/blocks/import/capture/capture-input';
 import ScanningStep from 'calypso/blocks/import/scanning';
 import DocumentHead from 'calypso/components/data/document-head';
@@ -9,36 +15,42 @@ import { useAnalyzeUrlQuery } from 'calypso/data/site-profiler/use-analyze-url-q
 import { useQuery } from 'calypso/landing/stepper/hooks/use-query';
 import { useSiteSlug } from 'calypso/landing/stepper/hooks/use-site-slug';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
-import wpcom from 'calypso/lib/wp';
-import { GUIDED_ONBOARDING_FLOW_REFERRER } from 'calypso/signup/steps/initial-intent/constants';
+import { shouldUseStepContainerV2MigrationFlow } from '../../../helpers/should-use-step-container-v2';
 import { useSitePreviewMShotImageHandler } from '../site-migration-instructions/site-preview/hooks/use-site-preview-mshot-image-handler';
-import type { Step } from '../../types';
+import type { Step as StepType } from '../../types';
 import type { UrlData } from 'calypso/blocks/import/types';
 
 import './style.scss';
 
-interface HostingDetailsProps {
-	items: { title: string; description: string }[];
+interface HostingDetailsWithIconsProps {
+	items: {
+		icon: ReactElement;
+		description: string;
+	}[];
 }
 
-const HostingDetails: FC< HostingDetailsProps > = ( { items } ) => {
+const HostingDetailsWithIcons: FC< HostingDetailsWithIconsProps > = ( { items } ) => {
 	const translate = useTranslate();
 
 	return (
-		<div className="import__site-identify-hosting-details">
-			<p className="import__site-identify-hosting-details--title">
+		<div className="import__site-identify-hosting-details-experiment">
+			<p className="import__site-identify-hosting-details-experiment-title">
 				{ translate( 'Why should you host with us?' ) }
 			</p>
-			<div className="import__site-identify-hosting-details--list">
+			<ul className="import__site-identify-hosting-details-experiment-list">
 				{ items.map( ( item, index ) => (
-					<div key={ index } className="import__site-identify-hosting-details--list-item">
-						<p className="import__site-identify-hosting-details--list-item-title">{ item.title }</p>
-						<p className="import__site-identify-hosting-details--list-item-description">
+					<li key={ index } className="import__site-identify-hosting-details-experiment-list-item">
+						<Icon
+							className="import__site-identify-hosting-details-experiment-icon"
+							icon={ item.icon }
+							size={ 24 }
+						/>
+						<p className="import__site-identify-hosting-details-experiment-description">
 							{ item.description }
 						</p>
-					</div>
+					</li>
 				) ) }
-			</div>
+			</ul>
 		</div>
 	);
 };
@@ -48,31 +60,18 @@ interface Props {
 	onComplete: ( siteInfo: UrlData ) => void;
 	onSkip: () => void;
 	hideImporterListLink: boolean;
+	flowName: string;
+	onVisibilityChange: ( isVisible: boolean ) => void;
 }
 
-export const Analyzer: FC< Props > = ( { onComplete, onSkip, hideImporterListLink = false } ) => {
+export const Analyzer: FC< Props > = ( {
+	onComplete,
+	onSkip,
+	onVisibilityChange,
+	hideImporterListLink = false,
+} ) => {
 	const translate = useTranslate();
-	const hasEnTranslation = useHasEnTranslation();
 	const [ siteURL, setSiteURL ] = useState< string >( '' );
-
-	// TODO: Remove extra steps for non-English locales once we have translations -- title.
-	const titleInUse = hasEnTranslation( 'Let’s find your site' )
-		? translate( 'Let’s find your site' )
-		: translate( 'Let’s import your content' );
-
-	// TODO: Remove extra steps for non-English locales once we have translations -- subtitle.
-	const subtitleInUse = hasEnTranslation(
-		"Drop your current site address below to get started. In the next step, we'll measure your site's performance and confirm its eligibility for migration."
-	)
-		? translate(
-				"Drop your current site address below to get started. In the next step, we'll measure your site's performance and confirm its eligibility for migration."
-		  )
-		: translate( 'Drop your current site address below to get started.' );
-
-	// TODO: Remove extra steps for non-English locales once we have translations -- CTA text.
-	const nextLabelText = hasEnTranslation( 'Check my site' ) ? translate( 'Check my site' ) : false;
-	const nextLabelProp = nextLabelText ? { nextLabelText } : {}; // If we don't pass anything, the default label 'Continue' will be used.
-
 	const {
 		data: siteInfo,
 		isError: hasError,
@@ -87,50 +86,31 @@ export const Analyzer: FC< Props > = ( { onComplete, onSkip, hideImporterListLin
 	}, [ onComplete, siteInfo ] );
 
 	if ( isFetching || ( isFetched && ! hasError ) ) {
+		onVisibilityChange?.( false );
 		return <ScanningStep />;
 	}
 
-	// TODO: Remove extra steps and properties for non-English locales once we have translations -- hosting details.
+	onVisibilityChange?.( true );
+
 	const hostingDetailItems = {
-		'unmatched-uptime': {
-			title: translate( 'Unmatched Reliability and Uptime' ),
-			titleString: 'Unmatched Reliability and Uptime', // Temporary string for non-English locales. Remove once we have translations.
-			description: translate(
-				"Our infrastructure's 99.99% uptime, combined with our automatic update system, ensures your site remains accessible and secure."
-			),
-			descriptionString:
-				"Our infrastructure's 99.99% uptime, combined with our automatic update system, ensures your site remains accessible and secure.", // Temporary string for non-English locales. Remove once we have translations.
-		},
-		'effortless-customization': {
-			title: translate( 'Effortless Customization' ),
-			titleString: 'Effortless Customization',
-			description: translate(
-				'Our tools and options let you easily design a website to meet your needs, whether you’re a beginner or an expert.'
-			),
-			descriptionString:
-				'Our tools and options let you easily design a website to meet your needs, whether you’re a beginner or an expert.',
-		},
 		'blazing-fast-speed': {
-			title: translate( 'Blazing Fast Page Speed' ),
-			titleString: 'Blazing Fast Page Speed',
+			icon: next,
 			description: translate(
-				'Our global CDN with 28+ locations delivers lightning-fast load times for a seamless visitor experience.'
+				'Blazing fast speeds with lightning-fast load times for a seamless experience.'
 			),
-			descriptionString:
-				'Our global CDN with 28+ locations delivers lightning-fast load times for a seamless visitor experience.',
+		},
+		'unmatched-uptime': {
+			icon: published,
+			description: translate( 'Unmatched reliability with 99.999% uptime and unmetered traffic.' ),
+		},
+		security: {
+			icon: shield,
+			description: translate( 'Round-the-clock security monitoring and DDoS protection.' ),
 		},
 	};
 
-	const hasTranslationsForAllItems = Object.values( hostingDetailItems ).every(
-		( item ) => hasEnTranslation( item.titleString ) && hasEnTranslation( item.descriptionString )
-	);
-
 	return (
-		<div className="import__capture-wrapper">
-			<div className="import__heading import__heading-center">
-				<Title>{ titleInUse }</Title>
-				<SubTitle>{ subtitleInUse }</SubTitle>
-			</div>
+		<>
 			<div className="import__capture-container">
 				<CaptureInput
 					onInputEnter={ setSiteURL }
@@ -144,43 +124,30 @@ export const Analyzer: FC< Props > = ( { onComplete, onSkip, hideImporterListLin
 						'Or <button>pick your current platform from a list</button>'
 					) }
 					hideImporterListLink={ hideImporterListLink }
-					{ ...nextLabelProp }
+					nextLabelText={ translate( 'Check my site' ) }
 				/>
 			</div>
-			{ hasTranslationsForAllItems && (
-				<HostingDetails items={ Object.values( hostingDetailItems ) } />
-			) }
-		</div>
+			<HostingDetailsWithIcons items={ Object.values( hostingDetailItems ) } />
+		</>
 	);
 };
 
 export type SiteMigrationIdentifyAction = 'continue' | 'skip_platform_identification';
 
-const saveSiteSettings = async ( siteSlug: string, settings: Record< string, unknown > ) => {
-	return wpcom.req.post(
-		`/sites/${ siteSlug }/settings`,
-		{
-			apiVersion: '1.4',
-		},
-		{
-			...settings,
-		}
-	);
-};
-
-const SiteMigrationIdentify: Step = function ( { navigation, variantSlug } ) {
+const SiteMigrationIdentify: StepType< {
+	submits: {
+		action: SiteMigrationIdentifyAction;
+		platform?: string;
+		from?: string;
+	};
+} > = function ( { navigation, variantSlug, flow } ) {
 	const siteSlug = useSiteSlug();
 	const translate = useTranslate();
 	const { createScreenshots } = useSitePreviewMShotImageHandler();
+	const isUsingStepContainerV2 = shouldUseStepContainerV2MigrationFlow( flow );
 
 	const handleSubmit = useCallback(
 		async ( action: SiteMigrationIdentifyAction, data?: { platform: string; from: string } ) => {
-			// If we have a site and URL, and we're coming from a WordPress site,
-			// record the migration source domain.
-			if ( siteSlug && 'wordpress' === data?.platform && data?.from ) {
-				await saveSiteSettings( siteSlug, { migration_source_site_domain: data.from } );
-			}
-
 			// If we have a URL of the source, we send requests to the mShots API to create screenshots
 			// early in the flow to avoid long loading times in the migration instructions step.
 			// Because mShots API can often take a long time to generate screenshots.
@@ -199,10 +166,55 @@ const SiteMigrationIdentify: Step = function ( { navigation, variantSlug } ) {
 		const ref = urlQueryParams.get( 'ref' ) || '';
 		const shouldHideBasedOnRef = [ 'entrepreneur-signup', 'calypso-importer' ].includes( ref );
 		const shouldHideBasedOnVariant = [ HOSTED_SITE_MIGRATION_FLOW ].includes( variantSlug || '' );
-		const shouldNotHideBasedOnRef = [ GUIDED_ONBOARDING_FLOW_REFERRER ].includes( ref );
-
-		return ( shouldHideBasedOnRef || shouldHideBasedOnVariant ) && ! shouldNotHideBasedOnRef;
+		const shouldNotHideIfBackToIsSet = Boolean( urlQueryParams.get( 'back_to' ) );
+		return ( shouldHideBasedOnRef || shouldHideBasedOnVariant ) && ! shouldNotHideIfBackToIsSet;
 	};
+
+	const [ isVisible, setIsVisible ] = useState( false );
+
+	const stepContent = (
+		<Analyzer
+			onComplete={ ( { platform, url } ) => handleSubmit( 'continue', { platform, from: url } ) }
+			hideImporterListLink={ urlQueryParams.get( 'hide_importer_link' ) === 'true' }
+			onSkip={ () => {
+				handleSubmit( 'skip_platform_identification' );
+			} }
+			flowName={ flow }
+			onVisibilityChange={ ( isVisible ) => {
+				setIsVisible( isVisible );
+			} }
+		/>
+	);
+
+	if ( isUsingStepContainerV2 ) {
+		return (
+			<>
+				<DocumentHead title={ translate( 'Import your site content' ) } />
+				<Step.CenteredColumnLayout
+					columnWidth={ 4 }
+					topBar={
+						<Step.TopBar
+							backButton={
+								shouldHideBackButton() ? undefined : (
+									<Step.BackButton onClick={ navigation.goBack } />
+								)
+							}
+						/>
+					}
+					heading={
+						isVisible ? (
+							<Step.Heading
+								text={ translate( 'Let’s find your site' ) }
+								subText={ translate( 'Enter your current site address below to get started.' ) }
+							/>
+						) : undefined
+					}
+				>
+					{ stepContent }
+				</Step.CenteredColumnLayout>
+			</>
+		);
+	}
 
 	return (
 		<>
@@ -212,21 +224,24 @@ const SiteMigrationIdentify: Step = function ( { navigation, variantSlug } ) {
 				flowName="site-migration"
 				className="import__onboarding-page"
 				hideBack={ shouldHideBackButton() }
+				backUrl={ urlQueryParams.get( 'back_to' ) || undefined }
 				hideSkip
 				hideFormattedHeader
 				goBack={ navigation?.goBack }
 				goNext={ navigation?.submit }
 				isFullLayout
 				stepContent={
-					<Analyzer
-						onComplete={ ( { platform, url } ) =>
-							handleSubmit( 'continue', { platform, from: url } )
-						}
-						hideImporterListLink={ urlQueryParams.get( 'hide_importer_link' ) === 'true' }
-						onSkip={ () => {
-							handleSubmit( 'skip_platform_identification' );
-						} }
-					/>
+					<div className="import__capture-wrapper">
+						{ isVisible && (
+							<div className="import__heading import__heading-center">
+								<Title>{ translate( 'Let’s find your site' ) }</Title>
+								<SubTitle>
+									{ translate( 'Enter your current site address below to get started.' ) }
+								</SubTitle>
+							</div>
+						) }
+						{ stepContent }
+					</div>
 				}
 				recordTracksEvent={ recordTracksEvent }
 			/>

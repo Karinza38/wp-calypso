@@ -18,12 +18,17 @@ interface Props {
 	flowName: string;
 	stepName: string;
 	existingSiteCount: number;
+	signupDependencies: {
+		back_to?: string;
+		newOrExistingSiteChoice?: ChoiceType;
+	};
 }
 
 export default function NewOrExistingSiteStep( props: Props ) {
 	const dispatch = useDispatch();
 
-	const { stepName, goToNextStep, existingSiteCount, flowName } = props;
+	const { stepName, goToNextStep, existingSiteCount, flowName, signupDependencies } = props;
+	const { back_to: backUrl } = signupDependencies;
 
 	useEffect( () => {
 		dispatch( saveSignupStep( { stepName } ) );
@@ -69,6 +74,8 @@ export default function NewOrExistingSiteStep( props: Props ) {
 			hideFormattedHeader
 			align="left"
 			hideSkip
+			backUrl={ backUrl }
+			allowBackFirstStep={ !! backUrl }
 			isHorizontalLayout={ false }
 			isWideLayout
 			headerImageUrl={ difmImage }

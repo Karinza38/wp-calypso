@@ -14,13 +14,15 @@ import InlineSupportLink from 'calypso/components/inline-support-link';
 import Main from 'calypso/components/main';
 import NavigationHeader from 'calypso/components/navigation-header';
 import SectionHeader from 'calypso/components/section-header';
+import { CompleteLaunchpadTaskWithNoticeOnLoad } from 'calypso/launchpad/hooks/use-complete-launchpad-task-with-notice-on-load';
 import PageViewTracker from 'calypso/lib/analytics/page-view-tracker';
 import { protectForm } from 'calypso/lib/protect-form';
 import twoStepAuthorization from 'calypso/lib/two-step-authorization';
 import DomainUpsell from 'calypso/me/domain-upsell';
+import EmailVerificationBanner from 'calypso/me/email-verification-banner';
 import withFormBase from 'calypso/me/form-base/with-form-base';
-import ProfileLinks from 'calypso/me/profile-links';
 import ReauthRequired from 'calypso/me/reauth-required';
+import { getUserProfileUrl } from 'calypso/reader/user-profile/user-profile.utils';
 import { recordGoogleEvent } from 'calypso/state/analytics/actions';
 import { isFetchingUserSettings } from 'calypso/state/user-settings/selectors';
 import WPAndGravatarLogo from './wp-and-gravatar-logo';
@@ -28,6 +30,8 @@ import WPAndGravatarLogo from './wp-and-gravatar-logo';
 import './style.scss';
 
 class Profile extends Component {
+	initiallyLoadedWithTaskCompletionHash = window.location.hash === '#complete-your-profile';
+
 	getClickHandler( action ) {
 		return () => this.props.recordGoogleEvent( 'Me', 'Clicked on ' + action );
 	}
@@ -41,10 +45,21 @@ class Profile extends Component {
 	};
 
 	render() {
+		// We want to use a relative URL so we can test effectively in each
+		// environment, but show the absolute URL in the UI for end users.
+		const relativeProfileUrl = getUserProfileUrl( this.props.user.username );
+		const absoluteProfileUrl = `https://wordpress.com${ relativeProfileUrl }`;
+
 		return (
 			<Main wideLayout className="profile">
 				<PageViewTracker path="/me" title="Me > My Profile" />
 				<ReauthRequired twoStepAuthorization={ twoStepAuthorization } />
+				<CompleteLaunchpadTaskWithNoticeOnLoad
+					enabled={ this.initiallyLoadedWithTaskCompletionHash }
+					taskSlug="complete_profile"
+					noticeId="tasklist_complete_your_profile"
+					noticeText={ this.props.translate( 'Explored profile settings' ) }
+				/>
 				<NavigationHeader
 					navigationItems={ [] }
 					title={ this.props.translate( 'My Profile' ) }
@@ -59,7 +74,7 @@ class Profile extends Component {
 						}
 					) }
 				/>
-
+				<EmailVerificationBanner />
 				<SectionHeader label={ this.props.translate( 'Profile' ) } />
 				<Card className="profile__settings">
 					<EditGravatar />
@@ -126,6 +141,23 @@ class Profile extends Component {
 						</FormFieldset>
 
 						<FormFieldset>
+							<div className="form-label">{ this.props.translate( 'Public profile' ) }</div>
+							<FormSettingExplanation>
+								<span>
+									{ this.props.translate(
+										'You can find your public profile at {{a}}{{url/}}{{/a}}',
+										{
+											components: {
+												a: <a href={ relativeProfileUrl }></a>,
+												url: <>{ absoluteProfileUrl }</>,
+											},
+										}
+									) }
+								</span>
+							</FormSettingExplanation>
+						</FormFieldset>
+
+						<FormFieldset>
 							<FormLabel htmlFor="description">{ this.props.translate( 'About me' ) }</FormLabel>
 							<FormTextarea
 								disabled={ this.props.getDisabledState() }
@@ -141,7 +173,7 @@ class Profile extends Component {
 							<span>
 								{ this.props.translate(
 									'Your WordPress.com profile is connected to Gravatar. Your Gravatar is public by default and may appear on any site using Gravatar when you’re logged in with {{strong}}%(email)s{{/strong}}.' +
-										' To manage your Gravatar profile and visibility settings, {{a}}visit your Gravatar profile{{/a}}.',
+										' To manage your Gravatar profile, profile links, and visibility settings, {{a}}visit your Gravatar profile{{/a}}.',
 									{
 										components: {
 											strong: <strong />,
@@ -172,8 +204,6 @@ class Profile extends Component {
 				</Card>
 
 				<DomainUpsell context="profile" />
-
-				<ProfileLinks />
 			</Main>
 		);
 	}
@@ -183,6 +213,7 @@ export default compose(
 	connect(
 		( state ) => ( {
 			isFetchingUserSettings: isFetchingUserSettings( state ),
+			user: state.currentUser?.user,
 		} ),
 		{ recordGoogleEvent }
 	),

@@ -16,6 +16,7 @@ import {
 	WOOCOMMERCE_PRODUCTS,
 	JETPACK_CREATOR_PRODUCTS,
 	JETPACK_SOCIAL_V1_PRODUCTS,
+	JETPACK_GROWTH_PLANS,
 } from '@automattic/calypso-products';
 import JetpackProductIconAILight from 'calypso/assets/images/jetpack/jetpack-product-icon-ai-light.svg';
 import JetpackProductIconAI from 'calypso/assets/images/jetpack/jetpack-product-icon-ai.svg';
@@ -29,6 +30,7 @@ import JetpackProductIconComplete from 'calypso/assets/images/jetpack/jetpack-pr
 import JetpackProductIconCreator from 'calypso/assets/images/jetpack/jetpack-product-icon-creator.svg';
 import JetpackProductIconCRMLight from 'calypso/assets/images/jetpack/jetpack-product-icon-crm-light.svg';
 import JetpackProductIconCRM from 'calypso/assets/images/jetpack/jetpack-product-icon-crm.svg';
+import JetpackProductIconGrowth from 'calypso/assets/images/jetpack/jetpack-product-icon-growth.svg';
 import JetpackProductIconMonitorLight from 'calypso/assets/images/jetpack/jetpack-product-icon-monitor-light.svg';
 import JetpackProductIconMonitor from 'calypso/assets/images/jetpack/jetpack-product-icon-monitor.svg';
 import JetpackProductIconScanLight from 'calypso/assets/images/jetpack/jetpack-product-icon-scan-light.svg';
@@ -42,7 +44,7 @@ import JetpackProductIconStatsLight from 'calypso/assets/images/jetpack/jetpack-
 import JetpackProductIconStats from 'calypso/assets/images/jetpack/jetpack-product-icon-stats.svg';
 import JetpackProductIconVideopressLight from 'calypso/assets/images/jetpack/jetpack-product-icon-videopress-light.svg';
 import JetpackProductIconVideopress from 'calypso/assets/images/jetpack/jetpack-product-icon-videopress.svg';
-import WooCommerceProductIcon from 'calypso/assets/images/jetpack/woo-icon.svg';
+import WooCommerceLogo from 'calypso/assets/images/woocommerce/product-icon.svg';
 import { productIconProps } from '../types';
 
 const setProductsIcon = ( slugs: ReadonlyArray< string >, resource: IconResource ) =>
@@ -114,13 +116,17 @@ const PRODUCT_ICON_MAP: Record< string, IconResource > = {
 		regular: JetpackProductIconSecurity,
 		light: '',
 	} ),
+	...setProductsIcon( JETPACK_GROWTH_PLANS, {
+		regular: JetpackProductIconGrowth,
+		light: '',
+	} ),
 	...setProductsIcon( JETPACK_CREATOR_PRODUCTS, {
 		regular: JetpackProductIconCreator,
 		light: '',
 	} ),
 	...setProductsIcon( WOOCOMMERCE_PRODUCTS, {
-		regular: WooCommerceProductIcon,
-		light: WooCommerceProductIcon,
+		regular: WooCommerceLogo,
+		light: WooCommerceLogo,
 	} ),
 };
 
