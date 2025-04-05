@@ -1,24 +1,26 @@
 import config from '@automattic/calypso-config';
-import { ExternalLink } from '@wordpress/components';
+import { TimeSince } from '@automattic/components';
+import { Button, ExternalLink } from '@wordpress/components';
 import { useTranslate } from 'i18n-calypso';
 import { useMemo } from 'react';
-import TimeSince from 'calypso/components/time-since';
 import { NewsletterCategory } from 'calypso/data/newsletter-categories/types';
 import { useSubscriptionPlans } from '../../hooks';
 import { SubscriptionPlanData } from '../../hooks/use-subscription-plans';
-import { Subscriber } from '../../types';
+import { Subscriber, SubscriberDetails as SubscriberDetailsType } from '../../types';
 import { SubscriberProfile } from '../subscriber-profile';
 import { SubscriberStats } from '../subscriber-stats';
 
 import './styles.scss';
 
 type SubscriberDetailsProps = {
-	subscriber: Subscriber;
+	subscriber: SubscriberDetailsType;
 	siteId: number;
 	subscriptionId?: number;
 	userId?: number;
 	newsletterCategoriesEnabled?: boolean;
 	newsletterCategories?: NewsletterCategory[];
+	onClose?: () => void;
+	onUnsubscribe?: ( subscriber: Subscriber ) => void;
 };
 
 const SubscriberDetails = ( {
@@ -28,6 +30,8 @@ const SubscriberDetails = ( {
 	userId,
 	newsletterCategoriesEnabled,
 	newsletterCategories,
+	onClose,
+	onUnsubscribe,
 }: SubscriberDetailsProps ) => {
 	const translate = useTranslate();
 	const subscriptionPlans = useSubscriptionPlans( subscriber );
@@ -80,9 +84,23 @@ const SubscriberDetails = ( {
 					email={ email_address }
 					compact={ false }
 				/>
+				{ onClose && (
+					<Button
+						onClick={ onClose }
+						className="subscriber-details__close-button"
+						variant="secondary"
+					>
+						{ translate( 'Close' ) }
+					</Button>
+				) }
 			</div>
 			{ config.isEnabled( 'individual-subscriber-stats' ) && (
-				<SubscriberStats siteId={ siteId } subscriptionId={ subscriptionId } userId={ userId } />
+				<SubscriberStats
+					siteId={ siteId }
+					subscriptionId={ subscriptionId }
+					userId={ userId }
+					dateSubscribed={ new Date( date_subscribed ) }
+				/>
 			) }
 			<div className="subscriber-details__content">
 				<h3 className="subscriber-details__content-title">
@@ -93,11 +111,13 @@ const SubscriberDetails = ( {
 						<div className="subscriber-details__content-label">
 							{ translate( 'Subscription date' ) }
 						</div>
-						<TimeSince
-							className="subscriber-details__content-value"
-							date={ date_subscribed }
-							dateFormat="LL"
-						/>
+						{ date_subscribed && (
+							<TimeSince
+								className="subscriber-details__content-value"
+								date={ date_subscribed }
+								dateFormat="LL"
+							/>
+						) }
 					</div>
 					{ newsletterCategoriesEnabled && (
 						<div className="subscriber-details__content-column">
@@ -154,6 +174,18 @@ const SubscriberDetails = ( {
 					) }
 				</div>
 			</div>
+			{ onUnsubscribe && (
+				<div className="subscriber-details__footer">
+					<Button
+						className="subscriber-details__delete-button"
+						onClick={ () => onUnsubscribe( subscriber ) }
+						variant="secondary"
+						isDestructive
+					>
+						{ translate( 'Delete subscriber' ) }
+					</Button>
+				</div>
+			) }
 		</div>
 	);
 };

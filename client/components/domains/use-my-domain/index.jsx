@@ -51,6 +51,8 @@ function UseMyDomain( props ) {
 		setUseMyDomainMode,
 		isStepper = false,
 		stepLocation,
+		registerNowAction,
+		hideHeader,
 	} = props;
 
 	const { __ } = useI18n();
@@ -151,9 +153,10 @@ function UseMyDomain( props ) {
 				availabilityData: wpRegistrationCheckData,
 				domainName: filteredDomainName,
 				selectedSite,
+				registerNowAction,
 			} ),
 		};
-	}, [ filterDomainName, domainName, selectedSite ] );
+	}, [ filterDomainName, domainName, selectedSite, registerNowAction ] );
 
 	const getAvailability = useCallback( async () => {
 		const filteredDomainName = filterDomainName( domainName );
@@ -173,9 +176,16 @@ function UseMyDomain( props ) {
 				availabilityData,
 				domainName: filteredDomainName,
 				selectedSite,
+				registerNowAction,
 			} ),
 		};
-	}, [ filterDomainName, domainName, getWpcomAvailabilityErrors, selectedSite ] );
+	}, [
+		filterDomainName,
+		domainName,
+		getWpcomAvailabilityErrors,
+		selectedSite,
+		registerNowAction,
+	] );
 
 	const setTransferStepsAndLockStatus = useCallback(
 		( isDomainUnlocked ) => {
@@ -397,6 +407,10 @@ function UseMyDomain( props ) {
 	}, [ domainName, mode, __ ] );
 
 	const renderHeader = () => {
+		if ( hideHeader ) {
+			return null;
+		}
+
 		return (
 			<>
 				{ goBack && (
@@ -467,20 +481,20 @@ UseMyDomain.propTypes = {
 	goBack: PropTypes.func,
 	initialQuery: PropTypes.string,
 	isSignupStep: PropTypes.bool,
-	showHeader: PropTypes.bool,
 	onConnect: PropTypes.func,
 	onTransfer: PropTypes.func,
 	onNextStep: PropTypes.func,
 	selectedSite: PropTypes.object,
 	transferDomainUrl: PropTypes.string,
 	analyticsSection: PropTypes.string,
-	basePath: PropTypes.string,
 	initialMode: PropTypes.string,
 	onSkip: PropTypes.func,
 	useMyDomainMode: PropTypes.string,
 	setUseMyDomainMode: PropTypes.func,
 	isStepper: PropTypes.bool,
 	stepLocation: PropTypes.object,
+	registerNowAction: PropTypes.func,
+	hideHeader: PropTypes.bool,
 };
 
 export default connect( ( state ) => ( {

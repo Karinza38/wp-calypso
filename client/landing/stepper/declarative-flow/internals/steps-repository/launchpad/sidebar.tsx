@@ -1,4 +1,4 @@
-import { PLAN_PREMIUM } from '@automattic/calypso-products';
+import { PLAN_PERSONAL, PLAN_PREMIUM } from '@automattic/calypso-products';
 import { Badge, CircularProgressBar, Gridicon, Tooltip } from '@automattic/components';
 import {
 	OnboardSelect,
@@ -6,7 +6,7 @@ import {
 	useLaunchpad,
 } from '@automattic/data-stores';
 import { LaunchpadInternal, type Task } from '@automattic/launchpad';
-import { isBlogOnboardingFlow } from '@automattic/onboarding';
+import { isStartWritingFlow } from '@automattic/onboarding';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSelect } from '@wordpress/data';
 import { useRef, useState } from '@wordpress/element';
@@ -25,6 +25,7 @@ import { TYPE_TIER } from 'calypso/my-sites/earn/memberships/constants';
 import { useSelector } from 'calypso/state';
 import { isCurrentUserEmailVerified } from 'calypso/state/current-user/selectors';
 import { getConnectUrlForSiteId } from 'calypso/state/memberships/settings/selectors';
+import { useSiteGlobalStylesOnPersonal } from 'calypso/state/sites/hooks/use-site-global-styles-on-personal';
 import { useSiteGlobalStylesStatus } from 'calypso/state/sites/hooks/use-site-global-styles-status';
 import { getEnhancedTasks } from './task-definitions';
 import { getLaunchpadTranslations } from './translations';
@@ -89,23 +90,37 @@ const Sidebar = ( {
 	);
 
 	const showDomain =
-		! isBlogOnboardingFlow( flow ) ||
+		! isStartWritingFlow( flow ) ||
 		( checklistStatuses?.domain_upsell_deferred === true && selectedDomain );
 
 	const isEmailVerified = useSelector( isCurrentUserEmailVerified );
 
 	const { title, launchTitle, subtitle } = getLaunchpadTranslations( flow, hasSkippedCheckout );
 
-	const { planCartItem, domainCartItem, productCartItems } = useSelect(
+	const { planCartItem, domainCartItem, productCartItems, selectedDesign } = useSelect(
 		( select ) => ( {
 			planCartItem: ( select( ONBOARD_STORE ) as OnboardSelect ).getPlanCartItem(),
 			domainCartItem: ( select( ONBOARD_STORE ) as OnboardSelect ).getDomainCartItem(),
 			productCartItems: ( select( ONBOARD_STORE ) as OnboardSelect ).getProductCartItems(),
+			selectedDesign: ( select( ONBOARD_STORE ) as OnboardSelect ).getSelectedDesign(),
 		} ),
 		[]
 	);
 
 	const displayGlobalStylesWarning = globalStylesInUse && shouldLimitGlobalStyles;
+	const globalStylesMinimumPlan = useSiteGlobalStylesOnPersonal( site?.ID )
+		? PLAN_PERSONAL
+		: PLAN_PREMIUM;
+
+	let checklist = launchpadChecklist;
+	if ( selectedDesign?.default ) {
+		checklist = ( launchpadChecklist ?? [] ).map( ( task ) => {
+			if ( task.id === 'design_selected' ) {
+				return { ...task, completed: false };
+			}
+			return task;
+		} );
+	}
 
 	const enhancedTasks: Task[] | null = useMemo( () => {
 		if ( ! site ) {
@@ -113,12 +128,12 @@ const Sidebar = ( {
 		}
 
 		return getEnhancedTasks( {
-			tasks: launchpadChecklist,
+			tasks: checklist,
 			siteSlug,
 			site,
 			submit,
 			displayGlobalStylesWarning,
-			globalStylesMinimumPlan: PLAN_PREMIUM,
+			globalStylesMinimumPlan,
 			setShowPlansModal,
 			queryClient,
 			goToStep,
@@ -155,7 +170,7 @@ const Sidebar = ( {
 	const showLaunchTitle = launchTask && ! launchTask.disabled;
 
 	function getDomainUpgradeBadgeUrl() {
-		if ( isBlogOnboardingFlow( siteIntentOption ) ) {
+		if ( isStartWritingFlow( siteIntentOption ) ) {
 			return `/setup/${ siteIntentOption }/domains?siteSlug=${ selectedDomain?.domain_name }&domainAndPlanPackage=true`;
 		}
 		return ! site?.plan?.is_free
@@ -164,7 +179,7 @@ const Sidebar = ( {
 	}
 
 	function showDomainUpgradeBadge() {
-		if ( isBlogOnboardingFlow( siteIntentOption ) ) {
+		if ( isStartWritingFlow( siteIntentOption ) ) {
 			return selectedDomain?.is_free;
 		}
 

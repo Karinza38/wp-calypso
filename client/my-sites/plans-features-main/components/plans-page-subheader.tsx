@@ -1,7 +1,13 @@
 import { Button, Gridicon } from '@automattic/components';
+import { OnboardSelect } from '@automattic/data-stores';
+import { isOnboardingFlow } from '@automattic/onboarding';
 import styled from '@emotion/styled';
+import { useSelect } from '@wordpress/data';
 import { useTranslate } from 'i18n-calypso';
+import { ReactNode } from 'react';
 import FormattedHeader from 'calypso/components/formatted-header';
+import { ONBOARD_STORE } from 'calypso/landing/stepper/stores';
+import { SelectedFeatureData } from '../hooks/use-selected-feature';
 
 const Subheader = styled.p`
 	margin: -32px 0 40px 0;
@@ -20,14 +26,36 @@ const Subheader = styled.p`
 	}
 `;
 
-const SecondaryFormattedHeader = ( { siteSlug }: { siteSlug?: string | null } ) => {
+const SecondaryFormattedHeader = ( {
+	siteSlug,
+	selectedFeature,
+}: {
+	siteSlug?: string | null;
+	selectedFeature: SelectedFeatureData | null;
+} ) => {
 	const translate = useTranslate();
-	const headerText = translate( 'Upgrade your plan to access this feature and more' );
-	const subHeaderText = (
+	let headerText: ReactNode = translate( 'Upgrade your plan to access this feature and more' );
+	let subHeaderText: ReactNode = (
 		<Button className="plans-features-main__view-all-plans is-link" href={ `/plans/${ siteSlug }` }>
 			{ translate( 'View all plans' ) }
 		</Button>
 	);
+	if ( selectedFeature?.description ) {
+		headerText = selectedFeature.description;
+		subHeaderText = translate(
+			'Upgrade your plan to access this feature and more. Or {{button}}view all plans{{/button}}.',
+			{
+				components: {
+					button: (
+						<Button
+							className="plans-features-main__view-all-plans is-link"
+							href={ `/plans/${ siteSlug }` }
+						/>
+					),
+				},
+			}
+		);
+	}
 
 	return (
 		<FormattedHeader
@@ -102,23 +130,34 @@ const PlansPageSubheader = ( {
 	deemphasizeFreePlan,
 	showPlanBenefits,
 	offeringFreePlan,
+	flowName,
 	onFreePlanCTAClick,
+	selectedFeature,
 }: {
 	siteSlug?: string | null;
 	isDisplayingPlansNeededForFeature: boolean;
 	deemphasizeFreePlan?: boolean;
 	offeringFreePlan?: boolean;
 	showPlanBenefits?: boolean;
+	flowName?: string | null;
 	onFreePlanCTAClick: () => void;
+	selectedFeature: SelectedFeatureData | null;
 } ) => {
 	const translate = useTranslate();
 
-	return (
-		<>
-			{ deemphasizeFreePlan && offeringFreePlan ? (
+	const createWithBigSky = useSelect( ( select: ( key: string ) => OnboardSelect ) => {
+		const { getCreateWithBigSky } = select( ONBOARD_STORE );
+		return getCreateWithBigSky();
+	}, [] );
+
+	const isOnboarding = isOnboardingFlow( flowName ?? null );
+
+	const renderSubheader = () => {
+		if ( createWithBigSky ) {
+			return (
 				<Subheader>
 					{ translate(
-						`Unlock a powerful bundle of features. Or {{link}}start with a free plan{{/link}}.`,
+						'Build your site quickly with our AI Website Builder or {{link}}start with a free plan{{/link}}.',
 						{
 							components: {
 								link: <Button onClick={ onFreePlanCTAClick } borderless />,
@@ -126,10 +165,45 @@ const PlansPageSubheader = ( {
 						}
 					) }
 				</Subheader>
-			) : (
-				showPlanBenefits && <PlanBenefitHeader />
+			);
+		}
+
+		if ( ! createWithBigSky && deemphasizeFreePlan && offeringFreePlan ) {
+			return (
+				<Subheader>
+					{ translate(
+						'Unlock a powerful bundle of features. Or {{link}}start with a free plan{{/link}}.',
+						{
+							components: {
+								link: <Button onClick={ onFreePlanCTAClick } borderless />,
+							},
+						}
+					) }
+				</Subheader>
+			);
+		}
+
+		if ( showPlanBenefits ) {
+			return <PlanBenefitHeader />;
+		}
+
+		if ( isOnboarding ) {
+			return (
+				<Subheader>
+					{ translate( 'Whatever site you’re building, there’s a plan to make it happen sooner.' ) }
+				</Subheader>
+			);
+		}
+
+		return null;
+	};
+
+	return (
+		<>
+			{ renderSubheader() }
+			{ isDisplayingPlansNeededForFeature && (
+				<SecondaryFormattedHeader siteSlug={ siteSlug } selectedFeature={ selectedFeature } />
 			) }
-			{ isDisplayingPlansNeededForFeature && <SecondaryFormattedHeader siteSlug={ siteSlug } /> }
 		</>
 	);
 };

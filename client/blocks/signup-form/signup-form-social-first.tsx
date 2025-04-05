@@ -2,14 +2,15 @@ import { recordTracksEvent } from '@automattic/calypso-analytics';
 import { localizeUrl } from '@automattic/i18n-utils';
 import { Button } from '@wordpress/components';
 import { useState, createInterpolateElement } from '@wordpress/element';
+import { chevronLeft } from '@wordpress/icons';
 import { useI18n } from '@wordpress/react-i18n';
-import { isGravatarOAuth2Client, isWooOAuth2Client } from 'calypso/lib/oauth2-clients';
+import { isGravatarOAuth2Client } from 'calypso/lib/oauth2-clients';
 import { AccountCreateReturn } from 'calypso/lib/signup/api/type';
 import { isExistingAccountError } from 'calypso/lib/signup/is-existing-account-error';
 import { addQueryArgs } from 'calypso/lib/url';
 import { useSelector } from 'calypso/state';
 import { getCurrentOAuth2Client } from 'calypso/state/oauth2-clients/ui/selectors';
-import isWooPasswordlessJPCFlow from 'calypso/state/selectors/is-woo-passwordless-jpc-flow';
+import getIsWoo from 'calypso/state/selectors/get-is-woo';
 import PasswordlessSignupForm from './passwordless';
 import SocialSignupForm from './social';
 import './style.scss';
@@ -40,7 +41,9 @@ interface SignupFormSocialFirst {
 	userEmail: string;
 	notice: JSX.Element | false;
 	isSocialFirst: boolean;
+	backButtonInFooter?: boolean;
 	passDataToNextStep?: boolean;
+	emailLabelText?: string;
 }
 
 const options = {
@@ -76,12 +79,13 @@ const SignupFormSocialFirst = ( {
 	notice,
 	isSocialFirst,
 	passDataToNextStep,
+	backButtonInFooter = true,
+	emailLabelText,
 }: SignupFormSocialFirst ) => {
 	const [ currentStep, setCurrentStep ] = useState( 'initial' );
 	const { __ } = useI18n();
 	const oauth2Client = useSelector( getCurrentOAuth2Client );
-	const isWooPasswordlessJPC = useSelector( isWooPasswordlessJPCFlow );
-	const isWoo = isWooOAuth2Client( oauth2Client ) || isWooPasswordlessJPC;
+	const isWoo = useSelector( getIsWoo );
 	const isGravatar = isGravatarOAuth2Client( oauth2Client );
 
 	const renderTermsOfService = () => {
@@ -106,6 +110,10 @@ const SignupFormSocialFirst = ( {
 				),
 				options
 			);
+		}
+
+		if ( ! tosText ) {
+			return null;
 		}
 
 		return <p className="signup-form-social-first__tos-link">{ tosText }</p>;
@@ -158,10 +166,17 @@ const SignupFormSocialFirst = ( {
 						goToNextStep={ goToNextStep }
 						logInUrl={ logInUrl }
 						queryArgs={ queryArgs }
-						labelText={ __( 'Your email' ) }
+						labelText={ emailLabelText ?? __( 'Your email' ) }
 						submitButtonLabel={ __( 'Continue' ) }
 						userEmail={ userEmail }
 						renderTerms={ renderEmailStepTermsOfService }
+						secondaryFooterButton={
+							backButtonInFooter ? undefined : (
+								<Button onClick={ () => setCurrentStep( 'initial' ) } icon={ chevronLeft }>
+									{ __( 'See all options' ) }
+								</Button>
+							)
+						}
 						passDataToNextStep={ passDataToNextStep }
 						onCreateAccountError={ ( error: { error: string }, email: string ) => {
 							if ( isExistingAccountError( error.error ) ) {
@@ -180,13 +195,15 @@ const SignupFormSocialFirst = ( {
 						onCreateAccountSuccess={ onCreateAccountSuccess }
 						{ ...gravatarProps }
 					/>
-					<Button
-						onClick={ () => setCurrentStep( 'initial' ) }
-						className="back-button"
-						variant="link"
-					>
-						<span>{ __( 'Back' ) }</span>
-					</Button>
+					{ backButtonInFooter ? (
+						<Button
+							onClick={ () => setCurrentStep( 'initial' ) }
+							className="back-button"
+							variant="link"
+						>
+							<span>{ __( 'Back' ) }</span>
+						</Button>
+					) : null }
 				</div>
 			);
 		}

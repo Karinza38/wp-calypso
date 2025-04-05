@@ -1,8 +1,10 @@
 import { Card } from '@automattic/components';
+import { HelpCenterInlineButton } from '@automattic/help-center';
 import { Button } from '@wordpress/components';
 import { useTranslate } from 'i18n-calypso';
 import { useEffect } from 'react';
 import SiteSelector from 'calypso/components/site-selector';
+import { useGeoLocationQuery } from 'calypso/data/geo/use-geolocation-query';
 import { triggerGuidesForStep } from 'calypso/lib/guides/trigger-guides-for-step';
 import StepWrapper from 'calypso/signup/step-wrapper';
 import { useDispatch, useStore } from 'calypso/state';
@@ -15,6 +17,7 @@ interface Props {
 	stepSectionName: string | null;
 	stepName: string;
 	flowName: string;
+	signupDependencies: any;
 	goToStep: () => void;
 	goToNextStep: () => void;
 }
@@ -36,7 +39,8 @@ const DIFMSitePicker = ( {
 export default function DIFMSitePickerStep( props: Props ) {
 	const translate = useTranslate();
 	const dispatch = useDispatch();
-	const { goToNextStep } = props;
+	const { signupDependencies, goToNextStep } = props;
+	const { back_to: backUrl } = signupDependencies;
 	const store = useStore();
 
 	const headerText = translate( 'Choose where you want us to build your site.' );
@@ -54,11 +58,19 @@ export default function DIFMSitePickerStep( props: Props ) {
 		goToNextStep();
 	};
 
+	const { data: geoData } = useGeoLocationQuery();
+
+	const isHelpCenterLinkEnabled = geoData?.country_short === 'US';
+
 	const subHeaderText = translate(
 		'Please {{SupportLink}}contact support{{/SupportLink}} if your existing WordPress.com site isn’t listed, or create a {{NewSiteLink}}new site{{/NewSiteLink}} instead.',
 		{
 			components: {
-				SupportLink: <a className="subtitle-link" rel="noopener noreferrer" href="/help/contact" />,
+				SupportLink: isHelpCenterLinkEnabled ? (
+					<HelpCenterInlineButton className="subtitle-link" flowName={ props.flowName } />
+				) : (
+					<a className="subtitle-link" rel="noopener noreferrer" href="/help/contact" />
+				),
 				NewSiteLink: (
 					<Button variant="link" className="subtitle-link" onClick={ onNewSiteClicked } />
 				),
@@ -89,6 +101,7 @@ export default function DIFMSitePickerStep( props: Props ) {
 		);
 
 		goToNextStep();
+		return true;
 	};
 
 	const filterSites = ( site: SiteDetails ) => {
@@ -108,6 +121,8 @@ export default function DIFMSitePickerStep( props: Props ) {
 			fallbackSubHeaderText={ subHeaderText }
 			stepContent={ <DIFMSitePicker filter={ filterSites } onSiteSelect={ handleSiteSelect } /> }
 			hideSkip
+			backUrl={ backUrl }
+			allowBackFirstStep={ !! backUrl }
 			{ ...props }
 		/>
 	);

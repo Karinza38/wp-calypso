@@ -1,17 +1,20 @@
 import { HelpCenterSelect } from '@automattic/data-stores';
-import { useGetSupportInteractions } from '@automattic/odie-client/src/data';
-import { useSelect, useDispatch as useDataStoreDispatch } from '@wordpress/data';
+import {
+	useGetSupportInteractions,
+	useGetUnreadConversations,
+} from '@automattic/odie-client/src/data';
+import { useSelect } from '@wordpress/data';
 import { sprintf } from '@wordpress/i18n';
 import { useI18n } from '@wordpress/react-i18n';
 import React, { useEffect, useState } from 'react';
 import { HELP_CENTER_STORE } from '../stores';
 import { HelpCenterSupportChatMessage } from './help-center-support-chat-message';
-import {
-	calculateUnread,
-	getConversationsFromSupportInteractions,
-	getZendeskConversations,
-} from './utils';
-import type { ZendeskConversation } from '@automattic/odie-client';
+import { filterAndUpdateConversationsWithStatus, getZendeskConversations } from './utils';
+import type {
+	SupportInteraction,
+	ZendeskConversation,
+	ZendeskMessage,
+} from '@automattic/odie-client';
 
 import './help-center-recent-conversations.scss';
 
@@ -29,6 +32,11 @@ const HelpCenterRecentConversations: React.FC = () => {
 	const [ conversations, setConversations ] = useState< ZendeskConversation[] >( [] );
 	const [ unreadConversationsCount, setUnreadConversationsCount ] = useState( 0 );
 	const [ unreadMessagesCount, setUnreadMessagesCount ] = useState( 0 );
+
+	const [ lastMessage, setLastMessage ] = useState< ZendeskMessage >();
+	const [ lastConversation, setLastConversation ] = useState< ZendeskConversation >();
+	const [ lastSupportInteraction, setLastSupportInteraction ] = useState< SupportInteraction >();
+
 	const { data: supportInteractionsResolved } = useGetSupportInteractions(
 		'zendesk',
 		100,
@@ -40,7 +48,7 @@ const HelpCenterRecentConversations: React.FC = () => {
 		return { isChatLoaded: store.getIsChatLoaded() };
 	}, [] );
 	const sectionName = GetSectionName( unreadConversationsCount );
-	const { setUnreadCount } = useDataStoreDispatch( HELP_CENTER_STORE );
+	const getUnreadNotifications = useGetUnreadConversations();
 
 	useEffect( () => {
 		if (
@@ -54,34 +62,51 @@ const HelpCenterRecentConversations: React.FC = () => {
 				...( supportInteractionsResolved || [] ),
 				...( supportInteractionsOpen || [] ),
 			];
-			const conversations = getConversationsFromSupportInteractions(
+
+			const conversationsWithUpdatedStatuses = filterAndUpdateConversationsWithStatus(
 				allConversations,
 				supportInteractions
 			);
-			const { unreadConversations, unreadMessages } = calculateUnread( conversations );
+
+			const lastUnreadConversation = conversationsWithUpdatedStatuses.find(
+				( conversation ) => conversation.participants[ 0 ]?.unreadCount > 0
+			);
+			const lastConversation = lastUnreadConversation || conversationsWithUpdatedStatuses[ 0 ];
+			const lastMessage = lastConversation?.messages[ lastConversation?.messages.length - 1 ];
+			const lastSupportInteraction = supportInteractions.find(
+				( interaction ) => interaction.uuid === lastConversation?.metadata.supportInteractionId
+			);
+
+			setLastSupportInteraction( lastSupportInteraction );
+			setLastConversation( lastConversation );
+			setLastMessage( lastMessage );
+
+			const { unreadConversations, unreadMessages } = getUnreadNotifications(
+				conversationsWithUpdatedStatuses
+			);
 			setUnreadConversationsCount( unreadConversations );
 			setUnreadMessagesCount( unreadMessages );
-			setConversations( conversations );
-			setUnreadCount( unreadConversations );
+			setConversations( conversationsWithUpdatedStatuses );
 		}
-	}, [ isChatLoaded, setUnreadCount, supportInteractionsResolved, supportInteractionsOpen ] );
+	}, [
+		isChatLoaded,
+		supportInteractionsResolved,
+		supportInteractionsOpen,
+		getUnreadNotifications,
+	] );
 
 	if ( ! conversations.length ) {
 		return null;
 	}
 
-	const lastUnreadConversation = conversations.find(
-		( conversation ) => conversation.participants[ 0 ]?.unreadCount > 0
-	);
-	const lastConversation = lastUnreadConversation || conversations[ 0 ];
-	const lastMessage = lastConversation?.messages[ lastConversation?.messages.length - 1 ];
-	const navigateTo = unreadConversationsCount === 1 ? '/odie' : '/chat-history';
+	const navigateTo =
+		unreadConversationsCount === 1 || conversations.length === 1 ? '/odie' : '/chat-history';
 
 	const chatMessage = {
 		...lastMessage,
 		...( unreadConversationsCount > 1
 			? {
-					text: 'Multiple Unread Messages',
+					text: __( 'Multiple Unread Messages', __i18n_text_domain__ ),
 					displayName: sprintf(
 						/* translators: %1$s is total number of unread messages, %2$s is the total number of chats with unread messages */
 						__( '%1$s messages from %2$s chats', __i18n_text_domain__ ),
@@ -90,14 +115,14 @@ const HelpCenterRecentConversations: React.FC = () => {
 					),
 			  }
 			: undefined ),
-	};
+	} as ZendeskMessage;
 
 	return (
 		<div className="help-center-homepage-conversations">
 			<h3 className="help-center-search-results__title help-center__section-title">
 				{ sectionName }
 			</h3>
-			{ lastMessage ? (
+			{ lastMessage && lastConversation ? (
 				<HelpCenterSupportChatMessage
 					sectionName="recent_conversations"
 					key={ lastConversation.id }
@@ -105,7 +130,7 @@ const HelpCenterRecentConversations: React.FC = () => {
 					message={ chatMessage }
 					isUnread={ unreadMessagesCount > 0 }
 					navigateTo={ navigateTo }
-					supportInteractionId={ lastConversation.metadata?.supportInteractionId }
+					supportInteraction={ lastSupportInteraction }
 				/>
 			) : null }
 		</div>

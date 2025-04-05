@@ -20,7 +20,7 @@ $heading-font-body-small: 15px;
 		padding: 0 rem(24px);
 		position: fixed;
 		width: calc(100% - 3rem);
-		background: var(--theme-text-color);
+		background: var(--studio-white);
 		z-index: 1000;
 
 		@include break-large {
@@ -156,7 +156,7 @@ $heading-font-body-small: 15px;
 	}
 
 	&.dialog__backdrop {
-		background-color: rgba(var(--color-neutral-100-rgb), 0.6);
+		background-color: color-mix(in srgb, var(--color-neutral-100) 60%, transparent);
 
 		.dialog.card {
 			max-width: 480px;

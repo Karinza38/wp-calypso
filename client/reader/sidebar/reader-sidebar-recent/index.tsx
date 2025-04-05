@@ -1,16 +1,17 @@
+import './style.scss';
 import page from '@automattic/calypso-router';
 import clsx from 'clsx';
 import { localize } from 'i18n-calypso';
 import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
+import ReaderIcon from 'calypso/assets/icons/reader/reader-icon';
 import ExpandableSidebarMenu from 'calypso/layout/sidebar/expandable';
 import Favicon from 'calypso/reader/components/favicon';
-import ReaderFollowingIcon from 'calypso/reader/components/icons/following-icon';
+import { recordAction, recordGaEvent } from 'calypso/reader/stats';
+import { useRecordReaderTracksEvent } from 'calypso/state/reader/analytics/useRecordReaderTracksEvent';
 import getReaderFollowedSites from 'calypso/state/reader/follows/selectors/get-reader-followed-sites';
-import { selectSidebarRecentSite } from 'calypso/state/reader-ui/sidebar/actions';
+import { getSelectedRecentFeedId } from 'calypso/state/reader-ui/sidebar/selectors';
 import { AppState } from 'calypso/types';
-
-import './style.scss';
 
 // Not complete, just useful fields for now
 type Site = {
@@ -36,7 +37,7 @@ type Props = {
 };
 
 const SITE_DISPLAY_CUTOFF = 8;
-const RECENT_PATH_REGEX = /^\/read\/?(?:\?|$)/;
+const RECENT_PATH_REGEX = /^\/reader(?:\/recent\/\d+)?\/?(?:\?|$)/;
 
 const ReaderSidebarRecent = ( {
 	translate,
@@ -47,10 +48,9 @@ const ReaderSidebarRecent = ( {
 }: Props ): React.JSX.Element => {
 	const [ showAllSites, setShowAllSites ] = useState( false );
 	const sites = useSelector< AppState, Site[] >( getReaderFollowedSites );
-	const selectedSiteFeedId = useSelector< AppState, number >(
-		( state ) => state.readerUi.sidebar.selectedRecentSite
-	);
-	const dispatch = useDispatch();
+	const selectedSiteFeedId = useSelector< AppState, number | null >( getSelectedRecentFeedId );
+	const recordReaderTracksEvent = useRecordReaderTracksEvent();
+	const isRecentStream = RECENT_PATH_REGEX.test( path );
 
 	let sitesToShow = showAllSites ? sites : sites.slice( 0, SITE_DISPLAY_CUTOFF );
 	// const totalUnseenCount = sites.reduce( ( total, site ) => total + site.unseen_count, 0 );
@@ -71,33 +71,54 @@ const ReaderSidebarRecent = ( {
 	};
 
 	const selectSite = ( feedId: number | null ) => {
-		dispatch( selectSidebarRecentSite( { feedId } ) );
-		if ( ! RECENT_PATH_REGEX.test( path ) ) {
-			page( '/read' );
+		if ( feedId ) {
+			page( `/reader/recent/${ feedId }` );
+		} else {
+			page( '/reader' );
 		}
+
+		// Analytics.
+		if ( feedId ) {
+			recordAction( 'clicked_reader_sidebar_followed_single_site' );
+			recordGaEvent( 'Clicked Reader Sidebar Followed Single Site' );
+			recordReaderTracksEvent( 'calypso_reader_sidebar_followed_single_site_clicked' );
+		} else {
+			recordAction( 'clicked_reader_sidebar_followed_sites' );
+			recordGaEvent( 'Clicked Reader Sidebar Followed Sites' );
+			recordReaderTracksEvent( 'calypso_reader_sidebar_followed_sites_clicked' );
+		}
+	};
+
+	const selectMenu = () => {
+		if ( ! isOpen ) {
+			onClick();
+		}
+		selectSite( null );
 	};
 
 	return (
 		<ExpandableSidebarMenu
 			expanded={ isOpen }
 			title={ translate( 'Recent' ) }
-			onClick={ onClick }
-			customIcon={ <ReaderFollowingIcon viewBox="-3 0 24 24" /> }
+			onClick={ selectMenu }
+			customIcon={ <ReaderIcon className="sidebar__menu-icon" viewBox="0 0 24 11" /> }
 			disableFlyout
 			className={ clsx( 'reader-sidebar-recent', className, {
-				'sidebar__menu--selected': ! isOpen && RECENT_PATH_REGEX.test( path ),
+				'sidebar__menu--selected': ! isOpen && isRecentStream,
 			} ) }
 			count={ undefined }
 			icon={ null }
 			materialIcon={ null }
 			materialIconStyle={ null }
+			expandableIconClick={ onClick }
 		>
 			<li>
 				<button
 					className={ clsx(
 						'reader-sidebar-recent__item reader-sidebar-recent__item--without-icon',
 						{
-							'reader-sidebar-recent__item--selected': selectedSiteFeedId === null,
+							'reader-sidebar-recent__item--selected':
+								isRecentStream && selectedSiteFeedId === null,
 						}
 					) }
 					onClick={ () => selectSite( null ) }
@@ -110,7 +131,8 @@ const ReaderSidebarRecent = ( {
 				<li key={ site.ID }>
 					<button
 						className={ clsx( 'reader-sidebar-recent__item', {
-							'reader-sidebar-recent__item--selected': site.feed_ID === selectedSiteFeedId,
+							'reader-sidebar-recent__item--selected':
+								isRecentStream && site.feed_ID === selectedSiteFeedId,
 						} ) }
 						onClick={ () => selectSite( site.feed_ID ) }
 					>

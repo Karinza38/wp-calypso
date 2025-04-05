@@ -2,7 +2,7 @@ import config from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
 import { FormInputValidation, FormLabel } from '@automattic/components';
 import { localizeUrl } from '@automattic/i18n-utils';
-import { Spinner } from '@wordpress/components';
+import { Spinner, TextControl } from '@wordpress/components';
 import clsx from 'clsx';
 import debugModule from 'debug';
 import { localize } from 'i18n-calypso';
@@ -32,27 +32,19 @@ import FormPasswordInput from 'calypso/components/forms/form-password-input';
 import FormSettingExplanation from 'calypso/components/forms/form-setting-explanation';
 import FormTextInput from 'calypso/components/forms/form-text-input';
 import LoggedOutForm from 'calypso/components/logged-out-form';
-import LoggedOutFormBackLink from 'calypso/components/logged-out-form/back-link';
 import LoggedOutFormFooter from 'calypso/components/logged-out-form/footer';
 import LoggedOutFormLinkItem from 'calypso/components/logged-out-form/link-item';
 import LoggedOutFormLinks from 'calypso/components/logged-out-form/links';
 import Notice from 'calypso/components/notice';
-import TextControl from 'calypso/components/text-control';
 import wooDnaConfig from 'calypso/jetpack-connect/woo-dna-config';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
 import formState from 'calypso/lib/form-state';
 import { getLocaleSlug } from 'calypso/lib/i18n-utils';
-import { isReactLostPasswordScreenEnabled } from 'calypso/lib/login';
-import {
-	isCrowdsignalOAuth2Client,
-	isWooOAuth2Client,
-	isGravatarOAuth2Client,
-} from 'calypso/lib/oauth2-clients';
+import { isCrowdsignalOAuth2Client, isGravatarOAuth2Client } from 'calypso/lib/oauth2-clients';
 import { login, lostPassword } from 'calypso/lib/paths';
 import { isExistingAccountError } from 'calypso/lib/signup/is-existing-account-error';
 import { addQueryArgs } from 'calypso/lib/url';
 import wpcom from 'calypso/lib/wp';
-import { isP2Flow } from 'calypso/signup/is-flow';
 import ValidationFieldset from 'calypso/signup/validation-fieldset';
 import { recordTracksEventWithClientId } from 'calypso/state/analytics/actions';
 import { redirectToLogout } from 'calypso/state/current-user/actions';
@@ -61,13 +53,12 @@ import { createSocialUserFailed } from 'calypso/state/login/actions';
 import { getCurrentOAuth2Client } from 'calypso/state/oauth2-clients/ui/selectors';
 import getCurrentQueryArguments from 'calypso/state/selectors/get-current-query-arguments';
 import getIsBlazePro from 'calypso/state/selectors/get-is-blaze-pro';
-import getIsWooPasswordless from 'calypso/state/selectors/get-is-woo-passwordless';
+import getIsWoo from 'calypso/state/selectors/get-is-woo';
 import getWccomFrom from 'calypso/state/selectors/get-wccom-from';
-import isWooPasswordlessJPCFlow from 'calypso/state/selectors/is-woo-passwordless-jpc-flow';
+import isWooJPCFlow from 'calypso/state/selectors/is-woo-jpc-flow';
 import { resetSignup } from 'calypso/state/signup/actions';
 import { getSectionName } from 'calypso/state/ui/selectors';
 import CrowdsignalSignupForm from './crowdsignal';
-import P2SignupForm from './p2';
 import PasswordlessSignupForm from './passwordless';
 import SignupFormSocialFirst from './signup-form-social-first';
 import SocialSignupForm from './social';
@@ -391,22 +382,6 @@ class SignupForm extends Component {
 					}
 				}
 
-				// Catch this early for P2 signup flow.
-				if (
-					this.props.isP2Flow &&
-					fields.username &&
-					fields.password &&
-					fields.username === fields.password
-				) {
-					messages = Object.assign( {}, messages, {
-						password: {
-							invalid: this.props.translate(
-								'Your password cannot be the same as your username. Please pick a different password.'
-							),
-						},
-					} );
-				}
-
 				onComplete( error, messages );
 				if ( ! this.state.validationInitialized ) {
 					this.setState( { validationInitialized: true } );
@@ -515,10 +490,6 @@ class SignupForm extends Component {
 	}
 
 	getLoginLinkFrom() {
-		if ( this.props.isP2Flow ) {
-			return 'p2';
-		}
-
 		return this.props.from;
 	}
 
@@ -526,7 +497,7 @@ class SignupForm extends Component {
 		return login( {
 			emailAddress,
 			isJetpack: this.isJetpack(),
-			from: this.props.isP2Flow ? 'p2' : this.props.from,
+			from: this.props.from,
 			redirectTo: this.props.redirectToAfterLoginUrl,
 			locale: this.props.locale,
 			oauth2ClientId: this.props.oauth2Client && this.props.oauth2Client.id,
@@ -625,7 +596,7 @@ class SignupForm extends Component {
 												onClick={ ( event ) => this.handleLoginClick( event, fieldValue ) }
 											/>
 										),
-										pwdResetLink: isReactLostPasswordScreenEnabled() ? (
+										pwdResetLink: (
 											<a
 												href={ lostPasswordLink }
 												onClick={ ( event ) => {
@@ -635,17 +606,13 @@ class SignupForm extends Component {
 														login( {
 															redirectTo: this.props.redirectToAfterLoginUrl,
 															locale: this.props.locale,
-															action: this.props.isWooPasswordlessJPC
-																? 'jetpack/lostpassword'
-																: 'lostpassword',
+															action: this.props.isWooJPC ? 'jetpack/lostpassword' : 'lostpassword',
 															oauth2ClientId: this.props.oauth2Client && this.props.oauth2Client.id,
 															from: this.props.from,
 														} )
 													);
 												} }
 											/>
-										) : (
-											<a href={ lostPasswordLink } />
 										),
 									},
 								}
@@ -734,7 +701,7 @@ class SignupForm extends Component {
 				{ this.displayUsernameInput() && (
 					<>
 						<FormLabel htmlFor="username">
-							{ this.props.isReskinned || ( this.props.isWoo && ! this.props.isWooPasswordlessJPC )
+							{ this.props.isWoo && ! this.props.isWooJPC
 								? this.props.translate( 'Username' )
 								: this.props.translate( 'Choose a username' ) }
 						</FormLabel>
@@ -776,12 +743,8 @@ class SignupForm extends Component {
 	}
 
 	recordWooCommerceSignupTracks( method ) {
-		const { isJetpackWooCommerceFlow, isWoo, wccomFrom } = this.props;
-		if ( isJetpackWooCommerceFlow ) {
-			recordTracksEvent( 'wcadmin_storeprofiler_create_jetpack_account', {
-				signup_method: method,
-			} );
-		} else if ( isWoo && 'cart' === wccomFrom ) {
+		const { isWoo, wccomFrom } = this.props;
+		if ( isWoo && 'cart' === wccomFrom ) {
 			recordTracksEvent( 'wcadmin_storeprofiler_payment_create_account', {
 				signup_method: method,
 			} );
@@ -819,7 +782,7 @@ class SignupForm extends Component {
 
 	renderWooCommerce() {
 		return (
-			<div>
+			<div className="signup-form__woocommerce-inputs-wrapper">
 				<TextControl
 					label={ this.props.translate( 'Your email address' ) }
 					disabled={
@@ -836,6 +799,8 @@ class SignupForm extends Component {
 							value,
 						} );
 					} }
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
 				/>
 				{ this.emailDisableExplanation() }
 
@@ -858,6 +823,8 @@ class SignupForm extends Component {
 									value,
 								} );
 							} }
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
 						/>
 
 						{ formState.isFieldInvalid( this.state.form, 'username' ) && (
@@ -880,6 +847,8 @@ class SignupForm extends Component {
 							value,
 						} );
 					} }
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
 				/>
 
 				{ this.passwordValidationExplanation() }
@@ -899,29 +868,7 @@ class SignupForm extends Component {
 
 	termsOfServiceLink = () => {
 		if ( this.props.isWoo ) {
-			if ( this.props.isWooPasswordless ) {
-				return null;
-			}
-
-			return (
-				<p className="signup-form__terms-of-service-link">
-					{ this.props.translate(
-						'By continuing, you agree to our {{tosLink}}Terms of Service{{/tosLink}}',
-						{
-							components: {
-								tosLink: (
-									<a
-										href={ localizeUrl( 'https://wordpress.com/tos/' ) }
-										onClick={ this.handleTosClick }
-										target="_blank"
-										rel="noopener noreferrer"
-									/>
-								),
-							},
-						}
-					) }
-				</p>
-			);
+			return null;
 		}
 
 		const options = {
@@ -1023,9 +970,7 @@ class SignupForm extends Component {
 	emailDisableExplanation() {
 		if ( this.props.disableEmailInput && this.props.disableEmailExplanation ) {
 			return (
-				<FormSettingExplanation noValidate>
-					{ this.props.disableEmailExplanation }
-				</FormSettingExplanation>
+				<FormSettingExplanation>{ this.props.disableEmailExplanation }</FormSettingExplanation>
 			);
 		}
 	}
@@ -1091,20 +1036,7 @@ class SignupForm extends Component {
 	}
 
 	footerLink() {
-		const { flowName, translate, isWoo, isBlazePro } = this.props;
-
-		if ( this.props.isP2Flow ) {
-			return (
-				<div className="signup-form__p2-footer-link">
-					<div>{ this.props.translate( 'Already have a WordPress.com account?' ) }</div>
-					<LoggedOutFormLinks>
-						<LoggedOutFormLinkItem href={ this.getLoginLink() }>
-							{ this.props.translate( 'Log in instead' ) }
-						</LoggedOutFormLinkItem>
-					</LoggedOutFormLinks>
-				</div>
-			);
-		}
+		const { isWoo, isBlazePro } = this.props;
 
 		if ( isWoo ) {
 			return null;
@@ -1112,7 +1044,7 @@ class SignupForm extends Component {
 
 		if ( isBlazePro ) {
 			return (
-				<div className="signup-form__p2-footer-link">
+				<div>
 					<LoggedOutFormLinks>
 						<span>{ this.props.translate( 'Already have an account?' ) }&nbsp;</span>
 						<LoggedOutFormLinkItem href={ this.getLoginLink() }>
@@ -1123,25 +1055,7 @@ class SignupForm extends Component {
 			);
 		}
 
-		return (
-			<>
-				{ ! this.props.isReskinned && (
-					<LoggedOutFormLinks>
-						<LoggedOutFormLinkItem href={ this.getLoginLink() }>
-							{ flowName === 'onboarding' || flowName === 'onboarding-pm'
-								? translate( 'Log in to create a site for your existing account.' )
-								: translate( 'Already have a WordPress.com account?' ) }
-						</LoggedOutFormLinkItem>
-						{ this.props.oauth2Client && (
-							<LoggedOutFormBackLink
-								oauth2Client={ this.props.oauth2Client }
-								recordClick={ this.recordBackLinkClick }
-							/>
-						) }
-					</LoggedOutFormLinks>
-				) }
-			</>
-		);
+		return null;
 	}
 
 	handleOnChangeAccount = () => {
@@ -1150,7 +1064,7 @@ class SignupForm extends Component {
 	};
 
 	isHorizontal = () => {
-		return this.props.horizontal || 'videopress-account' === this.props.flowName;
+		return this.props.horizontal;
 	};
 
 	getEmailValue = () => {
@@ -1210,7 +1124,6 @@ class SignupForm extends Component {
 					onChangeAccount={ this.handleOnChangeAccount }
 					redirectPath={ this.props.redirectToAfterLoginUrl }
 					isWoo={ this.props.isWoo }
-					isWooPasswordless={ this.props.isWooPasswordless }
 					isBlazePro={ this.props.isBlazePro }
 					notYouText={
 						this.props.notYouText ||
@@ -1239,7 +1152,7 @@ class SignupForm extends Component {
 			);
 		}
 
-		if ( this.props.isJetpackWooCommerceFlow || this.props.isJetpackWooDnaFlow ) {
+		if ( this.props.isJetpackWooDnaFlow ) {
 			return (
 				<div className={ clsx( 'signup-form__woocommerce', this.props.className ) }>
 					<LoggedOutForm onSubmit={ this.handleWooCommerceSubmit } noValidate>
@@ -1267,28 +1180,6 @@ class SignupForm extends Component {
 			);
 		}
 
-		if ( this.props.isP2Flow ) {
-			const socialProps = pick( this.props, [
-				'isSocialSignupEnabled',
-				'handleSocialResponse',
-				'socialServiceResponse',
-			] );
-
-			return (
-				<>
-					{ this.getNotice() }
-					<P2SignupForm
-						formFields={ this.formFields() }
-						formFooter={ this.formFooter() }
-						handleSubmit={ this.handleSubmit }
-						{ ...socialProps }
-						footerLink={ this.props.footerLink || this.footerLink() }
-						error={ this.props?.step?.errors?.[ 0 ] }
-					/>
-				</>
-			);
-		}
-
 		const logInUrl = this.getLoginLink();
 
 		if ( this.props.isSocialFirst ) {
@@ -1312,11 +1203,11 @@ class SignupForm extends Component {
 		const isGravatar = this.props.isGravatar;
 		const emailErrorMessage = this.getErrorMessagesWithLogin( 'email' );
 		const showSeparator =
-			( ! config.isEnabled( 'desktop' ) && this.isHorizontal() ) || this.props.isWoo;
+			'wpcc' !== this.props.flowName &&
+			( ( ! config.isEnabled( 'desktop' ) && this.isHorizontal() ) || this.props.isWoo );
 
 		if (
-			( this.props.isPasswordless &&
-				( 'wpcc' !== this.props.flowName || this.props.isWooPasswordless ) ) ||
+			( this.props.isPasswordless && ( 'wpcc' !== this.props.flowName || this.props.isWoo ) ) ||
 			isGravatar
 		) {
 			let formProps = {
@@ -1335,7 +1226,7 @@ class SignupForm extends Component {
 				case this.props.isWoo:
 					formProps = {
 						inputPlaceholder: null,
-						submitButtonLabel: this.props.translate( 'Continue with email' ),
+						submitButtonLabel: this.props.translate( 'Continue' ),
 						submitButtonLoadingLabel: <Spinner />,
 					};
 			}
@@ -1426,24 +1317,19 @@ class SignupForm extends Component {
 }
 
 export default connect(
-	( state, props ) => {
+	( state ) => {
 		const oauth2Client = getCurrentOAuth2Client( state );
-		const isWooPasswordlessJPC = isWooPasswordlessJPCFlow( state );
+		const isWooJPC = isWooJPCFlow( state );
 
 		return {
 			currentUser: getCurrentUser( state ),
 			oauth2Client,
 			sectionName: getSectionName( state ),
-			isJetpackWooCommerceFlow:
-				'woocommerce-onboarding' === get( getCurrentQueryArguments( state ), 'from' ),
 			isJetpackWooDnaFlow: wooDnaConfig( getCurrentQueryArguments( state ) ).isWooDnaFlow(),
 			from: get( getCurrentQueryArguments( state ), 'from' ),
 			wccomFrom: getWccomFrom( state ),
-			isWooPasswordless: getIsWooPasswordless( state ),
-			isWoo: isWooOAuth2Client( oauth2Client ) || isWooPasswordlessJPC,
-			isWooPasswordlessJPC,
-			isP2Flow:
-				isP2Flow( props.flowName ) || get( getCurrentQueryArguments( state ), 'from' ) === 'p2',
+			isWoo: getIsWoo( state ),
+			isWooJPC,
 			isGravatar: isGravatarOAuth2Client( oauth2Client ),
 			isBlazePro: getIsBlazePro( state ),
 		};

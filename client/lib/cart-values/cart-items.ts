@@ -52,6 +52,7 @@ import { isWpComProductRenewal as isRenewal } from '@automattic/wpcom-checkout';
 import { getTld } from 'calypso/lib/domains';
 import { domainProductSlugs } from 'calypso/lib/domains/constants';
 import type { WithCamelCaseSlug, WithSnakeCaseSlug } from '@automattic/calypso-products';
+import type { SiteDetails } from '@automattic/data-stores';
 import type {
 	ResponseCart,
 	ResponseCartProduct,
@@ -128,6 +129,17 @@ export function hasBusinessPlan( cart: ObjectWithProducts ): boolean {
 
 export function has100YearPlan( cart: ObjectWithProducts ): boolean {
 	return getAllCartItems( cart ).some( is100Year );
+}
+
+const isHundredYearDomain = ( product: {
+	extra?: RequestCartProductExtra;
+	volume?: number;
+} ): boolean => {
+	return Boolean( product.extra?.is_hundred_year_domain || product.volume === 100 );
+};
+
+export function has100YearDomain( cart: ObjectWithProducts ): boolean {
+	return getAllCartItems( cart ).some( isHundredYearDomain );
 }
 
 export function hasStarterPlan( cart: ObjectWithProducts ): boolean {
@@ -357,10 +369,12 @@ export function domainTransfer( properties: {
 	domain: string;
 	source?: string;
 	extra?: RequestCartProductExtra;
+	volume?: number;
 } ): MinimalRequestCartProduct {
 	return {
 		...domainItem( domainProductSlugs.TRANSFER_IN, properties.domain, properties.source ),
 		...( properties.extra ? { extra: properties.extra } : {} ),
+		...( properties.volume ? { volume: properties.volume } : {} ),
 	};
 }
 
@@ -756,7 +770,7 @@ function hasSomeSlug( data: unknown ): data is WithSnakeCaseSlug | WithCamelCase
 
 export function shouldBundleDomainWithPlan(
 	withPlansOnly: boolean,
-	selectedSite: undefined | { plan: { product_slug: string } },
+	selectedSite: undefined | SiteDetails,
 	cart: ResponseCart,
 	suggestionOrCartItem: {
 		product_slug?: string;
@@ -777,7 +791,7 @@ export function shouldBundleDomainWithPlan(
 			! isDomainBeingUsedForPlan( cart, suggestionOrCartItem.domain_name ) && // a plan in cart
 			! isNextDomainFree( cart ) && // domain credit
 			! hasPlan( cart ) && // already a plan in cart
-			( ! selectedSite || ( selectedSite && selectedSite.plan.product_slug === 'free_plan' ) )
+			( ! selectedSite || selectedSite.plan?.product_slug === 'free_plan' )
 	); // site has a plan
 }
 
@@ -786,7 +800,7 @@ export function shouldBundleDomainWithPlan(
  * This function checks tells if user has to upgrade just to be able to pay for a domain.
  */
 export function hasToUpgradeToPayForADomain(
-	selectedSite: undefined | { plan: { product_slug?: string } },
+	selectedSite: undefined | SiteDetails,
 	cart: ObjectWithProducts,
 	domain?: string
 ): boolean {
@@ -794,7 +808,7 @@ export function hasToUpgradeToPayForADomain(
 		return false;
 	}
 
-	const sitePlanSlug = ( ( selectedSite || {} ).plan || {} ).product_slug;
+	const sitePlanSlug = selectedSite?.plan?.product_slug;
 	const isDotBlogDomain = 'blog'.startsWith( getTld( domain ) );
 
 	if ( sitePlanSlug && isWpComBloggerPlan( sitePlanSlug ) && ! isDotBlogDomain ) {
@@ -808,11 +822,11 @@ export function hasToUpgradeToPayForADomain(
 	return false;
 }
 
-export function isDomainMappingFree(
-	selectedSite: undefined | { plan: { product_slug: string } }
-): boolean {
+export function isDomainMappingFree( selectedSite: SiteDetails | null | undefined ): boolean {
 	return Boolean(
-		selectedSite && isPlan( selectedSite.plan ) && ! isBloggerPlan( selectedSite.plan.product_slug )
+		selectedSite?.plan &&
+			isPlan( selectedSite.plan ) &&
+			! isBloggerPlan( selectedSite.plan.product_slug )
 	);
 }
 
@@ -835,7 +849,7 @@ const isMonthlyOrFreeFlow = ( flowName: string | undefined ): boolean => {
 
 export function getDomainPriceRule(
 	withPlansOnly: boolean,
-	selectedSite: undefined | { plan: { product_slug: string } },
+	selectedSite: undefined | SiteDetails,
 	cart: ResponseCart,
 	suggestion: {
 		product_slug?: string;

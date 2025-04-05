@@ -1,4 +1,3 @@
-import { isEnabled } from '@automattic/calypso-config';
 import { FEATURE_UNLIMITED_SUBSCRIBERS } from '@automattic/calypso-products';
 import { StepContainer } from '@automattic/onboarding';
 import { AddSubscriberForm } from '@automattic/subscriber';
@@ -10,8 +9,8 @@ import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
 import { useSelector } from 'calypso/state';
 import siteHasFeature from 'calypso/state/selectors/site-has-feature';
 import type { Step } from '../../types';
-import './style.scss';
 import type { AppState } from 'calypso/types';
+import './style.scss';
 
 const Subscribers: Step = function ( { navigation } ) {
 	const [ isImportValid, setIsImportValid ] = useState( false );
@@ -48,7 +47,6 @@ const Subscribers: Step = function ( { navigation } ) {
 			stepName="subscribers"
 			flowName="newsletter"
 			isHorizontalLayout={ false }
-			showJetpackPowered
 			stepContent={
 				<div className="subscribers">
 					{ site?.ID && (
@@ -62,7 +60,7 @@ const Subscribers: Step = function ( { navigation } ) {
 							onChangeIsImportValid={ ( isValid ) => setIsImportValid( isValid ) }
 							allowEmptyFormSubmit={ false }
 							manualListEmailInviting={ ! isUserEligibleForSubscriberImporter }
-							showCsvUpload={ isEnabled( 'subscriber-csv-upload' ) }
+							showCsvUpload
 							recordTracksEvent={ recordTracksEvent }
 							titleText={ translate( 'Ready to add your first subscribers?' ) }
 							subtitleText={ subtitleText }

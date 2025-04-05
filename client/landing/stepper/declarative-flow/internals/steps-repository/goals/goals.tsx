@@ -1,5 +1,4 @@
 import { Onboard } from '@automattic/data-stores';
-import { useLocale, isLocaleRtl } from '@automattic/i18n-utils';
 import { useTranslate } from 'i18n-calypso';
 import { useMemo } from 'react';
 import { loadExperimentAssignment } from 'calypso/lib/explat';
@@ -8,13 +7,12 @@ import type { Goal } from './types';
 
 const SiteGoal = Onboard.SiteGoal;
 
-export const useGoals = ( isAddedGoalsExp: boolean ): Goal[] => {
+export const useGoals = (): Goal[] => {
 	loadExperimentAssignment( 'calypso_design_picker_image_optimization_202406' ); // Temporary for A/B test.
 
 	const translate = useTranslate();
-	const locale = useLocale();
 
-	const addedGoalsExpResult = useMemo( () => {
+	return useMemo( () => {
 		const goals = [
 			{
 				key: SiteGoal.Write,
@@ -22,7 +20,7 @@ export const useGoals = ( isAddedGoalsExp: boolean ): Goal[] => {
 			},
 			{
 				key: SiteGoal.Engagement,
-				title: translate( 'Build and engage an audience' ),
+				title: translate( 'Build and grow an audience' ),
 			},
 			{
 				key: SiteGoal.CollectDonations,
@@ -30,11 +28,11 @@ export const useGoals = ( isAddedGoalsExp: boolean ): Goal[] => {
 			},
 			{
 				key: SiteGoal.Porfolio,
-				title: translate( 'Showcase work/portfolio' ),
+				title: translate( 'Showcase a portfolio' ),
 			},
 			{
 				key: SiteGoal.BuildNonprofit,
-				title: translate( 'Build a site for a school or nonprofit' ),
+				title: translate( 'Build a school or nonprofit site' ),
 			},
 			{
 				key: SiteGoal.Newsletter,
@@ -50,7 +48,7 @@ export const useGoals = ( isAddedGoalsExp: boolean ): Goal[] => {
 			},
 			{
 				key: SiteGoal.Promote,
-				title: translate( 'Promote my business' ),
+				title: translate( 'Promote a business' ),
 			},
 			{
 				key: SiteGoal.Courses,
@@ -58,11 +56,11 @@ export const useGoals = ( isAddedGoalsExp: boolean ): Goal[] => {
 			},
 			{
 				key: SiteGoal.ContactForm,
-				title: translate( 'Create a contact form' ),
+				title: translate( 'Allow people to contact you' ),
 			},
 			{
 				key: SiteGoal.Videos,
-				title: translate( 'Upload videos' ),
+				title: translate( 'Share video content' ),
 			},
 			{
 				key: SiteGoal.PaidSubscribers,
@@ -76,48 +74,4 @@ export const useGoals = ( isAddedGoalsExp: boolean ): Goal[] => {
 
 		return shuffleArray( goals );
 	}, [ translate ] );
-
-	const goals = [
-		{
-			key: SiteGoal.Write,
-			title: translate( 'Write & Publish' ),
-		},
-		{
-			key: SiteGoal.Sell,
-			title: translate( 'Sell online' ),
-		},
-		{
-			key: SiteGoal.Promote,
-			title: translate( 'Promote myself or business' ),
-		},
-		{
-			key: SiteGoal.DIFM,
-			title: translate( 'Let us build your site in 4 days' ),
-			isPremium: true,
-		},
-		{
-			key: SiteGoal.Import,
-			title: translate( 'Import existing content or website' ),
-		},
-		{
-			key: SiteGoal.Other,
-			title: translate( 'Other' ),
-		},
-	];
-
-	/**
-	 * Hides the DIFM goal for RTL locales.
-	 */
-	const hideDIFMGoalForUnsupportedLocales = ( { key }: Goal ) => {
-		if ( key === SiteGoal.DIFM && isLocaleRtl( locale ) ) {
-			return false;
-		}
-		return true;
-	};
-
-	if ( isAddedGoalsExp ) {
-		return addedGoalsExpResult;
-	}
-
-	return goals.filter( hideDIFMGoalForUnsupportedLocales );
 };

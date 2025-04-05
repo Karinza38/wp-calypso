@@ -1,6 +1,5 @@
 import { Button, Card, Gridicon, Tooltip } from '@automattic/components';
-import formatCurrency from '@automattic/format-currency';
-import { numberFormat, useTranslate } from 'i18n-calypso';
+import { numberFormat, useTranslate, formatCurrency } from 'i18n-calypso';
 import { useCallback, useRef, useState } from 'react';
 import TextPlaceholder from 'calypso/a8c-for-agencies/components/text-placeholder';
 import useFetchBillingSummary from 'calypso/a8c-for-agencies/data/purchases/use-fetch-billing-summary';
@@ -70,8 +69,7 @@ export default function BillingSummary() {
 			<div className="billing-summary__stat billing-summary__total-licenses">
 				<span className="billing-summary__label">{ translate( 'Total licenses' ) }</span>
 				<strong className="billing-summary__value">
-					{ billing.isSuccess && numberFormat( billing.data.licenses.total, 0 ) }
-
+					{ billing.isSuccess && numberFormat( billing.data.licenses.total ) }
 					{ billing.isLoading && <TextPlaceholder /> }
 
 					{ billing.isError && <Gridicon icon="minus" /> }
@@ -81,7 +79,7 @@ export default function BillingSummary() {
 			<div className="billing-summary__stat billing-summary__assigned-licenses">
 				<span className="billing-summary__label">{ translate( 'Assigned licenses' ) }</span>
 				<strong className="billing-summary__value">
-					{ billing.isSuccess && numberFormat( billing.data.licenses.assigned, 0 ) }
+					{ billing.isSuccess && numberFormat( billing.data.licenses.assigned ) }
 
 					{ billing.isLoading && <TextPlaceholder /> }
 
@@ -92,7 +90,7 @@ export default function BillingSummary() {
 			<div className="billing-summary__stat billing-summary__unassigned-licenses">
 				<span className="billing-summary__label">{ translate( 'Unassigned licenses' ) }</span>
 				<strong className="billing-summary__value">
-					{ billing.isSuccess && numberFormat( billing.data.licenses.unassigned, 0 ) }
+					{ billing.isSuccess && numberFormat( billing.data.licenses.unassigned ) }
 
 					{ billing.isLoading && <TextPlaceholder /> }
 

@@ -38,7 +38,13 @@ global.fetch = jest.fn( () =>
 // module because it accesses the `document` global.
 jest.mock( 'wpcom-proxy-request', () => ( {
 	__esModule: true,
+	canAccessWpcomApis: jest.fn(),
+	reloadProxy: jest.fn(),
+	requestAllBlogsAccess: jest.fn(),
 } ) );
+
+// Mock crypto.randomUUID with its Node.js implementation
+global.crypto.randomUUID = () => require( 'crypto' ).randomUUID();
 
 global.matchMedia = jest.fn( ( query ) => ( {
 	matches: false,

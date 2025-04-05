@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import illustration404 from 'calypso/assets/images/illustrations/illustration-404.svg';
 import QuerySitePurchases from 'calypso/components/data/query-site-purchases';
 import EmptyContent from 'calypso/components/empty-content';
+import { STATS_PRODUCT_NAME } from 'calypso/my-sites/stats/constants';
 import usePlanUsageQuery from 'calypso/my-sites/stats/hooks/use-plan-usage-query';
 import { STATS_PLAN_USAGE_RECEIVE } from 'calypso/state/action-types';
 import { recordTracksEvent, withAnalytics } from 'calypso/state/analytics/actions';
@@ -20,18 +21,23 @@ type AsyncLoadProps = {
 	children: ReactNode;
 };
 
-const enableJetpackStatsModule = ( siteId: number, path: string | null ) =>
-	withAnalytics(
-		recordTracksEvent( 'calypso_jetpack_module_toggle', {
-			module: 'stats',
-			path,
-			toggled: 'on',
-		} ),
-		activateModule( siteId, 'stats' )
-	);
-
 const EnableStatsModuleNotice = ( { siteId, path }: { siteId: number; path: string | null } ) => {
+	const dispatch = useDispatch();
 	const translate = useTranslate();
+
+	const handleEnableStats = () => {
+		dispatch(
+			withAnalytics(
+				recordTracksEvent( 'calypso_jetpack_module_toggle', {
+					module: 'stats',
+					path,
+					toggled: 'on',
+				} ),
+				activateModule( siteId, 'stats' )
+			)
+		);
+	};
+
 	return (
 		<EmptyContent
 			illustration={ illustration404 }
@@ -39,12 +45,13 @@ const EnableStatsModuleNotice = ( { siteId, path }: { siteId: number; path: stri
 			line={
 				<p>
 					{ translate(
-						'Enable Jetpack Stats to see detailed information about your traffic, likes, comments, and subscribers.'
+						'Enable %(product)s to see detailed information about your traffic, likes, comments, and subscribers.',
+						{ args: { product: STATS_PRODUCT_NAME } }
 					) }
 				</p>
 			}
-			action={ translate( 'Enable Jetpack Stats' ) }
-			actionCallback={ () => enableJetpackStatsModule( siteId, path ) }
+			action={ translate( 'Enable %(product)s', { args: { product: STATS_PRODUCT_NAME } } ) }
+			actionCallback={ handleEnableStats }
 		/>
 	);
 };
@@ -78,7 +85,7 @@ export default function StatsPageLoader( { children }: AsyncLoadProps ) {
 		canCurrentUser( state, siteId, 'view_stats' )
 	);
 	const jetpackModuleActive = useSelector( ( state ) =>
-		isJetpackModuleActive( state as object, siteId, 'stats' )
+		isJetpackModuleActive( state as object, siteId, 'stats', true )
 	);
 	const path = useSelector( ( state ) => getCurrentRouteParameterized( state as object, siteId ) );
 

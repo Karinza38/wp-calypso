@@ -1,5 +1,5 @@
-import { Card, FormLabel } from '@automattic/components';
-import i18n, { localize } from 'i18n-calypso';
+import { Card, FormLabel, Dialog } from '@automattic/components';
+import { localize } from 'i18n-calypso';
 import { flowRight as compose } from 'lodash';
 import { Component } from 'react';
 import { connect } from 'react-redux';
@@ -20,12 +20,17 @@ import twoStepAuthorization from 'calypso/lib/two-step-authorization';
 import withFormBase from 'calypso/me/form-base/with-form-base';
 import Navigation from 'calypso/me/notification-settings/navigation';
 import ReauthRequired from 'calypso/me/reauth-required';
+import { useSiteSubscriptions } from 'calypso/reader/following/use-site-subscriptions';
 import { isAutomatticTeamMember } from 'calypso/reader/lib/teams';
 import { recordGoogleEvent } from 'calypso/state/analytics/actions';
 import { getReaderTeams } from 'calypso/state/teams/selectors';
 import SubscriptionManagementBackButton from '../subscription-management-back-button';
 
 class NotificationSubscriptions extends Component {
+	state = {
+		showConfirmModal: false,
+	};
+
 	handleClickEvent( action ) {
 		return () => this.props.recordGoogleEvent( 'Me', 'Clicked on ' + action );
 	}
@@ -34,14 +39,38 @@ class NotificationSubscriptions extends Component {
 		return () => this.props.recordGoogleEvent( 'Me', 'Focused on ' + action );
 	}
 
-	handleCheckboxEvent( action ) {
+	handleCheckboxEvent( action, invert = false ) {
 		return ( event ) => {
-			const eventAction = 'Clicked ' + action + ' checkbox';
-			const optionValue = event.target.checked ? 1 : 0;
-
-			this.props.recordGoogleEvent( 'Me', eventAction, 'checked', optionValue );
+			const optionValue = invert ? ! event.target.checked : event.target.checked;
+			this.props.recordGoogleEvent( 'Me', `Clicked ${ action } checkbox`, 'checked', +optionValue );
 		};
 	}
+
+	handleSubmit = ( event ) => {
+		event.preventDefault();
+		const isBlockingEmails = this.props.getSetting( 'subscription_delivery_email_blocked' );
+		const { hasSubscriptions } = this.props;
+
+		if ( isBlockingEmails && hasSubscriptions ) {
+			this.setState( { showConfirmModal: true } );
+			return;
+		}
+
+		this.props.submitForm( event );
+	};
+
+	handleModalCancel = () => {
+		// Create a synthetic event object that matches what updateSetting expects
+		const syntheticEvent = {
+			currentTarget: {
+				name: 'subscription_delivery_email_blocked',
+				value: false,
+			},
+		};
+
+		this.props.updateSetting( syntheticEvent );
+		this.setState( { showConfirmModal: false } );
+	};
 
 	getDeliveryHourLabel( hour ) {
 		return this.props.translate( '%(fromHour)s - %(toHour)s', {
@@ -58,7 +87,7 @@ class NotificationSubscriptions extends Component {
 	}
 
 	render() {
-		const { locale, teams } = this.props;
+		const { teams } = this.props;
 		const isAutomattician = isAutomatticTeamMember( teams );
 
 		return (
@@ -84,19 +113,19 @@ class NotificationSubscriptions extends Component {
 					<form
 						id="notification-settings"
 						onChange={ this.props.markChanged }
-						onSubmit={ this.props.submitForm }
+						onSubmit={ this.handleSubmit }
 					>
 						<FormSectionHeading>
-							{ this.props.translate( 'Subscriptions delivery' ) }
+							{ this.props.translate( 'Email subscriptions' ) }
 						</FormSectionHeading>
 						<p>
 							{ this.props.translate(
-								'{{readerLink}}Use the Reader{{/readerLink}} to adjust delivery settings for your existing subscriptions.',
+								'{{readerLink}}Visit the Reader{{/readerLink}} to adjust individual site subscriptions.',
 								{
 									components: {
 										readerLink: (
 											<a
-												href="/following/edit"
+												href="/reader/subscriptions"
 												onClick={ this.handleClickEvent( 'Edit Subscriptions in Reader Link' ) }
 											/>
 										),
@@ -212,11 +241,7 @@ class NotificationSubscriptions extends Component {
 						</FormFieldset>
 
 						<FormFieldset>
-							<FormLegend>
-								{ locale === 'en' || i18n.hasTranslation( 'Pause emails' )
-									? this.props.translate( 'Pause emails' )
-									: this.props.translate( 'Block emails' ) }
-							</FormLegend>
+							<FormLegend>{ this.props.translate( 'Pause emails' ) }</FormLegend>
 							<FormLabel>
 								<FormCheckbox
 									checked={ this.props.getSetting( 'subscription_delivery_email_blocked' ) }
@@ -227,37 +252,35 @@ class NotificationSubscriptions extends Component {
 									onClick={ this.handleCheckboxEvent( 'Block All Notification Emails' ) }
 								/>
 								<span>
-									{ locale === 'en' ||
-									i18n.hasTranslation(
-										'Pause all email updates from sites you’re following on WordPress.com'
-									)
-										? this.props.translate(
-												'Pause all email updates from sites you’re following on WordPress.com'
-										  )
-										: this.props.translate(
-												'Block all email updates from blogs you’re following on WordPress.com'
-										  ) }
+									{ this.props.translate(
+										'Pause all email updates from sites you’re subscribed to on WordPress.com'
+									) }
 								</span>
 							</FormLabel>
+							<FormSettingExplanation>
+								{ this.props.translate(
+									'Newsletters are sent via WordPress.com. If you pause emails, you will not receive newsletters from the sites you are subscribed to.'
+								) }
+							</FormSettingExplanation>
 						</FormFieldset>
 
 						{ isAutomattician && (
 							<FormFieldset>
-								<FormLegend>
-									Disable auto-follow P2 posts upon commenting (Automatticians only)
-								</FormLegend>
+								<FormLegend>Auto-follow P2 posts (Automatticians only)</FormLegend>
 								<FormLabel>
 									<FormCheckbox
-										checked={ this.props.getSetting( 'p2_disable_autofollow_on_comment' ) }
+										checked={ ! this.props.getSetting( 'p2_disable_autofollow_on_comment' ) }
 										disabled={ this.props.getDisabledState() }
 										id="p2_disable_autofollow_on_comment"
 										name="p2_disable_autofollow_on_comment"
 										onChange={ this.props.toggleSetting }
-										onClick={ this.handleCheckboxEvent( 'Disable auto-follow P2 Upon Comment' ) }
+										onClick={ this.handleCheckboxEvent(
+											'Enable auto-follow P2 upon comment',
+											true
+										) }
 									/>
 									<span>
-										Don't automatically subscribe to notifications for a P2 post whenever you leave
-										a comment on it.
+										Automatically subscribe to P2 post notifications when you leave a comment.
 									</span>
 								</FormLabel>
 							</FormFieldset>
@@ -274,6 +297,37 @@ class NotificationSubscriptions extends Component {
 						</FormButton>
 					</form>
 				</Card>
+
+				<Dialog
+					isVisible={ this.state.showConfirmModal }
+					onClose={ () => this.setState( { showConfirmModal: false } ) }
+					buttons={ [
+						{
+							action: 'cancel',
+							label: this.props.translate( 'Cancel' ),
+							onClick: () => this.handleModalCancel(),
+						},
+						{
+							action: 'confirm',
+							label: this.props.translate( 'Confirm' ),
+							onClick: () => {
+								this.setState( { showConfirmModal: false } );
+								// Create a synthetic event object
+								const syntheticEvent = {
+									preventDefault: () => {},
+								};
+								this.props.submitForm( syntheticEvent );
+							},
+							isPrimary: true,
+						},
+					] }
+				>
+					<p>
+						{ this.props.translate(
+							"You have active newsletter subscriptions. Pausing emails means you won't receive any newsletter updates. Are you sure you want to continue?"
+						) }
+					</p>
+				</Dialog>
 			</Main>
 		);
 	}
@@ -287,10 +341,15 @@ const mapDispatchToProps = {
 	recordGoogleEvent,
 };
 
+const NotificationSubscriptionsWithHooks = ( props ) => {
+	const { hasNonSelfSubscriptions } = useSiteSubscriptions();
+	return <NotificationSubscriptions hasSubscriptions={ hasNonSelfSubscriptions } { ...props } />;
+};
+
 export default compose(
 	connect( mapStateToProps, mapDispatchToProps ),
 	localize,
 	protectForm,
 	withLocalizedMoment,
 	withFormBase
-)( NotificationSubscriptions );
+)( NotificationSubscriptionsWithHooks );
