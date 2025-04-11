@@ -102,6 +102,7 @@ export interface Purchase {
 	is_email_verified?: boolean;
 	is_renewal: boolean;
 	is_root_domain_with_us?: boolean;
+	is_hundred_year_domain?: boolean;
 	meta: string | null;
 	new_quantity?: number;
 	product_id: string | number;
@@ -456,6 +457,7 @@ export interface VatDetails {
 	id?: string | null;
 	name?: string | null;
 	address?: string | null;
+	isForBusiness?: boolean | null;
 }
 
 /*
@@ -655,4 +657,4 @@ export interface CountryListItemWithVat extends CountryListItemBase {
 }
 export type CountryListItem = CountryListItemWithVat | CountryListItemWithoutVat;
 
-export type SitelessCheckoutType = 'jetpack' | 'akismet' | 'marketplace' | undefined;
+export type SitelessCheckoutType = 'jetpack' | 'akismet' | 'marketplace' | 'a4a' | undefined;

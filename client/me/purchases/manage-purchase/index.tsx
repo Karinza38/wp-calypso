@@ -1,4 +1,5 @@
 /* eslint-disable wpcalypso/jsx-classname-namespace */
+import config from '@automattic/calypso-config';
 import {
 	isPersonal,
 	isPremium,
@@ -53,6 +54,16 @@ import {
 import { Plans, type SiteDetails } from '@automattic/data-stores';
 import { localizeUrl } from '@automattic/i18n-utils';
 import { DOMAIN_CANCEL, SUPPORT_ROOT } from '@automattic/urls';
+import {
+	column,
+	download,
+	Icon,
+	payment,
+	reusableBlock,
+	tool,
+	trash,
+	upload,
+} from '@wordpress/icons';
 import clsx from 'clsx';
 import { localize, LocalizeProps, useTranslate } from 'i18n-calypso';
 import { Component, Fragment } from 'react';
@@ -61,6 +72,7 @@ import { bindActionCreators } from 'redux';
 import { SupportedSlugs } from 'calypso/../packages/components/src/product-icon/config';
 import googleWorkspaceIcon from 'calypso/assets/images/email-providers/google-workspace/icon.svg';
 import AsyncLoad from 'calypso/components/async-load';
+import isJetpackCrmProduct from 'calypso/components/crm-downloads/is-jetpack-crm-product';
 import QueryCanonicalTheme from 'calypso/components/data/query-canonical-theme';
 import QuerySiteDomains from 'calypso/components/data/query-site-domains';
 import QuerySitePurchases from 'calypso/components/data/query-site-purchases';
@@ -73,7 +85,7 @@ import VerticalNavItem from 'calypso/components/vertical-nav/item';
 import reinstallPlugins from 'calypso/data/marketplace/reinstall-plugins-api';
 import HundredYearPlanLogo from 'calypso/landing/stepper/declarative-flow/internals/steps-repository/hundred-year-plan-step-wrapper/hundred-year-plan-logo';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
-import { resolveDomainStatus } from 'calypso/lib/domains';
+import { getSelectedDomain, resolveDomainStatus } from 'calypso/lib/domains';
 import isJetpackCloud from 'calypso/lib/jetpack/is-jetpack-cloud';
 import {
 	getDomainRegistrationAgreementUrl,
@@ -96,6 +108,7 @@ import {
 	getName,
 	shouldRenderMonthlyRenewalOption,
 	getDIFMTieredPurchaseDetails,
+	canExplicitRenew,
 } from 'calypso/lib/purchases';
 import { getPurchaseCancellationFlowType } from 'calypso/lib/purchases/utils';
 import { hasCustomDomain } from 'calypso/lib/site/utils';
@@ -110,6 +123,7 @@ import useCheckPlanAvailabilityForPurchase from 'calypso/my-sites/plans-features
 import {
 	getCancelPurchaseUrlFor,
 	getAddNewPaymentMethodUrlFor,
+	getDowngradeUrlFor,
 } from 'calypso/my-sites/purchases/paths';
 import { useSelector } from 'calypso/state';
 import { NON_PRIMARY_DOMAINS_TO_FREE_USERS } from 'calypso/state/current-user/constants';
@@ -133,13 +147,17 @@ import getPrimaryDomainBySiteId from 'calypso/state/selectors/get-primary-domain
 import isDomainOnly from 'calypso/state/selectors/is-domain-only-site';
 import isSiteAtomic from 'calypso/state/selectors/is-site-automated-transfer';
 import { useGetWebsiteContentQuery } from 'calypso/state/signup/steps/website-content/hooks/use-get-website-content-query';
-import { hasLoadedSiteDomains, getAllDomains } from 'calypso/state/sites/domains/selectors';
+import {
+	hasLoadedSiteDomains,
+	getAllDomains,
+	getDomainsBySiteId,
+} from 'calypso/state/sites/domains/selectors';
 import { getSite, getSiteSlug, isRequestingSites } from 'calypso/state/sites/selectors';
 import { getCanonicalTheme } from 'calypso/state/themes/selectors';
 import { CalypsoDispatch, IAppState } from 'calypso/state/types';
 import { getSelectedSiteId } from 'calypso/state/ui/selectors';
 import { isRequestingWordAdsApprovalForSite } from 'calypso/state/wordads/approve/selectors';
-import { cancelPurchase, managePurchase, purchasesRoot } from '../paths';
+import { cancelPurchase, downgradePurchase, managePurchase, purchasesRoot } from '../paths';
 import PurchaseSiteHeader from '../purchases-site/header';
 import RemovePurchase from '../remove-purchase';
 import {
@@ -171,6 +189,7 @@ export interface ManagePurchaseProps {
 	cardTitle?: string;
 	getAddNewPaymentMethodUrlFor?: typeof getAddNewPaymentMethodUrlFor;
 	getCancelPurchaseUrlFor?: typeof getCancelPurchaseUrlFor;
+	getDowngradeUrlFor?: typeof getDowngradeUrlFor;
 	getChangePaymentMethodUrlFor?: GetChangePaymentMethodUrlFor;
 	getManagePurchaseUrlFor?: GetManagePurchaseUrlFor;
 	isSiteLevel?: boolean;
@@ -284,7 +303,9 @@ class ManagePurchase extends Component<
 		const { purchase, siteSlug, redirectTo } = this.props;
 		const options = redirectTo ? { redirectTo } : undefined;
 		const isSitelessRenewal =
-			isAkismetTemporarySitePurchase( purchase ) || isMarketplaceTemporarySitePurchase( purchase );
+			purchase &&
+			( isAkismetTemporarySitePurchase( purchase ) ||
+				isMarketplaceTemporarySitePurchase( purchase ) );
 
 		if ( ! purchase ) {
 			return;
@@ -353,6 +374,10 @@ class ManagePurchase extends Component<
 			isAkismetFreeProduct( purchase ) ||
 			( is100Year( purchase ) && ! isCloseToExpiration( purchase ) )
 		) {
+			return null;
+		}
+
+		if ( ! canExplicitRenew( purchase ) ) {
 			return null;
 		}
 
@@ -443,9 +468,13 @@ class ManagePurchase extends Component<
 			return null;
 		}
 
+		if ( ! canExplicitRenew( purchase ) ) {
+			return null;
+		}
+
 		return (
 			<CompactCard tagName="button" displayAsLink onClick={ onClick }>
-				<MaterialIcon icon="autorenew" className="card__icon" />
+				<Icon icon={ reusableBlock } className="card__icon" />
 				{ content }
 			</CompactCard>
 		);
@@ -571,16 +600,16 @@ class ManagePurchase extends Component<
 			return null;
 		}
 
-		let iconName;
+		let icon;
 		let buttonText;
 
 		if ( isExpired( purchase ) ) {
-			iconName = 'view_carousel';
+			icon = column;
 			buttonText = isUpgradeablePlan
 				? translate( 'Pick another plan' )
 				: translate( 'Pick another product' );
 		} else {
-			iconName = 'upload';
+			icon = upload;
 			buttonText = isUpgradeablePlan ? translate( 'Upgrade plan' ) : translate( 'Upgrade product' );
 		}
 
@@ -593,7 +622,7 @@ class ManagePurchase extends Component<
 				href={ upgradeUrl }
 				onClick={ this.handleUpgradeClick }
 			>
-				<MaterialIcon icon={ iconName } className="card__icon" />
+				<Icon icon={ icon } className="card__icon" />
 				{ buttonText }
 			</CompactCard>
 		);
@@ -658,13 +687,60 @@ class ManagePurchase extends Component<
 
 			return (
 				<CompactCard href={ path } onClick={ this.handleEditPaymentMethodNavItem }>
-					<MaterialIcon icon="credit_card" className="card__icon" />
+					<Icon icon={ payment } className="card__icon" />
 					{ addPaymentMethodLinkText( { purchase, translate } ) }
 				</CompactCard>
 			);
 		}
 
 		return null;
+	}
+
+	renderCrmDownloadsNavItem() {
+		const { purchase, translate, siteSlug } = this.props;
+
+		if ( ! purchase ) {
+			return null;
+		}
+
+		// Only show for Jetpack CRM Products
+		const productSlug = purchase.productSlug || '';
+		if ( ! isJetpackCrmProduct( productSlug ) ) {
+			return null;
+		}
+
+		const handleCrmDownloadsClick = () => {
+			recordTracksEvent( 'calypso_purchases_crm_downloads_click', {
+				product_slug: productSlug,
+			} );
+		};
+
+		// We'll pass the purchase ID in the URL, and the CRM Downloads component will fetch the actual license key
+		const path = `/purchases/crm-downloads/${ siteSlug }/${ purchase.id }`;
+
+		return (
+			<CompactCard href={ path } onClick={ handleCrmDownloadsClick }>
+				<MaterialIcon icon="person" className="card__icon" />
+				{ translate( 'CRM Downloads' ) }
+			</CompactCard>
+		);
+	}
+
+	renderRefundText() {
+		const { purchase, translate } = this.props;
+
+		if ( ! purchase ) {
+			return null;
+		}
+
+		// Hide if refund window has lapsed.
+		if ( ! hasAmountAvailableToRefund( purchase ) || ! purchase?.mostRecentRenewDate ) {
+			return;
+		}
+
+		return (
+			<span className="manage-purchase__refund-text">{ translate( 'Refund available' ) }</span>
+		);
 	}
 
 	renderRemovePurchaseNavItem() {
@@ -692,6 +768,10 @@ class ManagePurchase extends Component<
 		if ( isPlanPurchase ) {
 			text = translate( 'Remove plan' );
 		} else if ( isDomainRegistration( purchase ) ) {
+			// 100-year domains cannot be removed by the user
+			if ( this.isHundredYearDomain( purchase ) ) {
+				return null;
+			}
 			text = translate( 'Remove domain' );
 		}
 
@@ -709,8 +789,9 @@ class ManagePurchase extends Component<
 				linkIcon="chevron-right"
 				skipRemovePlanSurvey={ isPlanPurchase && hasCompletedCancelPurchaseSurvey }
 			>
-				<MaterialIcon icon="delete" className="card__icon" />
+				<Icon icon={ trash } className="card__icon" />
 				{ text }
+				{ this.renderRefundText() }
 			</RemovePurchase>
 		);
 	}
@@ -853,7 +934,7 @@ class ManagePurchase extends Component<
 					</>
 				) : (
 					<>
-						<MaterialIcon icon="build" className="card__icon" />
+						<Icon icon={ tool } className="card__icon" />
 						{ translate( 'Reinstall' ) }
 					</>
 				) }
@@ -913,8 +994,33 @@ class ManagePurchase extends Component<
 
 		return (
 			<CompactCard href={ link } className="remove-purchase__card" onClick={ onClick }>
-				<MaterialIcon icon="delete" className="card__icon" />
+				<Icon icon={ trash } className="card__icon" />
 				{ getCancelPurchaseNavText( purchase, translate ) }
+				{ this.renderRefundText() }
+			</CompactCard>
+		);
+	}
+
+	renderDowngradeNavItem() {
+		const { purchase, translate } = this.props;
+		if ( ! purchase ) {
+			return null;
+		}
+
+		if ( ! ( isBusiness( purchase ) || isPremium( purchase ) || isEcommerce( purchase ) ) ) {
+			return null;
+		}
+
+		const link = ( this.props.getDowngradeUrlFor ?? downgradePurchase )(
+			this.props.siteSlug,
+			purchase.id
+		);
+
+		return (
+			<CompactCard href={ link }>
+				<Icon icon={ download } className="card__icon" />
+				{ translate( 'Downgrade plan' ) }
+				{ this.renderRefundText() }
 			</CompactCard>
 		);
 	}
@@ -936,7 +1042,7 @@ class ManagePurchase extends Component<
 		if ( this.isHundredYearDomain( purchase ) ) {
 			return (
 				<div className="manage-purchase__plan-icon">
-					<HundredYearPlanLogo width={ 50 } />
+					<HundredYearPlanLogo width={ 60 } />
 				</div>
 			);
 		}
@@ -1271,35 +1377,44 @@ class ManagePurchase extends Component<
 				<Card className={ classes }>
 					<header className="manage-purchase__header">
 						{ this.renderPurchaseIcon() }
-						<h2 className="manage-purchase__title">{ this.getProductDisplayName() }</h2>
-						<div className="manage-purchase__description">
-							{ isHundredYearDomain
-								? translate( '100-Year Domain Registration' )
-								: purchaseType( purchase ) }
+						<div className="manage-purchase__header-content">
+							<h2 className="manage-purchase__title">{ this.getProductDisplayName() }</h2>
+							<div className="manage-purchase__description">
+								{ isHundredYearDomain
+									? translate( '100-Year Domain Registration' )
+									: purchaseType( purchase ) }
+							</div>
+							<div className="manage-purchase__price">
+								{ isPartnerPurchase( purchase ) ? (
+									<div className="manage-purchase__contact-partner">
+										{ translate( 'Please contact %(partnerName)s for details', {
+											args: {
+												partnerName: getPartnerName( purchase ) ?? '',
+											},
+										} ) }
+									</div>
+								) : (
+									<>
+										{ isOneTimePurchase( purchase ) && (
+											<PlanPrice
+												rawPrice={ purchase.regularPriceInteger }
+												isSmallestUnit
+												currencyCode={ purchase.currencyCode }
+												taxText={ purchase.taxText }
+												isOnSale={ !! purchase.saleAmount }
+											/>
+										) }
+									</>
+								) }
+							</div>
 						</div>
-						<div className="manage-purchase__price">
-							{ isPartnerPurchase( purchase ) ? (
-								<div className="manage-purchase__contact-partner">
-									{ translate( 'Please contact %(partnerName)s for details', {
-										args: {
-											partnerName: getPartnerName( purchase ) ?? '',
-										},
-									} ) }
-								</div>
-							) : (
-								<>
-									{ isOneTimePurchase( purchase ) && (
-										<PlanPrice
-											rawPrice={ purchase.regularPriceInteger }
-											isSmallestUnit
-											currencyCode={ purchase.currencyCode }
-											taxText={ purchase.taxText }
-											isOnSale={ !! purchase.saleAmount }
-										/>
-									) }
-								</>
-							) }
-						</div>
+						{ isProductOwner && ! purchase.isLocked && (
+							<div className="manage-purchase__renew-upgrade-buttons">
+								{ preventRenewal && this.renderSelectNewButton() }
+								{ this.renderUpgradeButton( preventRenewal ) }
+								{ ! preventRenewal && this.renderRenewButton() }
+							</div>
+						) }
 					</header>
 					{ this.renderPurchaseDescription() }
 					{ ! isPartnerPurchase( purchase ) && (
@@ -1312,13 +1427,6 @@ class ManagePurchase extends Component<
 								getChangePaymentMethodUrlFor ?? getChangePaymentMethodPath
 							}
 						/>
-					) }
-					{ isProductOwner && ! purchase.isLocked && (
-						<div className="manage-purchase__renew-upgrade-buttons">
-							{ preventRenewal && this.renderSelectNewButton() }
-							{ this.renderUpgradeButton( preventRenewal ) }
-							{ ! preventRenewal && this.renderRenewButton() }
-						</div>
 					) }
 				</Card>
 				{ ! isPartnerPurchase( purchase ) && (
@@ -1342,10 +1450,16 @@ class ManagePurchase extends Component<
 						{ /* TODO: Add ability to Renew Akismet subscription */ }
 						{ ! isJetpackTemporarySitePurchase( purchase ) && this.renderUpgradeNavItem() }
 						{ this.renderEditPaymentMethodNavItem() }
+						{ config.isEnabled( 'jetpack/crm-downloads' ) && this.renderCrmDownloadsNavItem() }
 						{ this.renderReinstall() }
-						{ this.renderCancelPurchaseNavItem() }
-						{ this.renderCancelSurvey() }
-						{ this.renderRemovePurchaseNavItem() }
+						<div className="manage-purchase__downgrade-products">
+							{ config.isEnabled( 'plans/self-service-downgrade' ) && ! isPersonal( purchase )
+								? this.renderDowngradeNavItem()
+								: null }
+							{ this.renderCancelPurchaseNavItem() }
+							{ this.renderRemovePurchaseNavItem() }
+							{ this.renderCancelSurvey() }
+						</div>
 					</>
 				) }
 			</Fragment>
@@ -1404,6 +1518,10 @@ class ManagePurchase extends Component<
 			preventRenewal = ! isRenewable( purchase );
 		}
 
+		if ( ! canExplicitRenew( purchase ) ) {
+			preventRenewal = true;
+		}
+
 		return (
 			<Fragment>
 				<TrackPurchasePageView
@@ -1415,7 +1533,10 @@ class ManagePurchase extends Component<
 					<QueryCanonicalTheme siteId={ siteId } themeId={ purchase?.meta ?? '' } />
 				) }
 
-				<HeaderCake backHref={ this.props.purchaseListUrl ?? purchasesRoot }>
+				<HeaderCake
+					backText={ translate( 'Purchases' ) }
+					backHref={ this.props.purchaseListUrl ?? purchasesRoot }
+				>
 					{ this.props.cardTitle || titles.managePurchase }
 				</HeaderCake>
 				{ showExpiryNotice ? (
@@ -1630,7 +1751,6 @@ const WrappedManagePurchase = (
 		planSlugs: [ relatedMonthlyPlanSlug as PlanSlug ],
 		siteId,
 		coupon: undefined,
-		storageAddOns: null,
 		useCheckPlanAvailabilityForPurchase,
 	} );
 
@@ -1664,6 +1784,10 @@ export default connect( ( state: IAppState, props: ManagePurchaseProps ) => {
 	const relatedMonthlyPlanSlug = getMonthlyPlanByYearly( purchase?.productSlug ?? '' );
 	const primaryDomain = getPrimaryDomainBySiteId( state, siteId );
 	const currentRoute = getCurrentRoute( state );
+	const domains = purchase && getDomainsBySiteId( state, purchase.siteId );
+	const selectedDomainName = purchase && getName( purchase );
+	const selectedDomain =
+		domains && selectedDomainName && getSelectedDomain( { domains, selectedDomainName } );
 
 	return {
 		currentRoute,
@@ -1680,10 +1804,9 @@ export default connect( ( state: IAppState, props: ManagePurchaseProps ) => {
 		hasSetupAds: Boolean(
 			site?.options?.wordads || isRequestingWordAdsApprovalForSite( state, site )
 		),
-		hasCompletedCancelPurchaseSurvey: getPreference(
-			state,
-			getCancelPurchaseSurveyCompletedPreferenceKey( purchase?.id )
-		),
+		hasCompletedCancelPurchaseSurvey: purchase
+			? getPreference( state, getCancelPurchaseSurveyCompletedPreferenceKey( purchase.id ) )
+			: false,
 		isAtomicSite: isSiteAtomic( state, siteId ),
 		isDomainOnlySite: purchase && isDomainOnly( state, purchase.siteId ),
 		isProductOwner,
@@ -1696,6 +1819,7 @@ export default connect( ( state: IAppState, props: ManagePurchaseProps ) => {
 		purchases,
 		relatedMonthlyPlanSlug,
 		renewableSitePurchases,
+		selectedDomain,
 		selectedSiteId,
 		site,
 		siteId,

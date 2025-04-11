@@ -1,6 +1,5 @@
 @import "@wordpress/base-styles/breakpoints";
 @import "@wordpress/base-styles/mixins";
-@import "./grid-mixins";
 @import "./woocommerce-box";
 
 .is-section-plugins .main {
@@ -26,7 +25,8 @@
 	}
 
 	.upsell-nudge {
-		margin-top: 16px;
+		margin-top: 40px;
+		margin-bottom: 0;
 
 		@include breakpoint-deprecated( "<660px" ) {
 			margin: 16px;
@@ -67,12 +67,17 @@ body.is-section-plugins {
 		}
 	}
 
-	.is-logged-in main:not(.a4a-layout):not(.a4a-layout-column) {
+	.is-logged-in main:not(.hosting-dashboard-layout):not(.hosting-dashboard-layout-column) {
 		&:not(.plugins-browser),
 		&.plugins-browser .plugins-browser__content-wrapper {
-			@include break-small {
-				padding-left: 2rem;
-				padding-right: 2rem;
+			padding-inline: 48px;
+
+			@media (max-width: $break-medium) {
+				padding-inline: 2rem;
+			}
+
+			@media (max-width: $break-small) {
+				padding-inline: 16px;
 			}
 		}
 
@@ -89,11 +94,11 @@ body.is-section-plugins {
 		}
 	}
 
-	.a4a-layout-column {
+	.hosting-dashboard-layout-column {
 		overflow: auto;
 	}
 
-	.a4a-layout-column.scheduled-updates-list-compact {
+	.hosting-dashboard-layout-column.scheduled-updates-list-compact {
 		width: 400px;
 		flex: unset;
 		transition: all 0.2s;
@@ -104,6 +109,10 @@ body.is-section-plugins {
 			h1 {
 				font-size: 1.25rem;
 			}
+		}
+
+		.plugins-update-manager-multisite-filters {
+			padding: 0;
 		}
 
 		.plugins-update-manager-multisite-filter {
@@ -130,19 +139,10 @@ body.is-section-plugins {
 		}
 	}
 
-	.a4a-layout-column.scheduled-updates-list {
+	.hosting-dashboard-layout-column.scheduled-updates-list {
 		.plugins-update-manager-multisite__header,
 		.plugins-update-manager-multisite-filter {
 			margin: 0;
-			padding: 1.5rem 4rem;
-
-			@include breakpoint-deprecated( "<960px" ) {
-				padding: 1rem;
-			}
-
-			@include breakpoint-deprecated( "<660px" ) {
-				padding: 1rem 0;
-			}
 		}
 
 		.plugins-update-manager-multisite__header {
@@ -168,8 +168,8 @@ body.is-section-plugins {
 		}
 	}
 
-	.a4a-layout-column.scheduled-updates-edit,
-	.a4a-layout-column.scheduled-updates-create {
+	.hosting-dashboard-layout-column.scheduled-updates-edit,
+	.hosting-dashboard-layout-column.scheduled-updates-create {
 		padding: 3rem;
 
 		@include breakpoint-deprecated( "<660px" ) {
@@ -191,10 +191,6 @@ body.is-section-plugins.theme-default.color-scheme {
 	margin-bottom: 16px;
 }
 
-.plugins__plugin-list-state {
-	white-space: nowrap;
-}
-
 .plugins__main-header {
 	background: var(--color-surface);
 	flex-direction: column;
@@ -208,7 +204,7 @@ body.is-section-plugins.theme-default.color-scheme {
 }
 
 .plugins__main-header .section-nav {
-	border: 1px solid rgba(var(--color-neutral-10-rgb), 0.5);
+	border: 1px solid color-mix(in srgb, var(--color-neutral-10) 50%, transparent);
 	box-shadow: none;
 	flex: auto;
 	margin: 0;
@@ -599,7 +595,7 @@ body.is-section-plugins #primary {
 	}
 }
 
-.plugin-management-wrapper.is-bulk-plugin-management {
+.plugin-management-wrapper {
   .plugins__top-container-jc {
       padding: 4px 0 0;
 
@@ -638,31 +634,6 @@ body.is-section-plugins #primary {
 	.search.is-open {
 		box-shadow: none;
 		z-index: 0;
-	}
-}
-
-.plugins__confirmation-modal {
-	.plugins__confirmation-modal-heading {
-		font-size: 1rem;
-		font-weight: 600;
-	}
-
-	.plugins__confirmation-modal-desc {
-		display: block;
-		padding-top: 12px;
-		font-size: 1rem;
-		font-weight: 400;
-	}
-
-	.dialog__action-buttons {
-		padding: 24px;
-
-		button {
-			margin-inline-start: 16px;
-			padding: 7px;
-			font-size: 0.75rem;
-			line-height: 1;
-		}
 	}
 }
 

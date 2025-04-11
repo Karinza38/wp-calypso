@@ -7,6 +7,7 @@ import config from '@automattic/calypso-config';
 import { getPlan, getPlanTermLabel } from '@automattic/calypso-products';
 import { FormInputValidation, Popover, Spinner } from '@automattic/components';
 import { useLocale } from '@automattic/i18n-utils';
+import { getOdieIdFromInteraction } from '@automattic/odie-client/src/utils';
 import {
 	useCanConnectToZendeskMessaging,
 	useOpenZendeskMessaging,
@@ -97,24 +98,15 @@ export const HelpCenterContactForm = () => {
 		[]
 	);
 
-	const odieId =
-		currentSupportInteraction?.events.find( ( event ) => event.event_source === 'odie' )
-			?.event_external_id ?? null;
+	const odieId = getOdieIdFromInteraction( currentSupportInteraction );
 
-	const {
-		resetStore,
-		setShowHelpCenter,
-		setUserDeclaredSite,
-		setShowMessagingChat,
-		setSubject,
-		setMessage,
-	} = useDispatch( HELP_CENTER_STORE );
+	const { resetStore, setShowHelpCenter, setUserDeclaredSite, setSubject, setMessage } =
+		useDispatch( HELP_CENTER_STORE );
 
 	const { data: canConnectToZendesk } = useCanConnectToZendeskMessaging();
 	const { hasActiveChats, isEligibleForChat, isLoading: isLoadingChatStatus } = useChatStatus();
 	const { isOpeningZendeskWidget, openZendeskWidget } = useOpenZendeskMessaging(
 		sectionName,
-		'zendesk_support_chat_key',
 		isEligibleForChat || hasActiveChats
 	);
 
@@ -198,7 +190,7 @@ export const HelpCenterContactForm = () => {
 					post_id: result.post_id,
 					blog_id: result.blog_id,
 				};
-				recordTracksEvent( `calypso_inlinehelp_article_no_postid_redirect`, tracksData );
+				recordTracksEvent( 'calypso_inlinehelp_article_no_postid_redirect', tracksData );
 				window.open( result.link, '_blank' );
 				return;
 			}
@@ -233,6 +225,13 @@ export const HelpCenterContactForm = () => {
 		navigate( '/' );
 	}
 
+	function navigateToContactForm() {
+		navigate( {
+			pathname: '/contact-form',
+			search: params.toString(),
+		} );
+	}
+
 	function handleGPTCancel() {
 		// send a tracks event
 		recordTracksEvent( 'calypso_inlinehelp_contact_gpt_cancel', {
@@ -244,28 +243,25 @@ export const HelpCenterContactForm = () => {
 		// stop loading the GPT response
 		params.set( 'show-gpt', 'false' );
 		params.set( 'disable-gpt', 'true' );
-		navigate( {
-			pathname: '/contact-form',
-			search: params.toString(),
-		} );
+		navigateToContactForm();
 	}
 
 	function handleCTA() {
-		if ( ! enableGPTResponse && ! showingSearchResults && ! wapuuFlow && ! skipResources ) {
+		if (
+			! enableGPTResponse &&
+			! showingSearchResults &&
+			! wapuuFlow &&
+			! skipResources &&
+			mode !== 'FORUM'
+		) {
 			params.set( 'show-results', 'true' );
-			navigate( {
-				pathname: '/contact-form',
-				search: params.toString(),
-			} );
+			navigateToContactForm();
 			return;
 		}
 
-		if ( ! showingGPTResponse && enableGPTResponse && ! wapuuFlow ) {
+		if ( ! showingGPTResponse && enableGPTResponse && ! wapuuFlow && mode !== 'FORUM' ) {
 			params.set( 'show-gpt', 'true' );
-			navigate( {
-				pathname: '/contact-form',
-				search: params.toString(),
-			} );
+			navigateToContactForm();
 			return;
 		}
 
@@ -387,6 +383,8 @@ export const HelpCenterContactForm = () => {
 				break;
 
 			case 'FORUM':
+				params.set( 'show-results', 'true' );
+				navigateToContactForm();
 				submitTopic( {
 					ownershipResult,
 					message: message ?? '',
@@ -502,6 +500,10 @@ export const HelpCenterContactForm = () => {
 	const getCTALabel = () => {
 		const showingHelpOrGPTResults = showingSearchResults || showingGPTResponse;
 
+		if ( mode === 'FORUM' && showingSearchResults ) {
+			return formTitles.buttonSubmittingLabel;
+		}
+
 		if ( ! showingGPTResponse && ! showingSearchResults && ! skipResources ) {
 			return __( 'Continue', __i18n_text_domain__ );
 		}
@@ -524,10 +526,6 @@ export const HelpCenterContactForm = () => {
 
 		return isSubmitting ? formTitles.buttonSubmittingLabel : formTitles.buttonLabel;
 	};
-
-	if ( hasActiveChats ) {
-		setShowMessagingChat( true );
-	}
 
 	if ( isLoadingChatStatus ) {
 		return (
@@ -604,6 +602,7 @@ export const HelpCenterContactForm = () => {
 						/>
 						<section className="contact-form-submit">
 							<Button
+								isBusy={ isSubmitting }
 								disabled={ isCTADisabled() }
 								onClick={ handleCTA }
 								variant="primary"
@@ -684,6 +683,7 @@ export const HelpCenterContactForm = () => {
 						</main>
 						<div className="contact-form-submit">
 							<Button
+								isBusy={ isSubmitting }
 								disabled={ isCTADisabled() }
 								onClick={ handleCTA }
 								variant="primary"

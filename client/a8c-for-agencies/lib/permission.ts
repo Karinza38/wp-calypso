@@ -5,6 +5,7 @@ import {
 } from 'calypso/a8c-for-agencies/sections/partner-directory/constants';
 import {
 	A4A_LANDING_LINK,
+	A4A_FEEDBACK_LINK,
 	A4A_OVERVIEW_LINK,
 	A4A_SITES_LINK,
 	A4A_SITES_LINK_NEEDS_ATTENTION,
@@ -14,6 +15,7 @@ import {
 	A4A_SITES_LINK_WALKTHROUGH_TOUR,
 	A4A_SITES_LINK_ADD_NEW_SITE_TOUR,
 	A4A_SITES_CONNECT_URL_LINK,
+	A4A_PLUGINS_LINK,
 	A4A_MARKETPLACE_LINK,
 	A4A_MARKETPLACE_PRODUCTS_LINK,
 	A4A_MARKETPLACE_HOSTING_LINK,
@@ -23,11 +25,10 @@ import {
 	A4A_MARKETPLACE_ASSIGN_LICENSE_LINK,
 	A4A_MARKETPLACE_DOWNLOAD_PRODUCTS_LINK,
 	A4A_REFERRALS_LINK,
-	A4A_REFERRALS_BANK_DETAILS_LINK,
-	A4A_REFERRALS_COMMISSIONS_LINK,
 	A4A_REFERRALS_DASHBOARD,
 	A4A_REFERRALS_PAYMENT_SETTINGS,
 	A4A_REFERRALS_FAQ,
+	A4A_REFERRALS_ARCHIVED,
 	A4A_PARTNER_DIRECTORY_LINK,
 	A4A_PURCHASES_LINK,
 	A4A_BILLING_LINK,
@@ -42,6 +43,11 @@ import {
 	A4A_MIGRATIONS_PAYMENT_SETTINGS,
 	A4A_TEAM_INVITE_LINK,
 	A4A_AGENCY_TIER_LINK,
+	A4A_WOOPAYMENTS_LINK,
+	A4A_WOOPAYMENTS_DASHBOARD_LINK,
+	A4A_WOOPAYMENTS_PAYMENT_SETTINGS_LINK,
+	A4A_WOOPAYMENTS_SITE_SETUP_LINK,
+	A4A_WOOPAYMENTS_OVERVIEW_LINK,
 } from '../components/sidebar-menu/lib/constants';
 import type { Agency } from 'calypso/state/a8c-for-agencies/types';
 
@@ -67,11 +73,10 @@ const MEMBER_ACCESSIBLE_PATHS: Record< string, string[] > = {
 	[ A4A_MARKETPLACE_ASSIGN_LICENSE_LINK ]: [ 'a4a_read_marketplace' ],
 	[ A4A_MARKETPLACE_DOWNLOAD_PRODUCTS_LINK ]: [ 'a4a_read_marketplace' ],
 	[ A4A_REFERRALS_LINK ]: [ 'a4a_read_referrals' ],
-	[ A4A_REFERRALS_BANK_DETAILS_LINK ]: [ 'a4a_read_referrals' ],
-	[ A4A_REFERRALS_COMMISSIONS_LINK ]: [ 'a4a_read_referrals' ],
 	[ A4A_REFERRALS_DASHBOARD ]: [ 'a4a_read_referrals' ],
 	[ A4A_REFERRALS_PAYMENT_SETTINGS ]: [ 'a4a_read_referrals' ],
 	[ A4A_REFERRALS_FAQ ]: [ 'a4a_read_referrals' ],
+	[ A4A_REFERRALS_ARCHIVED ]: [ 'a4a_read_referrals' ],
 	[ A4A_PARTNER_DIRECTORY_LINK ]: [ 'a4a_read_partner_directory' ],
 	[ A4A_PARTNER_DIRECTORY_DASHBOARD_LINK ]: [ 'a4a_read_partner_directory' ],
 	[ A4A_PARTNER_DIRECTORY_AGENCY_DETAILS_LINK ]: [ 'a4a_read_partner_directory' ],
@@ -89,6 +94,13 @@ const MEMBER_ACCESSIBLE_PATHS: Record< string, string[] > = {
 	[ A4A_MIGRATIONS_PAYMENT_SETTINGS ]: [ 'a4a_read_migrations' ],
 	[ A4A_TEAM_INVITE_LINK ]: [ 'a4a_edit_user_invites' ],
 	[ A4A_AGENCY_TIER_LINK ]: [ 'a4a_read_agency_tier' ],
+	[ A4A_PLUGINS_LINK ]: [ 'a4a_read_managed_sites' ],
+	// TODO: Add the correct capability for WooPayments
+	[ A4A_WOOPAYMENTS_LINK ]: [ 'a4a_read_referrals' ],
+	[ A4A_WOOPAYMENTS_DASHBOARD_LINK ]: [ 'a4a_read_referrals' ],
+	[ A4A_WOOPAYMENTS_PAYMENT_SETTINGS_LINK ]: [ 'a4a_read_referrals' ],
+	[ A4A_WOOPAYMENTS_SITE_SETUP_LINK ]: [ 'a4a_read_referrals' ],
+	[ A4A_WOOPAYMENTS_OVERVIEW_LINK ]: [ 'a4a_read_referrals' ],
 };
 
 const MEMBER_ACCESSIBLE_DYNAMIC_PATHS: Record< string, string[] > = {
@@ -96,6 +108,8 @@ const MEMBER_ACCESSIBLE_DYNAMIC_PATHS: Record< string, string[] > = {
 	team: [ 'a4a_read_users' ],
 	marketplace: [ 'a4a_read_marketplace' ],
 	licenses: [ 'a4a_jetpack_licensing' ],
+	plugins: [ 'a4a_read_managed_sites' ],
+	referrals: [ 'a4a_read_referrals' ],
 };
 
 const DYNAMIC_PATH_PATTERNS: Record< string, RegExp > = {
@@ -103,6 +117,8 @@ const DYNAMIC_PATH_PATTERNS: Record< string, RegExp > = {
 	marketplace: /^\/marketplace\/[^/]+\/[^/]+(\/.*)?$/,
 	licenses: /^\/purchases\/licenses(\/.*)?$/,
 	team: /^\/team(\/.*)?$/,
+	plugins: /^\/plugins(\/.*)?$/,
+	referrals: /^\/referrals(\/.*)?$/,
 };
 
 export const isPathAllowed = ( pathname: string, agency: Agency | null ) => {
@@ -111,7 +127,7 @@ export const isPathAllowed = ( pathname: string, agency: Agency | null ) => {
 	}
 
 	// Everyone can access the landing page and the overview page
-	if ( [ A4A_LANDING_LINK, A4A_OVERVIEW_LINK ].includes( pathname ) ) {
+	if ( [ A4A_LANDING_LINK, A4A_OVERVIEW_LINK, A4A_FEEDBACK_LINK ].includes( pathname ) ) {
 		return true;
 	}
 

@@ -1,3 +1,4 @@
+import { formatCurrency } from 'i18n-calypso';
 import AgencyPartnerBackground from 'calypso/assets/images/a8c-for-agencies/agency-tier/agency-partner-background.svg';
 import AgencyPartnerLogo from 'calypso/assets/images/a8c-for-agencies/agency-tier/agency-partner-logo-small.svg';
 import EmergingPartnerBackground from 'calypso/assets/images/a8c-for-agencies/agency-tier/emerging-partner-background.svg';
@@ -31,6 +32,7 @@ const getAgencyTierInfo = (
 		description: '',
 		logo: NoTierLogo,
 		includedTiers: [],
+		learnMoreLink: 'https://agencieshelp.automattic.com/knowledge-base/agency-tiering-benefits',
 	};
 	switch ( agencyTier ) {
 		case 'emerging-partner':
@@ -47,7 +49,14 @@ const getAgencyTierInfo = (
 				),
 				subtitle: translate(
 					'Your next tier milestone is when your influenced revenue exceeds %(amount)s',
-					{ args: { amount: '$1,200' }, comment: 'Amount of revenue' }
+					{
+						args: {
+							amount: formatCurrency( 1200, 'USD', {
+								stripZeros: true,
+							} ),
+						},
+						comment: 'Amount of revenue',
+					}
 				),
 				description: translate(
 					'Progress towards the Agency Partner Tier and access extra benefits with additional purchases and referrals.'
@@ -64,6 +73,8 @@ const getAgencyTierInfo = (
 					image: EmergingPartnerBackground,
 					cta: translate( 'Learn about Tiers' ),
 				},
+				learnMoreLink:
+					'https://agencieshelp.automattic.com/knowledge-base/agency-tiering-benefits/#account-activated',
 			};
 			break;
 		case 'agency-partner':
@@ -81,7 +92,11 @@ const getAgencyTierInfo = (
 				subtitle: translate(
 					'Your next tier milestone is when your influenced revenue exceeds %(amount)s',
 					{
-						args: { amount: '$5,000' },
+						args: {
+							amount: formatCurrency( 5000, 'USD', {
+								stripZeros: true,
+							} ),
+						},
 						comment: 'Amount of revenue',
 					}
 				),
@@ -91,9 +106,16 @@ const getAgencyTierInfo = (
 				logo: AgencyPartnerLogo,
 				includedTiers: [ 'emerging-partner', 'agency-partner' ],
 				celebrationModal: {
-					title: translate( "Congrats! You've reached the Agency Partner Tier." ),
+					title: translate( "Congrats! You've reached the Agency Partner tier!" ),
 					description: translate(
-						"You've reached at least $1,200 in influenced revenue and have unlocked these additional benefits:"
+						"You've reached at least %(amount)s in influenced revenue and have unlocked these additional benefits:",
+						{
+							args: {
+								amount: formatCurrency( 1200, 'USD', {
+									stripZeros: true,
+								} ),
+							},
+						}
 					),
 					benefits: [
 						translate( 'Eligibility for inclusion in our agency directories.' ),
@@ -104,6 +126,8 @@ const getAgencyTierInfo = (
 					image: AgencyPartnerBackground,
 					cta: translate( 'Explore your benefits' ),
 				},
+				learnMoreLink:
+					'https://agencieshelp.automattic.com/knowledge-base/agency-tiering-benefits/#agency-partner',
 			};
 			break;
 		case 'pro-agency-partner':
@@ -125,7 +149,7 @@ const getAgencyTierInfo = (
 				logo: ProAgencyPartnerLogo,
 				includedTiers: [ 'emerging-partner', 'agency-partner', 'pro-agency-partner' ],
 				celebrationModal: {
-					title: translate( "Congratulations, you've reached the Pro Partner Tier!" ),
+					title: translate( "Congratulations, you've reached the Pro Agency Partner tier!" ),
 					description: translate(
 						"You've reached top-tier status and unlocked these additional benefits:"
 					),
@@ -143,6 +167,8 @@ const getAgencyTierInfo = (
 					image: ProAgencyPartnerBackground,
 					cta: translate( 'Explore your benefits' ),
 				},
+				learnMoreLink:
+					'https://agencieshelp.automattic.com/knowledge-base/agency-tiering-benefits/#pro-partner',
 			};
 	}
 	return { id: agencyTier, ...tierInfo };

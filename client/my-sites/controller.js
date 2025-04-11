@@ -116,20 +116,7 @@ export function createNavigation( context ) {
 		basePath = sectionify( context.pathname );
 	}
 
-	let allSitesPath = basePath === '/home' ? '/sites' : basePath;
-
-	// Update allSitesPath if it is plugins page in Jetpack Cloud
-	if ( isJetpackCloud() && basePath.startsWith( '/plugins' ) ) {
-		allSitesPath = '/plugins';
-	}
-
-	return (
-		<NavigationComponent
-			path={ context.path }
-			allSitesPath={ allSitesPath }
-			siteBasePath={ basePath }
-		/>
-	);
+	return <NavigationComponent path={ context.path } siteBasePath={ basePath } />;
 }
 
 export function renderRebloggingEmptySites( context ) {
@@ -521,7 +508,11 @@ export function noSite( context, next ) {
 	return next();
 }
 
-const PATHS_EXCLUDED_FROM_SINGLE_SITE_CONTEXT_FOR_SINGLE_SITE_USERS = [ '/plugins' ];
+const PATHS_EXCLUDED_FROM_SINGLE_SITE_CONTEXT_FOR_SINGLE_SITE_USERS = [
+	'/plugins',
+	'/plugins/manage',
+	'/themes',
+];
 
 /*
  * Set up site selection based on last URL param and/or handle no-sites error cases

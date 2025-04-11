@@ -11,6 +11,7 @@ import {
 	HostingCardLinkButton,
 } from 'calypso/components/hosting-card';
 import { fetchSiteDomains } from 'calypso/my-sites/domains/domain-management/domains-table-fetch-functions';
+import { usePurchaseActions } from 'calypso/my-sites/domains/domain-management/list/use-purchase-actions';
 import { filterOutWpcomDomains } from 'calypso/my-sites/domains/domain-management/list/utils';
 import { isNotAtomicJetpack } from 'calypso/sites-dashboard/utils';
 import { useSelector, useDispatch } from 'calypso/state';
@@ -21,6 +22,7 @@ import {
 	showUpdatePrimaryDomainErrorNotice,
 	showUpdatePrimaryDomainSuccessNotice,
 } from 'calypso/state/domains/management/actions';
+import { canAnySiteConnectDomains } from 'calypso/state/selectors/can-any-site-connect-domains';
 import { setPrimaryDomain } from 'calypso/state/sites/domains/actions';
 import { getSelectedSite } from 'calypso/state/ui/selectors';
 
@@ -38,10 +40,13 @@ const ActiveDomainsCard: FC = () => {
 	const userCanSetPrimaryDomains = useSelector(
 		( state ) => ! currentUserHasFlag( state, NON_PRIMARY_DOMAINS_TO_FREE_USERS )
 	);
+	const hasConnectableSites = useSelector( canAnySiteConnectDomains );
 
 	const hasNonWpcomDomains = useMemo( () => {
 		return filterOutWpcomDomains( data?.domains ?? [] ).length > 0;
 	}, [ data ] );
+
+	const purchaseActions = usePurchaseActions();
 
 	// Do not render for self hosted jetpack sites, since they cannot manage domains with us.
 	if ( isJetpackNotAtomic ) {
@@ -60,6 +65,15 @@ const ActiveDomainsCard: FC = () => {
 					{ translate( 'Add new domain' ) }
 				</HostingCardLinkButton>
 				<HostingCardLinkButton
+					to={ `/domains/add/use-my-domain/${ site?.slug }?redirect_to=${ window.location.pathname }` }
+					hideOnMobile
+					onClick={ () =>
+						dispatch( recordTracksEvent( 'calypso_overview_transfer_domain_button_click' ) )
+					}
+				>
+					{ translate( 'Transfer domain' ) }
+				</HostingCardLinkButton>
+				<HostingCardLinkButton
 					to={ `/domains/manage/${ site?.slug }` }
 					onClick={ () =>
 						dispatch( recordTracksEvent( 'calypso_overview_manage_domains_button_click' ) )
@@ -71,13 +85,17 @@ const ActiveDomainsCard: FC = () => {
 
 			<DomainsTable
 				className="hosting-overview__domains-table"
+				context="site"
 				hideCheckbox
 				isLoadingDomains={ isLoading }
 				domains={ data?.domains }
 				isAllSitesView={ false }
+				isHostingOverview
 				useMobileCards={ forceMobile }
 				siteSlug={ site?.slug ?? null }
+				domainStatusPurchaseActions={ purchaseActions }
 				userCanSetPrimaryDomains={ userCanSetPrimaryDomains }
+				hasConnectableSites={ hasConnectableSites }
 				onDomainAction={ ( action, domain ) => {
 					if ( action === 'set-primary-address' && site ) {
 						return {

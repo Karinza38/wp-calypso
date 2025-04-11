@@ -9,10 +9,32 @@ import {
 	stagingSiteNotSupportedRedirect,
 	noSite,
 } from 'calypso/my-sites/controller';
+import getSelectedSiteSlug from 'calypso/state/ui/selectors/get-selected-site-slug';
+import emailController from '../email/controller';
 import domainsController from './controller';
 import domainManagementController from './domain-management/controller';
+import {
+	DOMAIN_OVERVIEW,
+	EMAIL_MANAGEMENT,
+} from './domain-management/domain-overview-pane/constants';
+import {
+	ADD_MAILBOX,
+	ADD_FORWARDING_EMAIL,
+	COMPARE_EMAIL_PROVIDERS,
+	DNS_RECORDS,
+	ADD_DNS_RECORD,
+	EDIT_DNS_RECORD,
+	EDIT_CONTACT_INFO,
+	TRANSFER_OTHER_SITE,
+} from './domain-management/subpage-wrapper/subpages';
 import * as paths from './paths';
 
+/**
+ * Registers a multi-page route.
+ * @param {Object} options - The options object.
+ * @param {Array} options.paths - The paths to register.
+ * @param {Array} options.handlers - The handlers to register. These will be applied to each path.
+ */
 function registerMultiPage( { paths: givenPaths, handlers } ) {
 	givenPaths.forEach( ( path ) => page( path, ...handlers ) );
 }
@@ -62,6 +84,16 @@ export default function () {
 		paths.domainManagementAllEditContactInfo(),
 		paths.domainManagementRoot() + '?site=all&action=edit-contact-email'
 	);
+
+	// `/domains/add/use-your-domain/:site` is deprecated and not in use.
+	// See https://github.com/Automattic/wp-calypso/issues/102066
+	page( '/domains/add/use-your-domain/:site', ( ctx ) => {
+		const query = new URLSearchParams( ctx.querystring );
+		// The domain used to be passed via the `initialQuery` URL search param
+		const domain = query.get( 'initialQuery' );
+
+		page.redirect( paths.domainUseMyDomain( ctx.params.site, { domain } ) );
+	} );
 
 	registerMultiPage( {
 		paths: [
@@ -139,6 +171,26 @@ export default function () {
 		paths.domainManagementTransferToOtherSite,
 		domainManagementController.domainManagementTransferToOtherSite
 	);
+
+	// /domains/manage/select-site
+	// Allows the user to select a site to manage domains for.
+	// Workaround for not listing wordpress.com subdomains on the global /domains/manage.
+	// This is **not** a workaround for /domains/manage omitting to render a site selector.
+	// This and the below route will need to be removed if we ever add wordpress.com subdomains
+	// to the global domain management pages and remove site specific domain management.
+	// See https://github.com/Automattic/wp-calypso/issues/100339 for more details.
+	page( paths.domainManagementSelectSite(), siteSelection, sites, makeLayout, clientRender );
+
+	// /domains/manage/select-site/:site
+	// Redirects to the selected site to /domains/manage/:site
+	page( paths.domainManagementSelectSite( ':site' ), siteSelection, ( context ) => {
+		const state = context.store.getState();
+		const slug = getSelectedSiteSlug( state );
+		if ( slug ) {
+			return page.redirect( paths.domainManagementList( slug ) );
+		}
+		return page.redirect( paths.domainManagementRoot() );
+	} );
 
 	page(
 		paths.domainManagementRoot(),
@@ -318,18 +370,6 @@ export default function () {
 	);
 
 	page(
-		paths.domainUseYourDomain( ':site' ),
-		siteSelection,
-		navigation,
-		domainsController.redirectIfNoSite( '/domains/add' ),
-		domainsController.jetpackNoDomainsWarning,
-		stagingSiteNotSupportedRedirect,
-		domainsController.useYourDomain,
-		makeLayout,
-		clientRender
-	);
-
-	page(
 		paths.domainUseMyDomain( ':site' ),
 		siteSelection,
 		navigation,
@@ -368,6 +408,124 @@ export default function () {
 		domainsController.jetpackNoDomainsWarning,
 		stagingSiteNotSupportedRedirect,
 		domainManagementController.domainManagementIndex,
+		makeLayout,
+		clientRender
+	);
+
+	page(
+		paths.domainManagementOverviewRoot() + '/:domain/:site',
+		siteSelection,
+		navigation,
+		domainManagementController.domainManagementV2,
+		domainManagementController.domainManagementPaneView( DOMAIN_OVERVIEW ),
+		domainManagementController.domainDashboardLayout,
+		makeLayout,
+		clientRender
+	);
+
+	page(
+		paths.domainManagementAllEmailRoot() + '/:domain/:site',
+		siteSelection,
+		navigation,
+		emailController.emailManagement,
+		domainManagementController.domainManagementPaneView( EMAIL_MANAGEMENT ),
+		domainManagementController.domainDashboardLayout,
+		makeLayout,
+		clientRender
+	);
+
+	page(
+		paths.domainManagementAllEmailRoot() + '/:domain/compare/:site',
+		siteSelection,
+		navigation,
+		domainManagementController.domainManagementSubpageParams( COMPARE_EMAIL_PROVIDERS ),
+		emailController.emailManagementInDepthComparison,
+		domainManagementController.domainManagementSubpageView,
+		domainManagementController.domainDashboardLayout,
+		makeLayout,
+		clientRender
+	);
+
+	page(
+		paths.domainManagementAllEmailRoot() + '/:domain/forwarding/add/:site',
+		siteSelection,
+		navigation,
+		domainManagementController.domainManagementSubpageParams( ADD_FORWARDING_EMAIL ),
+		emailController.emailManagementAddEmailForwards,
+		domainManagementController.domainManagementSubpageView,
+		domainManagementController.domainDashboardLayout,
+		makeLayout,
+		clientRender
+	);
+
+	page(
+		paths.domainManagementAllRoot() + '/contact-info/edit/:domain/:site',
+		siteSelection,
+		navigation,
+		domainManagementController.domainManagementSubpageParams( EDIT_CONTACT_INFO ),
+		domainManagementController.domainManagementEditContactInfo,
+		domainManagementController.domainManagementSubpageView,
+		domainManagementController.domainDashboardLayout,
+		makeLayout,
+		clientRender
+	);
+
+	page(
+		paths.domainManagementOverviewRoot() + '/:domain/dns/:site',
+		siteSelection,
+		navigation,
+		domainManagementController.domainManagementSubpageParams( DNS_RECORDS ),
+		domainManagementController.domainManagementDns,
+		domainManagementController.domainManagementSubpageView,
+		domainManagementController.domainDashboardLayout,
+		makeLayout,
+		clientRender
+	);
+
+	page(
+		paths.domainManagementOverviewRoot() + '/:domain/dns/add/:site',
+		siteSelection,
+		navigation,
+		domainManagementController.domainManagementSubpageParams( ADD_DNS_RECORD ),
+		domainManagementController.domainManagementDnsAddRecord,
+		domainManagementController.domainManagementSubpageView,
+		domainManagementController.domainDashboardLayout,
+		makeLayout,
+		clientRender
+	);
+
+	page(
+		paths.domainManagementOverviewRoot() + '/:domain/dns/edit/:site',
+		siteSelection,
+		navigation,
+		domainManagementController.domainManagementSubpageParams( EDIT_DNS_RECORD ),
+		domainManagementController.domainManagementDnsEditRecord,
+		domainManagementController.domainManagementSubpageView,
+		domainManagementController.domainDashboardLayout,
+		makeLayout,
+		clientRender
+	);
+
+	page(
+		paths.domainManagementAllEmailRoot() + '/:domain/titan/new/:site',
+		siteSelection,
+		navigation,
+		domainManagementController.domainManagementSubpageParams( ADD_MAILBOX ),
+		emailController.emailManagementNewTitanAccount,
+		domainManagementController.domainManagementSubpageView,
+		domainManagementController.domainDashboardLayout,
+		makeLayout,
+		clientRender
+	);
+
+	page(
+		paths.domainManagementOverviewRoot() + '/:domain/transfer/other-site/:site',
+		siteSelection,
+		navigation,
+		domainManagementController.domainManagementSubpageParams( TRANSFER_OTHER_SITE ),
+		domainManagementController.domainManagementTransferToOtherSite,
+		domainManagementController.domainManagementSubpageView,
+		domainManagementController.domainDashboardLayout,
 		makeLayout,
 		clientRender
 	);

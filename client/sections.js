@@ -39,6 +39,9 @@ const sections = [
 	},
 	{
 		name: 'account-close',
+		// /me/account/closed enables account restoration for logged-out users
+		// Parent route is private so enableLoggedOut flag won't work here
+		// Redirection is handled in redirectLoggedOut
 		paths: [ '/me/account/close', '/me/account/closed' ],
 		module: 'calypso/me/account-close',
 		group: 'me',
@@ -222,15 +225,15 @@ const sections = [
 		group: 'sites',
 	},
 	{
-		name: 'hosting-overview',
+		name: 'overview',
 		paths: [ '/overview' ],
-		module: 'calypso/hosting/overview',
+		module: 'calypso/sites/overview',
 		group: 'sites',
 	},
 	{
-		name: 'hosting-features',
-		paths: [ '/hosting-features' ],
-		module: 'calypso/hosting/hosting-features',
+		name: 'hosting',
+		paths: [ '/hosting-config', '/hosting-features' ],
+		module: 'calypso/sites/hosting',
 		group: 'sites',
 	},
 	{
@@ -378,23 +381,15 @@ const sections = [
 		enableLoggedOut: true,
 		group: 'me',
 	},
-	// this MUST be the first section for /read paths so subsequent sections under /read can override settings
-	{
-		name: 'reader',
-		paths: [ '/read' ],
-		module: 'calypso/reader',
-		group: 'reader',
-		enableLoggedOut: true,
-		trackLoadPerformance: true,
-	},
+	// this MUST be the first section for /reader paths so subsequent sections under /reader can override settings
 	{
 		name: 'reader',
 		paths: [
-			'/read/feeds/[^\\/]+',
-			'/read/blogs/[^\\/]+',
-			'/read/a8c',
-			'/read/p2',
-			'/recommendations',
+			'/reader',
+			'/([a-z]{2,3}|[a-z]{2}-[a-z]{2})/reader', // For locale-specific reader.
+			// Legacy paths that we need to support for backwards compatibility.
+			'/read(/?.*)',
+			'/([a-z]{2,3}|[a-z]{2}-[a-z]{2})/read', // For locale-specific reader.
 		],
 		module: 'calypso/reader',
 		group: 'reader',
@@ -403,7 +398,15 @@ const sections = [
 	},
 	{
 		name: 'reader',
-		paths: [ '/read/feeds/[^\\/]+/posts/[^\\/]+', '/read/blogs/[^\\/]+/posts/[^\\/]+' ],
+		paths: [ '/reader/feeds/[^\\/]+', '/reader/blogs/[^\\/]+', '/reader/a8c', '/reader/p2' ],
+		module: 'calypso/reader',
+		group: 'reader',
+		enableLoggedOut: true,
+		trackLoadPerformance: true,
+	},
+	{
+		name: 'reader',
+		paths: [ '/reader/feeds/[^\\/]+/posts/[^\\/]+', '/reader/blogs/[^\\/]+/posts/[^\\/]+' ],
 		module: 'calypso/reader/full-post',
 		group: 'reader',
 		enableLoggedOut: true,
@@ -450,7 +453,11 @@ const sections = [
 	},
 	{
 		name: 'reader',
-		paths: [ '/read/search', '/([a-z]{2,3}|[a-z]{2}-[a-z]{2})/read/search', '/recommendations' ],
+		paths: [
+			'/reader/search',
+			'/([a-z]{2,3}|[a-z]{2}-[a-z]{2})/reader/search',
+			'/recommendations',
+		],
 		module: 'calypso/reader/search',
 		group: 'reader',
 		enableLoggedOut: true,
@@ -458,20 +465,20 @@ const sections = [
 	},
 	{
 		name: 'reader',
-		paths: [ '/read/list' ],
+		paths: [ '/reader/list' ],
 		module: 'calypso/reader/list',
 		group: 'reader',
 	},
 	{
 		name: 'reader',
-		paths: [ '/read/conversations' ],
+		paths: [ '/reader/conversations' ],
 		module: 'calypso/reader/conversations',
 		group: 'reader',
 		trackLoadPerformance: true,
 	},
 	{
 		name: 'reader',
-		paths: [ '/read/notifications' ],
+		paths: [ '/reader/notifications' ],
 		module: 'calypso/reader/notifications',
 		group: 'reader',
 		trackLoadPerformance: true,
@@ -479,10 +486,10 @@ const sections = [
 	{
 		name: 'reader',
 		paths: [
-			'/read/subscriptions',
-			'/read/subscriptions/comments',
-			'/read/subscriptions/pending',
-			'^/read/subscriptions/(\\d+)(/)?$',
+			'/reader/subscriptions',
+			'/reader/subscriptions/comments',
+			'/reader/subscriptions/pending',
+			'^/reader/subscriptions/(\\d+)(/)?$',
 		],
 		module: 'calypso/reader/site-subscriptions-manager',
 		group: 'reader',
@@ -567,30 +574,6 @@ const sections = [
 		module: 'calypso/my-sites/customer-home',
 		group: 'sites',
 		trackLoadPerformance: true,
-	},
-	{
-		name: 'hosting',
-		paths: [ '/hosting-config' ],
-		module: 'calypso/hosting/overview',
-		group: 'sites',
-	},
-	{
-		name: 'site-tools',
-		paths: [ '/sites/tools' ],
-		module: 'calypso/sites/tools',
-		group: 'sites',
-	},
-	{
-		name: 'site-overview',
-		paths: [ '/sites/overview' ],
-		module: 'calypso/sites/overview',
-		group: 'sites',
-	},
-	{
-		name: 'site-marketing',
-		paths: [ '/sites/marketing' ],
-		module: 'calypso/sites/marketing',
-		group: 'sites',
 	},
 	{
 		name: 'site-settings',
@@ -685,12 +668,6 @@ const sections = [
 		group: 'jetpack-cloud',
 	},
 	{
-		name: 'jetpack-cloud-agency-sites-v2',
-		paths: [ '/sites' ],
-		module: 'calypso/jetpack-cloud/sections/agency-dashboard',
-		group: 'jetpack-cloud',
-	},
-	{
 		name: 'jetpack-cloud-partner-portal',
 		paths: [ '/partner-portal' ],
 		module: 'calypso/jetpack-cloud/sections/partner-portal',
@@ -747,7 +724,7 @@ const sections = [
 	{
 		name: 'site-monitoring',
 		paths: [ '/site-monitoring' ],
-		module: 'calypso/hosting/monitoring',
+		module: 'calypso/sites/monitoring',
 		group: 'sites',
 	},
 	{
@@ -759,19 +736,19 @@ const sections = [
 	{
 		name: 'site-logs',
 		paths: [ '/site-logs' ],
-		module: 'calypso/hosting/logs',
+		module: 'calypso/sites/logs',
 		group: 'sites',
 	},
 	{
 		name: 'github-deployments',
 		paths: [ '/github-deployments' ],
-		module: 'calypso/hosting/deployments',
+		module: 'calypso/sites/deployments',
 		group: 'sites',
 	},
 	{
 		name: 'staging-site',
 		paths: [ '/staging-site' ],
-		module: 'calypso/hosting/staging-site',
+		module: 'calypso/sites/staging-site',
 		group: 'sites',
 	},
 	{
@@ -785,6 +762,12 @@ const sections = [
 		name: 'a8c-for-agencies-landing',
 		paths: [ '/landing' ],
 		module: 'calypso/a8c-for-agencies/sections/landing',
+		group: 'a8c-for-agencies',
+	},
+	{
+		name: 'a8c-for-agencies-feedback',
+		paths: [ '/feedback' ],
+		module: 'calypso/a8c-for-agencies/sections/feedback',
 		group: 'a8c-for-agencies',
 	},
 	{
@@ -887,7 +870,7 @@ const sections = [
 	},
 	{
 		name: 'a8c-for-agencies-signup',
-		paths: [ '/signup', '/signup/finish', '/signup/oauth/token' ],
+		paths: [ '/signup', '/signup/finish', '/signup/oauth/token', '/signup/wc-asia' ],
 		module: 'calypso/a8c-for-agencies/sections/signup',
 		group: 'a8c-for-agencies',
 		enableLoggedOut: true,
@@ -899,6 +882,7 @@ const sections = [
 			'/client/subscriptions',
 			'/client/payment-methods',
 			'/client/payment-methods/add',
+			'/client/invoices',
 			'/client/checkout',
 		],
 		module: 'calypso/a8c-for-agencies/sections/client',
@@ -908,6 +892,18 @@ const sections = [
 		name: 'a8c-for-agencies-agency-tier',
 		paths: [ '/agency-tier' ],
 		module: 'calypso/a8c-for-agencies/sections/agency-tier',
+		group: 'a8c-for-agencies',
+	},
+	{
+		name: 'a8c-for-agencies-woopayments',
+		paths: [
+			'/woopayments',
+			'/woopayments/overview',
+			'/woopayments/dashboard',
+			'/woopayments/payment-settings',
+			'/woopayments/site-setup',
+		],
+		module: 'calypso/a8c-for-agencies/sections/woopayments',
 		group: 'a8c-for-agencies',
 	},
 ];

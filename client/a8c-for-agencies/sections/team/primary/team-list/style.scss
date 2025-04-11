@@ -1,8 +1,9 @@
 @import "@wordpress/base-styles/breakpoints";
 @import "@wordpress/base-styles/mixins";
+@import "@wordpress/base-styles/variables";
 
 .team-list {
-	.a4a-layout__body {
+	.hosting-dashboard-layout__body {
 		margin-block-end: 16px;
 
 		@include break-medium {
@@ -14,7 +15,7 @@
 		display: none;
 	}
 
-	.a4a-layout__navigation-wrapper {
+	.hosting-dashboard-layout__navigation-wrapper {
 		margin-block-end: 16px;
 		max-width: 100%;
 
@@ -53,16 +54,16 @@
 }
 
 .team-list__member-column-details-name {
-	@include a4a-font-heading-md($font-size: rem(14px));
+	@include heading-medium;
 }
 
 .team-list__member-column-details-email {
-	@include a4a-font-body-sm;
+	@include body-small;
 	color: var(--color-neutral-70);
 }
 
 .team-list__status-badge {
-	@include a4a-font-body-sm;
+	@include body-small;
 
 	&.badge--warning {
 		color: var(--color-warning-50);

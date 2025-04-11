@@ -91,7 +91,7 @@ const isGridPlanVisible = ( {
 	return isVisible;
 };
 
-const usePlanTypesWithIntent = ( {
+export const usePlanTypesWithIntent = ( {
 	intent,
 	selectedPlan,
 	siteId,
@@ -147,7 +147,6 @@ const usePlanTypesWithIntent = ( {
 			planTypes = [ TYPE_FREE, TYPE_PERSONAL, TYPE_PREMIUM, TYPE_BUSINESS ];
 			break;
 		case 'plans-newsletter':
-		case 'plans-link-in-bio':
 			planTypes = [ TYPE_FREE, TYPE_PERSONAL, TYPE_PREMIUM ];
 			break;
 		case 'plans-new-hosted-site':
@@ -200,6 +199,8 @@ const usePlanTypesWithIntent = ( {
 			planTypes = [ TYPE_PREMIUM, TYPE_BUSINESS ];
 			break;
 		case 'plans-affiliate':
+			planTypes = [ TYPE_BUSINESS, TYPE_ECOMMERCE ];
+			break;
 		case 'plans-site-selected-legacy':
 			planTypes = [ TYPE_FREE, TYPE_PERSONAL, TYPE_PREMIUM, TYPE_BUSINESS, TYPE_ECOMMERCE ];
 			break;
@@ -228,12 +229,12 @@ const useGridPlans: UseGridPlansType = ( {
 	isInSignup,
 	eligibleForFreeHostingTrial,
 	isSubdomainNotGenerated,
-	storageAddOns,
 	coupon,
 	siteId,
 	isDisplayingPlansNeededForFeature,
 	highlightLabelOverrides,
 	isDomainOnlySite,
+	reflectStorageSelectionInPlanPrices,
 } ) => {
 	const freeTrialPlanSlugs = useFreeTrialPlanSlugs?.( {
 		intent: intent ?? 'default',
@@ -286,10 +287,10 @@ const useGridPlans: UseGridPlansType = ( {
 	const pricedAPIPlans = Plans.usePlans( { coupon } );
 	const pricingMeta = Plans.usePricingMetaForGridPlans( {
 		planSlugs: availablePlanSlugs,
-		storageAddOns,
 		coupon,
 		siteId,
 		useCheckPlanAvailabilityForPurchase,
+		reflectStorageSelectionInPlanPrices,
 	} );
 
 	// Null return would indicate that we are still loading the data. No grid without grid plans.
@@ -312,8 +313,6 @@ const useGridPlans: UseGridPlansType = ( {
 		let tagline: TranslateResult = '';
 		if ( 'plans-newsletter' === intent ) {
 			tagline = planConstantObj.getNewsletterTagLine?.() ?? '';
-		} else if ( 'plans-link-in-bio' === intent ) {
-			tagline = planConstantObj.getLinkInBioTagLine?.() ?? '';
 		} else if ( 'plans-blog-onboarding' === intent ) {
 			tagline = planConstantObj.getBlogOnboardingTagLine?.() ?? '';
 		} else {

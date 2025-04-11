@@ -50,3 +50,11 @@ export const isStudioAppOAuth2Client = ( oauth2Client ) => {
 	// 95109 => Studio by WordPress.com.
 	return oauth2Client?.id === 95109;
 };
+
+export const isPartnerPortalOAuth2Client = ( oauth2Client ) => {
+	return oauth2Client && [ 102832, 103914 ].includes( oauth2Client.id );
+};
+
+export const isVIPOAuth2Client = ( oauth2Client ) => {
+	return oauth2Client?.id === 76596;
+};

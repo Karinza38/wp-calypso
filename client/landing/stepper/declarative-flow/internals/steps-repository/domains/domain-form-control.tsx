@@ -3,8 +3,6 @@ import {
 	HUNDRED_YEAR_DOMAIN_FLOW,
 	HUNDRED_YEAR_PLAN_FLOW,
 	isDomainUpsellFlow,
-	LINK_IN_BIO_TLD_FLOW,
-	isSiteAssemblerFlow,
 } from '@automattic/onboarding';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { isEmpty } from 'lodash';
@@ -13,7 +11,7 @@ import QueryProductsList from 'calypso/components/data/query-products-list';
 import { useMyDomainInputMode as inputMode } from 'calypso/components/domains/connect-domain-step/constants';
 import RegisterDomainStep from 'calypso/components/domains/register-domain-step';
 import { recordUseYourDomainButtonClick } from 'calypso/components/domains/register-domain-step/analytics';
-import ReskinSideExplainer from 'calypso/components/domains/reskin-side-explainer';
+import SideExplainer from 'calypso/components/domains/side-explainer';
 import UseMyDomain from 'calypso/components/domains/use-my-domain';
 import { getDomainSuggestionSearch, getFixedDomainSearch } from 'calypso/lib/domains';
 import { getSuggestionsVendor } from 'calypso/lib/domains/suggestions';
@@ -37,7 +35,7 @@ interface DomainFormControlProps {
 	onAddMapping: ( domain: string ) => void;
 	onAddTransfer: ( { domain, authCode }: { domain: string; authCode: string } ) => void;
 	onSkip: ( _googleAppsCartItem?: any, shouldHideFreePlan?: boolean ) => void;
-	onUseYourDomainClick: () => void;
+	onUseYourDomainClick: ( domain?: string ) => void;
 	showUseYourDomain: boolean;
 	isCartPendingUpdate: boolean;
 	isCartPendingUpdateDomain: DomainSuggestion | undefined;
@@ -70,7 +68,7 @@ export function DomainFormControl( {
 
 	const [ searchOnInitialRender, setSearchOnInitialRender ] = useState( true );
 
-	const path = '/start/link-in-bio/domains?new=test';
+	const path = '/setup/onboarding/domains';
 	let showExampleSuggestions: boolean | undefined = undefined;
 	let includeWordPressDotCom: boolean | undefined = undefined;
 	let showSkipButton: boolean | undefined = undefined;
@@ -91,10 +89,6 @@ export function DomainFormControl( {
 		showExampleSuggestions = false;
 		includeWordPressDotCom = false;
 		showSkipButton = true;
-	}
-
-	if ( flow === LINK_IN_BIO_TLD_FLOW ) {
-		includeWordPressDotCom = false;
 	}
 
 	if ( flow === DOMAIN_UPSELL_FLOW ) {
@@ -132,14 +126,14 @@ export function DomainFormControl( {
 
 		const useYourDomain = (
 			<div className="domains__domain-side-content">
-				<ReskinSideExplainer onClick={ handleUseYourDomainClick } type="use-your-domain" />
+				<SideExplainer onClick={ handleUseYourDomainClick } type="use-your-domain" />
 			</div>
 		);
 
 		return (
 			<div className="domains__domain-side-content-container">
 				<div className="domains__domain-side-content domains__free-domain">
-					<ReskinSideExplainer
+					<SideExplainer
 						onClick={ handleDomainExplainerClick }
 						type="free-domain-explainer"
 						flowName={ flow }
@@ -148,24 +142,6 @@ export function DomainFormControl( {
 				{ useYourDomain }
 			</div>
 		);
-	};
-
-	const getOtherManagedSubdomains = () => {
-		if ( flow === LINK_IN_BIO_TLD_FLOW ) {
-			return [ 'link' ];
-		}
-	};
-
-	const getOtherManagedSubdomainsCountOverride = () => {
-		if ( flow === LINK_IN_BIO_TLD_FLOW ) {
-			return 1;
-		}
-	};
-
-	const getPromoTlds = () => {
-		if ( flow === LINK_IN_BIO_TLD_FLOW ) {
-			return [ 'link' ];
-		}
 	};
 
 	const shouldIncludeDotBlogSubdomain = () => {
@@ -188,26 +164,16 @@ export function DomainFormControl( {
 				<CalypsoShoppingCartProvider>
 					<UseMyDomain
 						analyticsSection={ analyticsSection }
-						basePath={ path }
 						initialQuery={ domainForm?.lastQuery }
 						initialMode={ inputMode.domainInput }
 						onNextStep={ null }
 						isSignupStep
-						showHeader={ false }
 						onTransfer={ onAddTransfer }
 						onConnect={ ( { domain } ) => onAddMapping( domain ) }
 					/>
 				</CalypsoShoppingCartProvider>
 			</div>
 		);
-	};
-
-	const isReskinnedSupportedFlow = () => {
-		if ( ! flow ) {
-			return false;
-		}
-
-		return isDomainUpsellFlow( flow ) || isSiteAssemblerFlow( flow );
 	};
 
 	const renderDomainForm = () => {
@@ -251,26 +217,24 @@ export function DomainFormControl( {
 					includeWordPressDotCom={ includeWordPressDotCom ?? true }
 					initialState={ initialState }
 					isPlanSelectionAvailableInFlow={ isPlanSelectionAvailableLaterInFlow }
-					isReskinned
-					reskinSideContent={ getSideContent() }
+					isOnboarding
+					sideContent={ getSideContent() }
 					isSignupStep
 					key="domainForm"
 					offerUnavailableOption
-					otherManagedSubdomains={ getOtherManagedSubdomains() }
-					otherManagedSubdomainsCountOverride={ getOtherManagedSubdomainsCountOverride() }
 					onAddDomain={ onAddDomain }
 					onAddMapping={ onAddMapping }
 					onSave={ setDomainForm }
 					onSkip={ onSkip }
-					path={ path }
 					products={ productsList }
-					promoTlds={ getPromoTlds() }
 					selectedSite={ selectedSite }
 					showExampleSuggestions={ showExampleSuggestions }
 					showSkipButton={ showSkipButton }
 					shouldQuerySubdomains={ shouldQuerySubdomains }
 					suggestion={ initialQuery }
-					handleClickUseYourDomain={ onUseYourDomainClick }
+					handleClickUseYourDomain={ ( event: React.MouseEvent, domain: string ) =>
+						onUseYourDomainClick( domain )
+					}
 					vendor={ getSuggestionsVendor( {
 						isSignup: true,
 						isDomainOnly: false,
@@ -289,7 +253,7 @@ export function DomainFormControl( {
 		content = renderDomainForm();
 	}
 
-	if ( isReskinnedSupportedFlow() && ! showUseYourDomain ) {
+	if ( isDomainUpsellFlow( flow ) && ! showUseYourDomain ) {
 		sideContent = getSideContent();
 	}
 

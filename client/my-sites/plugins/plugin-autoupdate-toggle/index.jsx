@@ -1,8 +1,8 @@
+import { ExternalLink } from '@automattic/components';
 import { localize } from 'i18n-calypso';
 import PropTypes from 'prop-types';
 import { Component } from 'react';
 import { connect } from 'react-redux';
-import ExternalLink from 'calypso/components/external-link';
 import { DISABLE_AUTOUPDATE_PLUGIN, ENABLE_AUTOUPDATE_PLUGIN } from 'calypso/lib/plugins/constants';
 import { getSiteFileModDisableReason, isMainNetworkSite } from 'calypso/lib/site/utils';
 import PluginAction from 'calypso/my-sites/plugins/plugin-action/plugin-action';
@@ -63,7 +63,8 @@ export class PluginAutoUpdateToggle extends Component {
 		const isPurchasedMarketplaceProduct =
 			this.props.isMarketplaceProduct && this.props.productPurchase;
 		const isPreinstalledPlugin = PREINSTALLED_PLUGINS.includes( this.props.plugin.slug );
-		const isAutomanagedPlugin = AUTOMOMANAGED_PLUGINS.includes( this.props.plugin.slug );
+		const isAutomanagedPlugin =
+			AUTOMOMANAGED_PLUGINS.includes( this.props.plugin.slug ) || this.props.plugin?.is_managed;
 
 		// Auto-managed are only applicable to sites that are part of an automated transfer.
 		return (

@@ -2,7 +2,6 @@
 @import "@automattic/typography/styles/variables";
 @import "@automattic/color-studio/dist/color-variables";
 @import "client/landing/subscriptions/styles/search-component";
-@import "client/landing/subscriptions/components/site-subscriptions-list/styles/variables";
 
 @mixin hover-color {
 	&:hover,
@@ -15,9 +14,7 @@
 			color: var(--color-text-inverted);
 		}
 
-		svg path[fill],
-		svg path[fill-rule],
-		svg path[fill-opacity] {
+		svg path {
 			fill: var(--color-text-inverted);
 		}
 
@@ -29,22 +26,23 @@
 	}
 }
 
-.site-subscriptions-manager {
+body.is-section-reader .layout.is-section-reader .site-subscriptions-manager {
 	&.main {
 		max-width: 1168px;
 		min-height: 100vh;
 		margin: 0 auto;
-		padding: 0 32px;
 
 		@media (max-width: $break-small) {
-			padding: 0 16px;
-
-			.navigation-header {
-				padding: 16px 0;
-			}
+			padding: 16px;
 		}
 
 		@extend %search-component-subscriptions-style;
+	}
+
+	.navigation-header {
+		@media (max-width: $break-small) {
+			padding: 0;
+		}
 	}
 
 	&__header-h-stack {
@@ -110,10 +108,6 @@
 		line-height: $font-title-small;
 		margin: 48px 0 16px;
 	}
-
-	.reader-unsubscribed-feeds-search-list {
-		border-block-start: 1px solid $site-subscriptions-list-row-divider-color;
-	}
 }
 
 hr.subscriptions__separator {
@@ -142,6 +136,10 @@ hr.subscriptions__separator {
 			&.email-me-new-comments-toggle {
 				margin-bottom: 16px;
 			}
+		}
+
+		.delivery-frequency-input__control {
+			max-width: 100%;
 		}
 	}
 

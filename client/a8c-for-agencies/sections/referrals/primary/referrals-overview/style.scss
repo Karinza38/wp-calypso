@@ -1,5 +1,6 @@
 @import "@wordpress/base-styles/breakpoints";
 @import "@wordpress/base-styles/mixins";
+@import "@wordpress/base-styles/variables";
 
 $data-view-border-color: #f1f1f1;
 
@@ -7,64 +8,63 @@ $data-view-border-color: #f1f1f1;
 	margin-block-end: 48px;
 }
 
-
 .referrals-overview__button-popover {
 	.a4a-popover__content {
 		.a4a-popover__title {
-			@include a4a-font-heading-md;
+			@include heading-medium;
 			color: var(--studio-gray-80);
 		}
 
 		.referrals-overview__button-popover-description {
-			@include a4a-font-body-md;
+			@include body-small;
 		}
 	}
 }
 
 .referrals-overview__section-heading {
-	margin-block-start: 24px;
-	font-size: rem(24px);
+	margin-block-start: 32px;
+	@include heading-x-large;
 	margin-block-end: 8px;
-	font-weight: 600;
 }
+
 .referrals-overview__section-subtitle {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
-	font-size: rem(14px);
-	font-weight: 400;
-	margin-block-end: 48px;
+	@include body-medium;
+	margin-block-end: 32px;
 	color: var(--color-neutral-50);
 }
 
-
 .referrals-overview__step-section-woo-payments {
-	a.button,
-	a.button:visited {
-		text-decoration: underline;
-		justify-content: flex-start;
+	margin-block-end: 0;
+
+	a,
+	a:visited {
+		text-decoration: none;
+		justify-content: center;
 	}
 
 	&.step-section-item .step-section-item__button {
-		margin-block-start: 0;
+		margin-block-start: 16px;
+
+		@include break-large {
+			margin-block: auto;
+		}
 	}
 }
 
 .referrals-overview__section-container {
 	display: flex;
 	flex-direction: column;
-	gap: 48px;
-}
-
-.referrals-layout:not(.full-width-layout-with-table) .a4a-layout__body-wrapper {
-	max-width: 900px;
+	gap: 32px;
 }
 
 .referrals-overview__section-container .a4a-text-placeholder {
 	height: 80px;
 }
 
-.referrals-layout--automated {
+.referrals-layout {
 	@media (min-width: $break-large) {
 		background: inherit;
 
@@ -78,44 +78,8 @@ $data-view-border-color: #f1f1f1;
 		}
 	}
 
-	.referrals-overview__section-container {
-		gap: 32px;
-	}
-
-	.referrals-overview__step-section-learn-more {
-		a.button {
-			padding-block: 4px;
-		}
-
-		.step-section__header {
-			margin-block-end: 0;
-		}
-	}
-
-	.referrals-overview__section-subtitle {
-		margin-block-end: 32px;
-	}
-
-	&:not(.full-width-layout-with-table) .a4a-layout__body-wrapper {
+	&:not(.full-width-layout-with-table) .hosting-dashboard-layout__body-wrapper {
 		max-width: 700px;
-	}
-
-	.referrals-overview__step-section-woo-payments {
-		margin-block-end: 0;
-
-		a,
-		a:visited {
-			text-decoration: none;
-			justify-content: center;
-		}
-
-		&.step-section-item .step-section-item__button {
-			margin-block-start: 16px;
-
-			@include break-large {
-				margin-block: auto;
-			}
-		}
 	}
 
 	.consolidated-view {
@@ -126,11 +90,7 @@ $data-view-border-color: #f1f1f1;
 		}
 	}
 
-	.referrals-overview__section-heading {
-		margin-block-start: 32px;
-	}
-
-	&.main.a4a-layout {
+	&.main.hosting-dashboard-layout {
 		@include break-large {
 			background: inherit;
 		}
@@ -150,7 +110,7 @@ $data-view-border-color: #f1f1f1;
 			gap: 0;
 		}
 
-		.a4a-layout__top-wrapper > * {
+		.hosting-dashboard-layout__top-wrapper > * {
 			padding-inline: 24px;
 		}
 
@@ -165,10 +125,37 @@ $data-view-border-color: #f1f1f1;
 				display: block;
 			}
 		}
+	}
 
-		.a4a-layout__header-actions a.button {
-			text-wrap: nowrap;
+	.step-section-item {
+		.step-section-item__button .button {
+			min-width: 120px;
 		}
+
+		.step-section-item__button {
+			@include break-large {
+				margin-block: auto;
+			}
+		}
+
+		.step-section-item__status.is-large-screen {
+			@include break-large {
+				display: inline-flex;
+				position: relative;
+				left: 8px;
+			}
+
+		}
+	}
+}
+
+.referrals-overview__step-section-learn-more {
+	a.button {
+		padding-block: 4px;
+	}
+
+	.step-section__header {
+		margin-block-end: 0;
 	}
 }
 
@@ -196,27 +183,16 @@ $data-view-border-color: #f1f1f1;
 	}
 }
 
-.a4a-layout__header-actions {
+.hosting-dashboard-layout__header-actions {
 	a.button {
-		text-wrap: pretty;
-	}
-}
-
-.referrals-overview__link {
-	color: var(--color-accent-100);
-	text-decoration: underline;
-
-	&:hover,
-	&:visited,
-	&:focus {
-		color: var(--color-accent-100);
+		text-wrap: nowrap;
 	}
 }
 
 /* FIXME: This is a temporary fix to make the referral
  * layout columns the same height
  */
-.main.a4a-layout-column.referrals-layout__column {
+.main.hosting-dashboard-layout-column.referrals-layout__column {
 	height: auto;
 	overflow-y: scroll;
 }
@@ -231,7 +207,7 @@ $data-view-border-color: #f1f1f1;
 	display: flex;
 }
 
-.referrals-layout .item-preview__pane {
+.referrals-layout .hosting-dashboard-item-view {
 	display: flex;
 	flex-direction: column;
 	height: calc(100vh - 32px);

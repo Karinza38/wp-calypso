@@ -1,10 +1,11 @@
 import { Button } from '@automattic/components';
 import { localizeUrl } from '@automattic/i18n-utils';
-import { CONTACT, HTTPS_SSL } from '@automattic/urls';
+import { CONTACT } from '@automattic/urls';
 import { Icon, lock } from '@wordpress/icons';
 import { useTranslate } from 'i18n-calypso';
 import { ReactElement, useEffect, useState } from 'react';
 import Accordion from 'calypso/components/domains/accordion';
+import InlineSupportLink from 'calypso/components/inline-support-link';
 import useSslDetailsQuery from 'calypso/data/domains/ssl/use-ssl-details-query';
 import useProvisionCertificateMutation from 'calypso/data/domains/ssl/use-ssl-provision-certificate-mutation';
 import { useDispatch } from 'calypso/state';
@@ -16,7 +17,7 @@ import './style.scss';
 
 const noticeOptions = {
 	duration: 5000,
-	id: `ssl-status-notification`,
+	id: 'ssl-status-notification',
 };
 
 const DomainSecurityDetails = ( { domain, isDisabled }: SecurityCardProps ) => {
@@ -88,25 +89,34 @@ const DomainSecurityDetails = ( { domain, isDisabled }: SecurityCardProps ) => {
 			);
 		}
 
-		if ( sslDetails?.failure_reasons ) {
+		if ( sslDetails.failure_reasons ) {
+			if ( sslDetails.failure_reasons.length > 0 ) {
+				return (
+					<>
+						<p className="domain-security-details__description-message">
+							{ translate(
+								'There are one or more problems with your DNS configuration that prevent an SSL certificate from being issued:'
+							) }
+						</p>
+						<ul>
+							{ sslDetails.failure_reasons?.map( ( failureReason ) => {
+								return <li key={ failureReason.error_type }>{ failureReason.message }</li>;
+							} ) }
+						</ul>
+						<p className="domain-security-details__description-message">
+							{ translate(
+								'Once you have fixed all the issues, you can request a new certificate by clicking the button below.'
+							) }
+						</p>
+					</>
+				);
+			}
 			return (
-				<>
-					<p className="domain-security-details__description-message">
-						{ translate(
-							'There are one or more problems with your DNS configuration that prevent an SSL certificate from being issued:'
-						) }
-					</p>
-					<ul>
-						{ sslDetails.failure_reasons?.map( ( failureReason ) => {
-							return <li key={ failureReason.error_type }>{ failureReason.message }</li>;
-						} ) }
-					</ul>
-					<p className="domain-security-details__description-message">
-						{ translate(
-							'Once you have fixed all the issues, you can request a new certificate by clicking the button below.'
-						) }
-					</p>
-				</>
+				<p className="domain-security-details__description-message">
+					{ translate(
+						'There was a problem issuing your SSL certificate. You can request a new certificate by clicking the button below.'
+					) }
+				</p>
 			);
 		}
 		return (
@@ -159,13 +169,17 @@ const DomainSecurityDetails = ( { domain, isDisabled }: SecurityCardProps ) => {
 								disabled={ isProvisioningCertificate }
 								onClick={ handleProvisionCertificate }
 							>
-								Provision certificate
+								{ translate( 'Provision certificate' ) }
 							</Button>
 						) }
 					<div className="domain-security-details__description-help-text">
 						{ translate(
 							'We give you strong HTTPS encryption with your domain for free. This provides a trust indicator for your visitors and keeps their connection to your site secure. {{a}}Learn more{{/a}}',
-							{ components: { a: <a href={ localizeUrl( HTTPS_SSL ) } /> } }
+							{
+								components: {
+									a: <InlineSupportLink supportContext="https-ssl" showIcon={ false } />,
+								},
+							}
 						) }
 					</div>
 				</div>

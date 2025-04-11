@@ -1,7 +1,18 @@
+/*
+ * @jest-environment jsdom
+ */
+
+import config from '@automattic/calypso-config';
 import { SiteGoal, SiteIntent } from '../constants';
 import { goalsToIntent } from '../utils';
 
+jest.mock( '@automattic/calypso-config' );
+
 describe( 'Test onboard utils', () => {
+	beforeEach( () => {
+		( config.isEnabled as jest.Mock ).mockReset();
+	} );
+
 	it.each( [
 		{
 			goals: [],
@@ -23,7 +34,29 @@ describe( 'Test onboard utils', () => {
 			goals: [ SiteGoal.Promote, SiteGoal.Sell, SiteGoal.Write ],
 			expectedIntent: SiteIntent.Sell,
 		},
-	] )( 'Should map the $goals to $expectedIntent intent', ( { goals, expectedIntent } ) => {
-		expect( goalsToIntent( goals ) ).toBe( expectedIntent );
-	} );
+		{
+			goals: [ SiteGoal.Write, SiteGoal.Engagement ],
+			expectedIntent: SiteIntent.Write,
+		},
+		{
+			goals: [ SiteGoal.Write, SiteGoal.Newsletter ],
+			expectedIntent: SiteIntent.NewsletterGoal,
+		},
+		{
+			goals: [ SiteGoal.Sell, SiteGoal.Courses ],
+			expectedIntent: SiteIntent.CreateCourseGoal,
+			featureFlags: {
+				isIntentCreateCourseGoalEnabled: true,
+			},
+		},
+		{
+			goals: [ SiteGoal.Sell, SiteGoal.Newsletter ],
+			expectedIntent: SiteIntent.NewsletterGoal,
+		},
+	] )(
+		'Should map the $goals to $expectedIntent intent ($featureFlags)',
+		( { goals, expectedIntent, featureFlags } ) => {
+			expect( goalsToIntent( goals, featureFlags ) ).toBe( expectedIntent );
+		}
+	);
 } );

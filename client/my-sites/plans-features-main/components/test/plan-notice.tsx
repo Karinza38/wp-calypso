@@ -15,6 +15,7 @@ import { useMarketingMessage } from 'calypso/components/marketing-message/use-ma
 import { getDiscountByName } from 'calypso/lib/discounts';
 import { Purchase } from 'calypso/lib/purchases/types';
 import PlanNotice from 'calypso/my-sites/plans-features-main/components/plan-notice';
+import { useDomainToPlanCreditsApplicable } from 'calypso/my-sites/plans-features-main/hooks/use-domain-to-plan-credits-applicable';
 import { usePlanUpgradeCreditsApplicable } from 'calypso/my-sites/plans-features-main/hooks/use-plan-upgrade-credits-applicable';
 import { getCurrentUserCurrencyCode } from 'calypso/state/currency-code/selectors';
 import { getByPurchaseId } from 'calypso/state/purchases/selectors';
@@ -31,6 +32,7 @@ jest.mock( '@automattic/calypso-products', () => ( {
 } ) );
 jest.mock( 'calypso/state/purchases/selectors', () => ( {
 	getByPurchaseId: jest.fn(),
+	hasPurchasedDomain: jest.fn(),
 } ) );
 jest.mock( 'calypso/state/sites/plans/selectors', () => ( {
 	isCurrentUserCurrentPlanOwner: jest.fn(),
@@ -53,12 +55,19 @@ jest.mock(
 		usePlanUpgradeCreditsApplicable: jest.fn(),
 	} )
 );
+jest.mock(
+	'calypso/my-sites/plans-features-main/hooks/use-domain-to-plan-credits-applicable',
+	() => ( {
+		useDomainToPlanCreditsApplicable: jest.fn(),
+	} )
+);
 jest.mock( 'calypso/my-sites/plans-features-main/hooks/use-max-plan-upgrade-credits', () => ( {
 	useMaxPlanUpgradeCredits: jest.fn(),
 } ) );
 jest.mock( 'calypso/state/currency-code/selectors', () => ( {
 	getCurrentUserCurrencyCode: jest.fn(),
 } ) );
+jest.mock( '@automattic/calypso-config' );
 
 const mGetDiscountByName = getDiscountByName as jest.MockedFunction< typeof getDiscountByName >;
 const mUseMarketingMessage = useMarketingMessage as jest.MockedFunction<
@@ -73,6 +82,9 @@ const mIsRequestingSitePlans = isRequestingSitePlans as jest.MockedFunction<
 >;
 const mUsePlanUpgradeCreditsApplicable = usePlanUpgradeCreditsApplicable as jest.MockedFunction<
 	typeof usePlanUpgradeCreditsApplicable
+>;
+const mUseDomainToPlanCreditsApplicable = useDomainToPlanCreditsApplicable as jest.MockedFunction<
+	typeof useDomainToPlanCreditsApplicable
 >;
 const mGetCurrentUserCurrencyCode = getCurrentUserCurrencyCode as jest.MockedFunction<
 	typeof getCurrentUserCurrencyCode
@@ -105,6 +117,7 @@ describe( '<PlanNotice /> Tests', () => {
 		mIsRequestingSitePlans.mockImplementation( () => true );
 		mGetCurrentUserCurrencyCode.mockImplementation( () => 'USD' );
 		mUsePlanUpgradeCreditsApplicable.mockImplementation( () => 100 );
+		mUseDomainToPlanCreditsApplicable.mockImplementation( () => 100 );
 		mGetByPurchaseId.mockImplementation( () => ( { isInAppPurchase: false } ) as Purchase );
 		mIsProPlan.mockImplementation( () => false );
 	} );
@@ -164,11 +177,29 @@ describe( '<PlanNotice /> Tests', () => {
 		);
 	} );
 
+	test( 'A domain-to-plan credit <PlanNotice /> should be shown in a site where a domain has been purchased without a paid plan', () => {
+		mUsePlanUpgradeCreditsApplicable.mockImplementation( () => null );
+		mUseDomainToPlanCreditsApplicable.mockImplementation( () => 1000 );
+
+		renderWithProvider(
+			<PlanNotice
+				discountInformation={ { coupon: 'test', discountEndDate: new Date() } }
+				visiblePlans={ plansList }
+				isInSignup={ false }
+				siteId={ 32234 }
+			/>
+		);
+		expect( screen.getByRole( 'status' ).textContent ).toBe(
+			'You have $10.00 in upgrade credits(opens in a new tab) available from your current domain. This credit will be applied to the pricing below at checkout if you purchase a plan today!'
+		);
+	} );
+
 	test( 'A marketing message <PlanNotice /> when no other notices are available and marketing messages are available and the user is not in signup', () => {
 		mIsCurrentUserCurrentPlanOwner.mockImplementation( () => true );
 		mIsCurrentPlanPaid.mockImplementation( () => true );
 		mGetDiscountByName.mockImplementation( () => false );
 		mUsePlanUpgradeCreditsApplicable.mockImplementation( () => null );
+		mUseDomainToPlanCreditsApplicable.mockImplementation( () => null );
 		mUseMarketingMessage.mockImplementation( () => [
 			false,
 			[ { id: '12121', text: 'An important marketing message' } ],

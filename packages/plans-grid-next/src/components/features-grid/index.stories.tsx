@@ -20,7 +20,7 @@ const ComponentWrapper = ( props: Omit< FeaturesGridExternalProps, 'gridPlans' >
 		isSubdomainNotGenerated: false,
 		selectedFeature: undefined,
 		selectedPlan: undefined,
-		storageAddOns: [],
+		reflectStorageSelectionInPlanPrices: false,
 		term: 'TERM_ANNUALLY',
 		useFreeTrialPlanSlugs: undefined,
 
@@ -68,6 +68,7 @@ const defaultProps = {
 	hideUnavailableFeatures: false,
 	isCustomDomainAllowedOnFreePlan: false,
 	isInAdmin: false,
+	isInSiteDashboard: false,
 	isInSignup: true,
 	onStorageAddOnClick: () => {},
 	planActionOverrides: undefined,

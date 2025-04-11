@@ -1,7 +1,7 @@
 import config from '@automattic/calypso-config';
 import { createSelector } from '@automattic/state-utils';
 import version_compare from 'calypso/lib/version-compare';
-import { isJetpackSite } from 'calypso/state/sites/selectors';
+import { getJetpackVersion, isJetpackSite } from 'calypso/state/sites/selectors';
 import getJetpackStatsAdminVersion from 'calypso/state/sites/selectors/get-jetpack-stats-admin-version';
 
 const version_greater_than_or_equal = (
@@ -15,6 +15,7 @@ const version_greater_than_or_equal = (
 function getEnvStatsFeatureSupportChecks( state: object, siteId: number | null ) {
 	const isOdysseyStats = config.isEnabled( 'is_running_in_jetpack_site' );
 	const statsAdminVersion = getJetpackStatsAdminVersion( state, siteId );
+	const jetpackVersion = getJetpackVersion( state, siteId );
 	const isSiteJetpackNotAtomic = isJetpackSite( state, siteId, {
 		treatAtomicAsJetpackSite: false,
 	} );
@@ -45,12 +46,8 @@ function getEnvStatsFeatureSupportChecks( state: object, siteId: number | null )
 			'0.16.0-alpha',
 			isOdysseyStats
 		),
-		supportsUTMStats:
-			// UTM stats are only available for Jetpack sites for now.
-			isSiteJetpackNotAtomic && ( ! isOdysseyStats || !! statsAdminVersion ),
-		supportsDevicesStats:
-			// UTM stats are only available for Jetpack sites for now.
-			isSiteJetpackNotAtomic && ( ! isOdysseyStats || !! statsAdminVersion ),
+		supportsUTMStats: ! isOdysseyStats || !! statsAdminVersion,
+		supportsDevicesStats: ! isOdysseyStats || !! statsAdminVersion,
 		supportsOnDemandCommercialClassification: version_greater_than_or_equal(
 			statsAdminVersion,
 			'0.18.0-alpha',
@@ -61,11 +58,17 @@ function getEnvStatsFeatureSupportChecks( state: object, siteId: number | null )
 			'0.22.0',
 			isOdysseyStats
 		),
+		supportsLocationsStats: version_greater_than_or_equal(
+			statsAdminVersion,
+			'0.24.0',
+			isOdysseyStats
+		),
 		shouldUseStatsBuiltInPurchasesApi: version_greater_than_or_equal(
 			statsAdminVersion,
 			'0.21.0-alpha',
 			isOdysseyStats
 		),
+		supportsWpcomV3Jitm: version_greater_than_or_equal( jetpackVersion, '14.5', isOdysseyStats ),
 		isOldJetpack:
 			isSiteJetpackNotAtomic &&
 			!! statsAdminVersion &&
@@ -81,6 +84,7 @@ const getEnvStatsFeatureSupportChecksMemoized = createSelector(
 			treatAtomicAsJetpackSite: false,
 		} ),
 		config.isEnabled( 'is_running_in_jetpack_site' ),
+		getJetpackVersion( state, siteId ),
 	]
 );
 

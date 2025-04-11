@@ -6,6 +6,17 @@ import { setStore } from 'calypso/state/redux-store';
 import { receiveTheme, themeRequestFailure } from 'calypso/state/themes/actions';
 import ThemeSheetComponent from '../main';
 
+jest.mock( '@automattic/odie-client/src/data', () => ( {
+	useManageSupportInteraction: jest.fn().mockReturnValue( {
+		startNewInteraction: jest.fn(),
+		resolveInteraction: jest.fn(),
+		addEventToInteraction: jest.fn(),
+	} ),
+	useGetZendeskConversation: jest.fn(),
+	useOdieChat: jest.fn(),
+	broadcastOdieMessage: jest.fn(),
+} ) );
+
 jest.mock( 'calypso/lib/analytics/tracks', () => ( {} ) );
 jest.mock( 'calypso/my-sites/themes/theme-preview', () =>
 	require( 'calypso/components/empty-component' )
@@ -13,6 +24,27 @@ jest.mock( 'calypso/my-sites/themes/theme-preview', () =>
 jest.mock( 'dompurify', () => ( {
 	sanitize: jest.fn().mockImplementation( ( text ) => text ),
 } ) );
+
+const mockWindow = {
+	location: {
+		hash: '',
+		href: 'http://example.com',
+		origin: 'http://example.com',
+		pathname: '/',
+		search: '',
+	},
+	matchMedia: () => ( {
+		matches: false,
+		addListener: () => {},
+		removeListener: () => {},
+	} ),
+	scroll: () => {},
+};
+
+global.window = mockWindow;
+global.document = {
+	readyState: 'complete',
+};
 
 const themeData = {
 	name: 'Twenty Sixteen',
@@ -43,6 +75,8 @@ const TestComponent = ( { themeId, store } ) => {
 describe( 'main', () => {
 	afterEach( () => {
 		queryClient.clear();
+		// Reset window hash after each test
+		window.location.hash = '';
 	} );
 
 	test( "doesn't throw an exception without theme data", () => {

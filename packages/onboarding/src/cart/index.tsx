@@ -1,6 +1,7 @@
 import config from '@automattic/calypso-config';
 import { getUrlParts } from '@automattic/calypso-url';
 import { DomainSuggestion, NewSiteSuccessResponse, Site } from '@automattic/data-stores';
+import { SiteGoal } from '@automattic/data-stores/src/onboard';
 import { guessTimezone, getLanguage } from '@automattic/i18n-utils';
 import debugFactory from 'debug';
 import { getLocaleSlug } from 'i18n-calypso';
@@ -9,7 +10,6 @@ import wpcomRequest from 'wpcom-proxy-request';
 import {
 	setupSiteAfterCreation,
 	isTailoredSignupFlow,
-	isImportFocusedFlow,
 	HUNDRED_YEAR_PLAN_FLOW,
 	isAnyHostingFlow,
 } from '../';
@@ -64,17 +64,8 @@ const getBlogNameGenerationParams = ( {
 	isPurchasingDomainItem,
 }: GetNewSiteParams ) => {
 	if ( siteUrl ) {
-		const blog_name = siteUrl.replace( '.wordpress.com', '' );
-
-		if ( isImportFocusedFlow( flowToCheck ) ) {
-			return {
-				blog_name,
-				find_available_url: true,
-			};
-		}
-
 		return {
-			blog_name,
+			blog_name: siteUrl.replace( '.wordpress.com', '' ),
 			find_available_url: !! isPurchasingDomainItem,
 		};
 	}
@@ -156,7 +147,8 @@ export const createSiteWithCart = async (
 	storedSiteUrl?: string,
 	domainItem?: DomainSuggestion,
 	sourceSlug?: string,
-	siteIntent?: string
+	siteIntent?: string,
+	siteGoals?: SiteGoal[]
 ) => {
 	const siteUrl = storedSiteUrl || domainItem?.domain_name;
 	const isFreeThemePreselected = startsWith( themeSlugWithRepo, 'pub' );
@@ -203,6 +195,7 @@ export const createSiteWithCart = async (
 				...( hasSegmentationSurvey && segmentationSurveyAnswersAnonId
 					? { segmentation_survey_answers_anon_id: segmentationSurveyAnswersAnonId }
 					: {} ),
+				...( siteGoals && { site_goals: siteGoals } ),
 			},
 		},
 	} );
@@ -371,7 +364,7 @@ export async function setThemeOnSite(
 	}
 }
 
-async function processItemCart(
+export async function processItemCart(
 	siteSlug: string,
 	isFreeThemePreselected: boolean,
 	themeSlugWithRepo: string,

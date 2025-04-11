@@ -1,8 +1,8 @@
 import { getCurrentUser } from '@automattic/calypso-analytics';
-import { v4 as uuid } from 'uuid';
 import { costToUSD, refreshCountryCodeCookieGdpr } from 'calypso/lib/analytics/utils';
 import { mayWeTrackByTracker } from '../tracker-buckets';
 import { debug, TRACKING_IDS, ICON_MEDIA_SIGNUP_PIXEL_URL } from './constants';
+import { circularReferenceSafeJSONStringify } from './debug';
 import { recordParamsInFloodlightGtag } from './floodlight';
 import { loadTrackingScripts } from './load-tracking-scripts';
 
@@ -52,7 +52,7 @@ export async function adTrackSignupComplete( { isNewUserSite } ) {
 	// Prepare a few more variables.
 
 	const currentUser = getCurrentUser();
-	const syntheticOrderId = 's_' + uuid().replace( /-/g, '' ); // 35-byte signup tracking ID.
+	const syntheticOrderId = 's_' + crypto.randomUUID().replace( /-/g, '' ); // 35-byte signup tracking ID.
 	const usdCost = costToUSD( syntheticCart.total_cost, syntheticCart.currency );
 
 	// Google Ads Gtag
@@ -163,5 +163,5 @@ export async function adTrackSignupComplete( { isNewUserSite } ) {
 		window.twq( ...params );
 	}
 
-	debug( 'recordSignup: dataLayer:', JSON.stringify( window.dataLayer, null, 2 ) );
+	debug( 'recordSignup: dataLayer:', circularReferenceSafeJSONStringify( window.dataLayer, 2 ) );
 }

@@ -23,7 +23,7 @@ html[dir="rtl"] {
 .is-section-site-profiler .main {
 	h1 {
 		font-family: Recoleta, "Noto Serif", Georgia, "Times New Roman", Times, serif;
-		/* stylelint-disable-next-line */
+		/* stylelint-disable-next-line scales/font-sizes */
 		font-size: 4.375rem;
 		line-height: 1;
 		margin-bottom: 1rem;
@@ -36,13 +36,12 @@ html[dir="rtl"] {
 
 	h2 {
 		font-family: Recoleta, "Noto Serif", Georgia, "Times New Roman", Times, serif;
-		/* stylelint-disable-next-line */
+		/* stylelint-disable-next-line scales/font-sizes */
 		font-size: 2.5rem;
 		line-height: 1.15;
 		margin-bottom: 1rem;
 
 		@media ( max-width: $break-small ) {
-			/* stylelint-disable-next-line */
 			font-size: 1.875em;
 		}
 	}
@@ -78,21 +77,10 @@ html[dir="rtl"] {
 
 	// Button style overrides necessary because of conflicting WPcom styles.
 	.button-action {
-		color: #fff;
-		background: var(--color-accent);
 		border-radius: 4px;
 		font-size: 1rem;
 		font-weight: 500;
 		padding: 1.5rem;
-		text-decoration: none;
-
-		&:hover {
-			color: #fff !important;
-		}
-
-		&.is-busy {
-			background-image: linear-gradient(-45deg, var(--color-accent) 28%, var(--color-accent-60) 28%, var(--color-accent-60) 72%, var(--color-accent) 72%);
-		}
 	}
 
 	.result-list {

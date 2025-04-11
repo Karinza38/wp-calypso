@@ -1,25 +1,29 @@
+import config from '@automattic/calypso-config';
 import clsx from 'clsx';
-import { localize } from 'i18n-calypso';
-import { flowRight } from 'lodash';
+import { localize, translate } from 'i18n-calypso';
+import { flowRight, memoize } from 'lodash';
 import moment from 'moment';
 import PropTypes from 'prop-types';
-import { Component } from 'react';
+import { Component, useRef } from 'react';
 import { connect } from 'react-redux';
+import AsyncLoad from 'calypso/components/async-load';
 import Chart from 'calypso/components/chart';
 import { DEFAULT_HEARTBEAT } from 'calypso/components/data/query-site-stats/constants';
 import memoizeLast from 'calypso/lib/memoize-last';
 import { withPerformanceTrackerStop } from 'calypso/lib/performance-tracking';
-import { recordGoogleEvent } from 'calypso/state/analytics/actions';
+import { recordGoogleEvent, recordTracksEvent } from 'calypso/state/analytics/actions';
 import { getSiteOption } from 'calypso/state/sites/selectors';
 import { requestChartCounts } from 'calypso/state/stats/chart-tabs/actions';
 import { QUERY_FIELDS } from 'calypso/state/stats/chart-tabs/constants';
 import { getCountRecords, getLoadingTabs } from 'calypso/state/stats/chart-tabs/selectors';
+import { chartLabelformats } from 'calypso/state/stats/lists/utils';
 import { getSelectedSiteId } from 'calypso/state/ui/selectors';
+import useCssVariable from '../hooks/use-css-variable';
 import StatsEmptyState from '../stats-empty-state';
 import StatsModulePlaceholder from '../stats-module/placeholder';
 import StatTabs from '../stats-tabs';
 import ChartHeader from './chart-header';
-import { buildChartData, getQueryDate } from './utility';
+import { buildChartData, getQueryDate, transformChartDataToLineFormat } from './utility';
 
 import './style.scss';
 
@@ -29,6 +33,27 @@ const ChartTabShape = PropTypes.shape( {
 	label: PropTypes.string,
 	legendOptions: PropTypes.arrayOf( PropTypes.string ),
 } );
+
+const CHART_TYPE_STORAGE_KEY = ( siteId ) => `jetpack_stats_chart_type_${ siteId }`;
+
+const getChartType = memoize( ( siteId ) => {
+	if ( ! siteId ) {
+		return 'bar';
+	}
+	return localStorage.getItem( CHART_TYPE_STORAGE_KEY( siteId ) ) || 'bar';
+} );
+
+// Define chart type change event names
+const CHART_TYPE_EVENTS = {
+	jetpack_odyssey: {
+		bar: 'jetpack_odyssey_stats_chart_type_bar_selected',
+		line: 'jetpack_odyssey_stats_chart_type_line_selected',
+	},
+	calypso: {
+		bar: 'calypso_stats_chart_type_bar_selected',
+		line: 'calypso_stats_chart_type_line_selected',
+	},
+};
 
 class StatModuleChartTabs extends Component {
 	static propTypes = {
@@ -52,9 +77,15 @@ class StatModuleChartTabs extends Component {
 		),
 		isActiveTabLoading: PropTypes.bool,
 		onChangeLegend: PropTypes.func.isRequired,
-		showChartHeader: PropTypes.bool,
-		// Temporary prop to enable new date filtering UI.
-		isNewDateFilteringEnabled: PropTypes.bool,
+		chartContainerRef: PropTypes.object,
+		primaryColor: PropTypes.string,
+		secondaryColor: PropTypes.string,
+		siteId: PropTypes.number,
+		recordTracksEvent: PropTypes.func.isRequired,
+	};
+
+	state = {
+		chartType: getChartType( this.props.siteId ),
 	};
 
 	intervalId = null;
@@ -103,6 +134,29 @@ class StatModuleChartTabs extends Component {
 		this.props.queryDayComp && this.props.requestChartCounts( this.props.queryDayComp );
 	};
 
+	handleChartTypeChange = ( newType ) => {
+		const { siteId } = this.props;
+		const isOdysseyStats = config.isEnabled( 'is_running_in_jetpack_site' );
+		const event_from = isOdysseyStats ? 'jetpack_odyssey' : 'calypso';
+
+		this.setState( { chartType: newType } );
+		if ( siteId ) {
+			localStorage.setItem( CHART_TYPE_STORAGE_KEY( siteId ), newType );
+			getChartType.cache.clear(); // Clear memoization cache when type changes
+		}
+
+		// Record the chart type change event
+		this.props.recordTracksEvent( CHART_TYPE_EVENTS[ event_from ][ newType ] );
+	};
+
+	formatLineChartTimeTick = ( date ) => {
+		// Align the format with the original chart data parser.
+		const timeformat = chartLabelformats[ this.props.selectedPeriod ];
+
+		// Use browser's timezone offset to display the correct datetime.
+		return moment( date ).format( timeformat );
+	};
+
 	render() {
 		const {
 			siteId,
@@ -112,9 +166,18 @@ class StatModuleChartTabs extends Component {
 			isActiveTabLoading,
 			className,
 			countsComp,
-			showChartHeader = false,
-			isNewDateFilteringEnabled = false,
+			primaryColor,
+			secondaryColor,
+			chartContainerRef,
+			gmtOffset,
 		} = this.props;
+		const { chartType } = this.state;
+
+		const chartData = this.props.chartData.map( ( record ) => {
+			record.className = record.className?.replaceAll( 'is-selected', '' );
+			return record;
+		} );
+
 		const classes = [
 			'is-chart-tabs',
 			className,
@@ -123,30 +186,66 @@ class StatModuleChartTabs extends Component {
 				'has-less-than-three-bars': this.props.chartData.length < 3,
 			},
 		];
+
+		//Transform the data to the format required by the line chart.
+		const lineChartData = transformChartDataToLineFormat(
+			chartData,
+			this.props.activeLegend,
+			this.props.activeTab,
+			primaryColor,
+			secondaryColor,
+			gmtOffset
+		);
+
+		const emptyState = (
+			<StatsEmptyState
+				headingText={ selectedPeriod === 'hour' ? translate( 'No hourly data available' ) : null }
+				infoText={
+					selectedPeriod === 'hour' ? translate( 'Try selecting a different time frame.' ) : null
+				}
+			/>
+		);
+
 		/* pass bars count as `key` to disable transitions between tabs with different column count */
 		return (
-			<div className={ clsx( ...classes ) }>
-				{ showChartHeader && (
-					<ChartHeader
-						activeLegend={ this.props.activeLegend }
-						activeTab={ this.props.activeTab }
-						availableLegend={ this.props.availableLegend }
-						onLegendClick={ this.onLegendClick }
-						charts={ this.props.charts }
-						siteId={ siteId }
-						slug={ slug }
-						period={ selectedPeriod }
-						queryParams={ queryParams }
-					></ChartHeader>
-				) }
-
+			<div className={ clsx( ...classes ) } ref={ chartContainerRef }>
+				<ChartHeader
+					activeLegend={ this.props.activeLegend }
+					activeTab={ this.props.activeTab }
+					availableLegend={ this.props.availableLegend }
+					onLegendClick={ this.onLegendClick }
+					charts={ this.props.charts }
+					siteId={ siteId }
+					slug={ slug }
+					period={ selectedPeriod }
+					queryParams={ queryParams }
+					chartType={ chartType }
+					onChartTypeChange={ this.handleChartTypeChange }
+				/>
 				<StatsModulePlaceholder className="is-chart" isLoading={ isActiveTabLoading } />
-				<Chart barClick={ this.props.barClick } data={ this.props.chartData } minBarWidth={ 35 }>
-					<StatsEmptyState />
-				</Chart>
+				{ chartType === 'bar' || lineChartData.length === 0 ? (
+					<Chart barClick={ this.props.barClick } data={ chartData } minBarWidth={ 20 }>
+						{ emptyState }
+					</Chart>
+				) : (
+					<AsyncLoad
+						require="calypso/my-sites/stats/components/line-chart"
+						className="stats-chart-tabs__line-chart"
+						chartData={ lineChartData }
+						curveType="smooth" // can use smooth, linear, monotone
+						height={ 224 }
+						moment={ moment }
+						onClick={ this.props.barClick }
+						formatTimeTick={ this.formatLineChartTimeTick }
+						placeholder={
+							<StatsModulePlaceholder className="is-chart" isLoading={ isActiveTabLoading } />
+						}
+						emptyState={ emptyState }
+					/>
+				) }
 				<StatTabs
 					data={ this.props.counts }
-					previousData={ isNewDateFilteringEnabled ? countsComp : null }
+					previousData={ countsComp }
 					tabCountsAlt={ this.props.tabCountsAlt }
 					tabCountsAltComp={ this.props.tabCountsAltComp }
 					tabs={ this.props.charts }
@@ -154,7 +253,7 @@ class StatModuleChartTabs extends Component {
 					selectedTab={ this.props.chartTab }
 					activeIndex={ this.props.queryDate }
 					activeKey="period"
-					aggregate={ isNewDateFilteringEnabled }
+					aggregate
 				/>
 			</div>
 		);
@@ -182,15 +281,7 @@ const memoizedQuery = memoizeLast(
 const connectComponent = connect(
 	(
 		state,
-		{
-			isNewDateFilteringEnabled = false,
-			activeLegend,
-			period: { period },
-			chartTab,
-			queryDate,
-			customQuantity,
-			customRange,
-		}
+		{ activeLegend, period: { period }, chartTab, queryDate, customQuantity, customRange }
 	) => {
 		const siteId = getSelectedSiteId( state );
 		if ( ! siteId ) {
@@ -206,7 +297,7 @@ const connectComponent = connect(
 		const date = customRange
 			? customRange.chartEnd
 			: getQueryDate( queryDate, timezoneOffset, period, quantity );
-		const chartStart = isNewDateFilteringEnabled ? customRange?.chartStart || '' : '';
+		const chartStart = customRange?.chartStart || '';
 
 		const queryKey = `${ date }-${ period }-${ quantity }-${ siteId }`;
 		const query = memoizedQuery( chartTab, date, period, quantity, siteId, chartStart );
@@ -271,7 +362,14 @@ const connectComponent = connect(
 		}
 
 		const counts = getCountRecords( state, siteId, query.date, query.period, query.quantity );
-		const chartData = buildChartData( activeLegend, chartTab, counts, period, queryDate );
+		const chartData = buildChartData(
+			activeLegend,
+			chartTab,
+			counts,
+			period,
+			queryDate,
+			customRange
+		);
 		const loadingTabs = getLoadingTabs( state, siteId, query.date, query.period, query.quantity );
 		const isActiveTabLoading = loadingTabs.includes( chartTab ) || chartData.length < quantity;
 
@@ -289,13 +387,30 @@ const connectComponent = connect(
 			tabCountsAlt: tabCountsAlt?.[ 0 ],
 			queryDayComp,
 			tabCountsAltComp: tabCountsAltComp?.[ 0 ],
-			isNewDateFilteringEnabled,
+			gmtOffset: timezoneOffset,
 		};
 	},
-	{ recordGoogleEvent, requestChartCounts }
+	{ recordGoogleEvent, recordTracksEvent, requestChartCounts }
 );
+
+// TODO: let's convert it to a function component and remove all the hassle.
+const withCssColors = ( WrappedComponent ) => ( props ) => {
+	const chartContainerRef = useRef( null );
+
+	const primaryColor = useCssVariable( '--color-primary-light', chartContainerRef.current );
+	const secondaryColor = useCssVariable( '--color-primary-dark', chartContainerRef.current );
+
+	return (
+		<WrappedComponent
+			{ ...props }
+			primaryColor={ primaryColor }
+			secondaryColor={ secondaryColor }
+			chartContainerRef={ chartContainerRef }
+		/>
+	);
+};
 
 export default flowRight(
 	localize,
 	connectComponent
-)( withPerformanceTrackerStop( StatModuleChartTabs ) );
+)( withPerformanceTrackerStop( withCssColors( StatModuleChartTabs ) ) );

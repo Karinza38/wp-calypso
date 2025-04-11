@@ -1,7 +1,8 @@
+import { isEnabled } from '@automattic/calypso-config';
 import { filter } from 'lodash';
 import { stringify } from 'qs';
 import { addQueryArgs } from 'calypso/lib/url';
-import { isUnderEmailManagementAll } from 'calypso/my-sites/email/paths';
+import { isUnderEmailManagementAll, isUnderCheckoutRoute } from 'calypso/my-sites/email/paths';
 
 function resolveRootPath( relativeTo = null ) {
 	if ( relativeTo ) {
@@ -57,7 +58,21 @@ function domainManagementTransferBase(
 }
 
 export function isUnderDomainManagementAll( path ) {
-	return path?.startsWith( domainManagementAllRoot() + '/' ) || path === domainManagementRoot();
+	return (
+		path?.startsWith( domainManagementAllRoot() + '/' ) ||
+		path?.startsWith( domainSiteContextRoot() + '/' )
+	);
+}
+
+export function isUnderDomainManagementOverview( path ) {
+	return (
+		path?.startsWith( domainManagementOverviewRoot() + '/' ) ||
+		path?.startsWith( domainSiteContextRoot() + '/domain/' )
+	);
+}
+
+export function isUnderDomainSiteContext( path ) {
+	return path?.startsWith( domainSiteContextRoot() + '/' );
 }
 
 export function domainAddNew( siteName, searchTerm ) {
@@ -82,8 +97,24 @@ export function domainManagementAllRoot() {
 	return '/domains/manage/all';
 }
 
+export function domainManagementOverviewRoot() {
+	return domainManagementAllRoot() + '/overview';
+}
+
+export function domainSiteContextRoot() {
+	return '/overview/site-domain';
+}
+
+export function domainManagementAllEmailRoot() {
+	return domainManagementAllRoot() + '/email';
+}
+
 export function domainManagementRoot() {
 	return '/domains/manage';
+}
+
+export function domainManagementSelectSite( siteName = '' ) {
+	return '/domains/manage/select-site/' + siteName;
 }
 
 /**
@@ -114,6 +145,10 @@ export function domainManagementEdit(
 	relativeTo = null,
 	expandSections = null
 ) {
+	if ( isUnderCheckoutRoute( relativeTo ) && isEnabled( 'calypso/all-domain-management' ) ) {
+		return `${ domainManagementAllRoot() }/overview/${ domainName }/${ siteName }`;
+	}
+
 	return domainManagementEditBase( siteName, domainName, 'edit', relativeTo, expandSections );
 }
 
@@ -126,8 +161,36 @@ export function domainManagementEditContactInfo( siteName, domainName, relativeT
 	return domainManagementEditBase( siteName, domainName, 'edit-contact-info', relativeTo );
 }
 
-export function domainManagementAllEditContactInfo() {
-	return domainManagementAllRoot() + '/edit-contact-info';
+/**
+ * @param {string} siteName
+ * @param {string} domainName
+ * @param {string?} relativeTo
+ */
+export function domainManagementAllOverview(
+	siteName,
+	domainName,
+	relativeTo = null,
+	inSiteContext = false
+) {
+	if ( inSiteContext || isUnderDomainSiteContext( relativeTo ) ) {
+		return `${ domainSiteContextRoot() }/domain/${ domainName }/${ siteName }`;
+	}
+
+	return `${ domainManagementOverviewRoot() }/${ domainName }/${ siteName }`;
+}
+
+/**
+ * @param {string} siteName
+ * @param {string} domainName
+ * @param {string?} relativeTo
+ */
+export function domainManagementAllEditContactInfo( siteName, domainName, relativeTo = null ) {
+	const pathSegment = `contact-info/edit/${ domainName }/${ siteName }`;
+	const rootPath = isUnderDomainSiteContext( relativeTo )
+		? domainSiteContextRoot()
+		: domainManagementAllRoot();
+
+	return `${ rootPath }/${ pathSegment }`;
 }
 
 export function domainManagementAllEditSelectedContactInfo() {
@@ -170,6 +233,12 @@ export function domainManagementEmail( siteName, domainName ) {
  * @param {string?} relativeTo
  */
 export function domainManagementDns( siteName, domainName, relativeTo = null ) {
+	if ( relativeTo?.startsWith( '/overview/site-domain/' ) ) {
+		return `/overview/site-domain/domain/${ domainName }/dns/${ siteName }`;
+	} else if ( isUnderDomainManagementOverview( relativeTo ) ) {
+		return domainManagementOverviewRoot() + '/' + domainName + '/dns/' + siteName;
+	}
+
 	return domainManagementEditBase( siteName, domainName, 'dns', relativeTo );
 }
 
@@ -179,6 +248,12 @@ export function domainManagementDns( siteName, domainName, relativeTo = null ) {
  * @param {string?} relativeTo
  */
 export function domainManagementDnsAddRecord( siteName, domainName, relativeTo = null ) {
+	if ( relativeTo?.startsWith( '/overview/site-domain/' ) ) {
+		return `/overview/site-domain/domain/${ domainName }/dns/add/${ siteName }`;
+	} else if ( isUnderDomainManagementOverview( relativeTo ) ) {
+		return domainManagementOverviewRoot() + '/' + domainName + '/dns/add/' + siteName;
+	}
+
 	return domainManagementEditBase( siteName, domainName, 'add-dns-record', relativeTo );
 }
 
@@ -188,10 +263,20 @@ export function domainManagementDnsEditRecord(
 	relativeTo = null,
 	recordId = null
 ) {
-	let path = domainManagementEditBase( siteName, domainName, 'edit-dns-record', relativeTo );
+	let path;
+
+	if ( relativeTo?.startsWith( '/overview/site-domain/' ) ) {
+		path = `/overview/site-domain/domain/${ domainName }/dns/edit/${ siteName }`;
+	} else if ( isUnderDomainManagementOverview( relativeTo ) ) {
+		path = domainManagementOverviewRoot() + '/' + domainName + '/dns/edit/' + siteName;
+	} else {
+		path = domainManagementEditBase( siteName, domainName, 'edit-dns-record', relativeTo );
+	}
+
 	if ( recordId ) {
 		path += '?recordId=' + encodeURI( recordId );
 	}
+
 	return path;
 }
 
@@ -282,6 +367,10 @@ export function domainManagementTransferToAnyUser( siteName, domainName, relativ
  * @param {string?} relativeTo
  */
 export function domainManagementTransferToOtherSite( siteName, domainName, relativeTo = null ) {
+	if ( isUnderDomainManagementOverview( relativeTo ) ) {
+		return domainManagementOverviewRoot() + '/' + domainName + '/transfer/other-site/' + siteName;
+	}
+
 	return domainManagementTransferBase( siteName, domainName, 'other-site', relativeTo );
 }
 
@@ -356,15 +445,6 @@ export function domainTransferIn( siteName, domain, useStandardBack ) {
 	const queryString = stringify( params );
 	if ( queryString ) {
 		path += '?' + queryString;
-	}
-
-	return path;
-}
-
-export function domainUseYourDomain( siteName, domain ) {
-	let path = `/domains/add/use-your-domain/${ siteName }`;
-	if ( domain ) {
-		path += `?initialQuery=${ domain }`;
 	}
 
 	return path;

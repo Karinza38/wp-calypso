@@ -1,10 +1,9 @@
 import { Badge, Gridicon } from '@automattic/components';
-import formatCurrency from '@automattic/format-currency';
 import { localizeUrl } from '@automattic/i18n-utils';
 import { HUNDRED_YEAR_DOMAIN_FLOW } from '@automattic/onboarding';
 import { HTTPS_SSL } from '@automattic/urls';
 import clsx from 'clsx';
-import { localize } from 'i18n-calypso';
+import { localize, formatCurrency } from 'i18n-calypso';
 import { get, includes } from 'lodash';
 import PropTypes from 'prop-types';
 import { Component } from 'react';
@@ -68,7 +67,7 @@ class DomainRegistrationSuggestion extends Component {
 		productCost: PropTypes.string,
 		renewCost: PropTypes.string,
 		productSaleCost: PropTypes.string,
-		isReskinned: PropTypes.bool,
+		hideMatchReasons: PropTypes.bool,
 		domainAndPlanUpsellFlow: PropTypes.bool,
 		products: PropTypes.object,
 	};
@@ -99,9 +98,12 @@ class DomainRegistrationSuggestion extends Component {
 				railcar: this.props.railcarId,
 				ui_position: this.props.uiPosition,
 				fetch_algo: `${ this.props.fetchAlgo }/${ this.props.suggestion.vendor }`,
+				root_vendor: this.props.suggestion.vendor,
 				rec_result: `${ this.props.suggestion.domain_name }${ resultSuffix }`,
 				fetch_query: this.props.query,
 				domain_type: this.props.suggestion.is_premium ? 'premium' : 'standard',
+				tld: getTld( this.props.suggestion.domain_name ),
+				flow_name: this.props.flowName,
 			} );
 		}
 	}
@@ -117,6 +119,8 @@ class DomainRegistrationSuggestion extends Component {
 			this.props.recordTracksEvent( 'calypso_traintracks_interact', {
 				railcar: railcarId,
 				action: 'domain_added_to_cart',
+				domain: suggestion.domain_name,
+				root_vendor: suggestion.vendor,
 			} );
 		}
 
@@ -261,7 +265,7 @@ class DomainRegistrationSuggestion extends Component {
 		};
 	}
 
-	renderDomain() {
+	renderDomain( hasBadges = false ) {
 		const {
 			showHstsNotice,
 			showDotGayNotice,
@@ -270,6 +274,9 @@ class DomainRegistrationSuggestion extends Component {
 
 		const { name, tld } = this.getDomainParts( domain );
 
+		const wrapperClassName = clsx( 'domain-registration-suggestion__title-info', {
+			'has-badges': hasBadges,
+		} );
 		const titleWrapperClassName = clsx( 'domain-registration-suggestion__title-wrapper', {
 			'domain-registration-suggestion__title-domain':
 				this.props.showStrikedOutPrice && ! this.props.isFeatured,
@@ -277,7 +284,7 @@ class DomainRegistrationSuggestion extends Component {
 		} );
 
 		return (
-			<div className="domain-registration-suggestion__title-info">
+			<div className={ wrapperClassName }>
 				<div className={ titleWrapperClassName }>
 					<h3 className="domain-registration-suggestion__title">
 						<div className="domain-registration-suggestion__domain-title">
@@ -391,17 +398,12 @@ class DomainRegistrationSuggestion extends Component {
 	}
 
 	renderMatchReason() {
-		if ( this.props.isReskinned ) {
-			return null;
-		}
-
 		const {
 			suggestion: { domain_name: domain },
-			isFeatured,
 		} = this.props;
 
-		if ( ! isFeatured || ! Array.isArray( this.props.suggestion.match_reasons ) ) {
-			return null;
+		if ( ! Array.isArray( this.props.suggestion.match_reasons ) ) {
+			return <div className="domain-registration-suggestion__match-reasons"></div>;
 		}
 
 		const matchReasons = parseMatchReasons( domain, this.props.suggestion.match_reasons );
@@ -428,7 +430,7 @@ class DomainRegistrationSuggestion extends Component {
 			productSaleCost,
 			premiumDomain,
 			showStrikedOutPrice,
-			isReskinned,
+			hideMatchReasons,
 		} = this.props;
 
 		const isUnavailableDomain = this.isUnavailableDomain( domain );
@@ -437,6 +439,8 @@ class DomainRegistrationSuggestion extends Component {
 			'featured-domain-suggestion': isFeatured,
 			'is-unavailable': isUnavailableDomain,
 		} );
+
+		const badges = this.renderBadges();
 
 		return (
 			<DomainSuggestion
@@ -452,11 +456,11 @@ class DomainRegistrationSuggestion extends Component {
 				{ ...this.getButtonProps() }
 				isFeatured={ isFeatured }
 				showStrikedOutPrice={ showStrikedOutPrice }
-				isReskinned={ isReskinned }
+				hideMatchReasons={ hideMatchReasons }
 			>
-				{ this.renderBadges() }
-				{ this.renderDomain() }
-				{ this.renderMatchReason() }
+				{ badges }
+				{ this.renderDomain( !! badges ) }
+				{ ! hideMatchReasons && isFeatured && this.renderMatchReason() }
 			</DomainSuggestion>
 		);
 	}

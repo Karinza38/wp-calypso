@@ -50,6 +50,7 @@
 			padding-top: 0;
 			@include break-mobile {
 				padding-top: 8px;
+				padding-bottom: 8px;
 			}
 		}
 	}
@@ -94,17 +95,12 @@
 	padding-bottom: 12px;
 
 	&.register-domain-step__search-domain-step:not(.is-sticky) {
-		padding-bottom: 24px;
-
-		.is-white-signup & {
-			padding-bottom: 16px;
-		}
+		padding-bottom: 16px;
 
 		@include breakpoint-deprecated( ">660px" ) {
 			padding-top: 18px;
 
-			.is-section-stepper &,
-			.is-white-signup & {
+			.is-section-stepper & {
 				padding-top: 0;
 				padding-bottom: 16px;
 			}
@@ -196,7 +192,7 @@
 
 	// from components/card/style.scss
 	box-shadow:
-		0 0 0 1px rgba(var(--color-neutral-10-rgb), 0.5),
+		0 0 0 1px color-mix(in srgb, var(--color-neutral-10) 50%, transparent),
 		0 1px 2px var(--color-neutral-0);
 
 	// from components/domains/domain-suggestion/style
@@ -225,7 +221,6 @@
 
 button.register-domain-step__next-page-button {
 	font-size: 0.875rem;
-	font-weight: 500;
 }
 
 body.is-section-domains {
@@ -238,15 +233,8 @@ body.is-section-domains {
 	}
 }
 
-body.is-section-signup:not(.is-white-signup) {
-	.register-domain-step__search-card {
-		background: none;
-		box-shadow: none;
-	}
-}
-
 body.is-section-stepper,
-body.is-section-signup.is-white-signup {
+body.is-section-signup {
 	.domain-search-results__domain-availability .card {
 		box-shadow: none;
 		padding: 0;
@@ -274,15 +262,8 @@ body.is-section-signup.is-white-signup {
 			/* stylelint-disable-next-line declaration-property-unit-allowed-list */
 			line-height: 1.25rem;
 
-			box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-
 			@include break-mobile {
 				padding: 0.65em 2.8em;
-			}
-
-			&:focus {
-				border-color: var(--color-primary);
-				box-shadow: 0 0 0 2px var(--color-primary-light);
 			}
 		}
 	}

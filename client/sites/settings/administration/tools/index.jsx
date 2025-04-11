@@ -1,12 +1,14 @@
 import { addQueryArgs } from '@wordpress/url';
-import { localize } from 'i18n-calypso';
+import { localize, fixMe } from 'i18n-calypso';
 import { Component } from 'react';
 import { connect } from 'react-redux';
 import QueryRewindState from 'calypso/components/data/query-rewind-state';
 import { withSiteCopy } from 'calypso/landing/stepper/hooks/use-site-copy';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
 import SettingsSectionHeader from 'calypso/my-sites/site-settings/settings-section-header';
-import { errorNotice } from 'calypso/state/notices/actions';
+import { getRemoveDuplicateViewsExperimentAssignment } from 'calypso/state/explat-experiments/actions';
+import { getIsRemoveDuplicateViewsExperimentEnabled } from 'calypso/state/explat-experiments/selectors';
+import { errorNotice, successNotice } from 'calypso/state/notices/actions';
 import {
 	hasLoadedSitePurchasesFromServer,
 	getPurchasesError,
@@ -20,8 +22,8 @@ import isSiteWPForTeams from 'calypso/state/selectors/is-site-wpforteams';
 import isVipSite from 'calypso/state/selectors/is-vip-site';
 import { isJetpackSite, getSite } from 'calypso/state/sites/selectors';
 import { getSelectedSiteId, getSelectedSiteSlug } from 'calypso/state/ui/selectors';
-import { isHostingMenuUntangled } from '../../utils';
 import AdministrationToolCard from './card';
+import { requestRestore } from './restore-plan-software';
 
 import './style.scss';
 
@@ -38,6 +40,10 @@ class SiteTools extends Component {
 		}
 	}
 
+	componentDidMount() {
+		this.props.getRemoveDuplicateViewsExperimentAssignment();
+	}
+
 	render() {
 		const {
 			shouldShowSiteCopyItem,
@@ -46,8 +52,10 @@ class SiteTools extends Component {
 			siteSlug,
 			copySiteUrl,
 			cloneUrl,
+			isUntangled,
 			showChangeAddress,
 			showClone,
+			showRestorePlanSoftware,
 			showDeleteContent,
 			showDeleteSite,
 			showManageConnection,
@@ -57,25 +65,26 @@ class SiteTools extends Component {
 			source,
 		} = this.props;
 
-		const isUntangled = isHostingMenuUntangled();
-
 		const changeAddressLink = `/domains/manage/${ siteSlug }?source=${ source }`;
 
 		const startOverLink = isUntangled
-			? `/sites/settings/administration/${ siteSlug }/reset-site`
+			? `/sites/settings/site/${ siteSlug }/reset-site`
 			: `/settings/start-over/${ siteSlug }?source=${ source }`;
 
+		const restorePlanSoftwareTitle = translate( 'Restore plugins and themes' );
+		const restorePlanSoftwareText = translate(
+			'If your website is missing plugins and themes that come with your plan, you may restore them here.'
+		);
+
 		const startSiteTransferLink = isUntangled
-			? `/sites/settings/administration/${ siteSlug }/transfer-site`
+			? `/sites/settings/site/${ siteSlug }/transfer-site`
 			: `/settings/start-site-transfer/${ siteSlug }?source=${ source }`;
 
 		const deleteSiteLink = isUntangled
-			? `/sites/settings/administration/${ siteSlug }/delete-site`
+			? `/sites/settings/site/${ siteSlug }/delete-site`
 			: `/settings/delete-site/${ siteSlug }?source=${ source }`;
 
-		const manageConnectionLink = isUntangled
-			? `/sites/settings/administration/${ siteSlug }/manage-connection`
-			: `/settings/manage-connection/${ siteSlug }?source=${ source }`;
+		const manageConnectionLink = `/settings/manage-connection/${ siteSlug }?source=${ source }`;
 
 		const changeSiteAddress = translate( 'Change your site address' );
 
@@ -102,7 +111,13 @@ class SiteTools extends Component {
 		const startSiteTransferTitle = isUntangled
 			? translate( 'Transfer site' )
 			: translate( 'Transfer your site' );
-		const startSiteTransferText = translate( 'Transfer your site, plan and purchases.' );
+		const startSiteTransferText = fixMe( {
+			text: 'Transfer your site, plan, and purchases to a new or existing site member.',
+			newCopy: translate(
+				'Transfer your site, plan, and purchases to a new or existing site member.'
+			),
+			oldCopy: translate( 'Transfer your site, plan and purchases.' ),
+		} );
 
 		return (
 			<>
@@ -141,6 +156,13 @@ class SiteTools extends Component {
 						description={ startSiteTransferText }
 					/>
 				) }
+				{ isUntangled && showRestorePlanSoftware && (
+					<AdministrationToolCard
+						onClick={ this.restorePlanSoftware }
+						title={ restorePlanSoftwareTitle }
+						description={ restorePlanSoftwareText }
+					/>
+				) }
 				{ showDeleteContent && (
 					<AdministrationToolCard
 						href={ startOverLink }
@@ -176,6 +198,16 @@ class SiteTools extends Component {
 	trackStartOver() {
 		trackDeleteSiteOption( 'start-over' );
 	}
+
+	restorePlanSoftware = () => {
+		const { siteId, translate } = this.props;
+		requestRestore( {
+			siteId,
+			translate,
+			successNotice: this.props.successNotice,
+			errorNotice: this.props.errorNotice,
+		} );
+	};
 }
 
 export default connect(
@@ -188,6 +220,7 @@ export default connect(
 		const isVip = isVipSite( state, siteId );
 		const isP2 = isSiteWPForTeams( state, siteId );
 		const isP2Hub = isSiteP2Hub( state, siteId );
+		const isUntangled = getIsRemoveDuplicateViewsExperimentEnabled( state );
 		const rewindState = getRewindState( state, siteId );
 		const sitePurchasesLoaded = hasLoadedSitePurchasesFromServer( state );
 
@@ -205,12 +238,14 @@ export default connect(
 		return {
 			site,
 			isAtomic,
+			isUntangled,
 			copySiteUrl,
 			siteSlug,
 			purchasesError: getPurchasesError( state ),
 			cloneUrl,
 			showChangeAddress: ! isJetpack && ! isVip && ! isP2,
 			showClone: 'active' === rewindState.state && ! isAtomic,
+			showRestorePlanSoftware: isAtomic,
 			showDeleteContent: isAtomic || ( ! isJetpack && ! isVip && ! isP2Hub ),
 			showDeleteSite: ( ! isJetpack || isAtomic ) && ! isVip && sitePurchasesLoaded,
 			showManageConnection: isJetpack && ! isAtomic,
@@ -221,5 +256,7 @@ export default connect(
 	},
 	{
 		errorNotice,
+		successNotice,
+		getRemoveDuplicateViewsExperimentAssignment,
 	}
 )( localize( withSiteCopy( SiteTools ) ) );

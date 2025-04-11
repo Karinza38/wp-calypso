@@ -4,7 +4,6 @@ import colorStudio from '@automattic/color-studio';
 import { CheckoutProvider, checkoutTheme } from '@automattic/composite-checkout';
 import { useShoppingCart } from '@automattic/shopping-cart';
 import { isValueTruthy, getContactDetailsType } from '@automattic/wpcom-checkout';
-import { PayPalScriptProvider, ReactPayPalScriptOptions } from '@paypal/react-paypal-js';
 import { useSelect } from '@wordpress/data';
 import debugFactory from 'debug';
 import DOMPurify from 'dompurify';
@@ -149,7 +148,8 @@ export default function CheckoutMain( {
 	const isSiteless =
 		sitelessCheckoutType === 'jetpack' ||
 		sitelessCheckoutType === 'akismet' ||
-		sitelessCheckoutType === 'marketplace';
+		sitelessCheckoutType === 'marketplace' ||
+		sitelessCheckoutType === 'a4a';
 	const { stripe, stripeConfiguration, isStripeLoading, stripeLoadingError } = useStripe();
 	const { razorpayConfiguration, isRazorpayLoading, razorpayLoadingError } = useRazorpay();
 	const createUserAndSiteBeforeTransaction =
@@ -353,7 +353,11 @@ export default function CheckoutMain( {
 		paymentMethods: storedCards,
 		isLoading: isLoadingStoredCards,
 		error: storedCardsError,
-	} = useStoredPaymentMethods( { isLoggedOut: isLoggedOutCart, type: 'card' } );
+	} = useStoredPaymentMethods( {
+		isLoggedOut: isLoggedOutCart,
+		type: 'card',
+		isForBusiness: responseCart ? responseCart?.tax?.location?.is_for_business : null,
+	} );
 
 	useActOnceOnStrings( [ storedCardsError ].filter( isValueTruthy ), ( messages ) => {
 		messages.forEach( ( message ) => {
@@ -545,7 +549,21 @@ export default function CheckoutMain( {
 				highlightOver: colors[ 'WordPress Blue 60' ],
 		  }
 		: {};
-	const theme = { ...checkoutTheme, colors: { ...checkoutTheme.colors, ...jetpackColors } };
+	const a4aColors =
+		sitelessCheckoutType === 'a4a'
+			? {
+					primary: colors[ 'Automattic Blue' ],
+					primaryBorder: colors[ 'Automattic Blue 80' ],
+					primaryOver: colors[ 'Automattic Blue 60' ],
+					highlight: colors[ 'Automattic Blue 50' ],
+					highlightBorder: colors[ 'Automattic Blue 80' ],
+					highlightOver: colors[ 'Automattic Blue 60' ],
+			  }
+			: {};
+	const theme = {
+		...checkoutTheme,
+		colors: { ...checkoutTheme.colors, ...jetpackColors, ...a4aColors },
+	};
 
 	const isCheckoutV2ExperimentLoading = false;
 
@@ -711,7 +729,7 @@ export default function CheckoutMain( {
 			paymentMethodId,
 		}: {
 			transactionError: string | null;
-			paymentMethodId: string | null;
+			paymentMethodId: string | null | undefined;
 		} ) => {
 			const errorNoticeText = transactionError ? (
 				<div dangerouslySetInnerHTML={ { __html: DOMPurify.sanitize( transactionError ) } } /> // eslint-disable-line react/no-danger -- The API response can contain anchor elements that we need to parse so they are rendered properly
@@ -753,18 +771,6 @@ export default function CheckoutMain( {
 		paymentMethods
 	);
 
-	// PayPalScriptProvider must be in this file and not in CheckoutMainWrapper
-	// because it needs access to the shopping cart, which is provided by that
-	// wrapper.
-	const payPalScriptOptions: ReactPayPalScriptOptions = {
-		clientId: 'AVmW-gfCD37zbDNtj7yQCeLXhnSoZ8hzmBKSMdo0MKHeM9wv9hBRqnIQteAEx4OSnYYs70uljYSMST4W',
-		components: 'buttons',
-		currency: responseCart.currency,
-		commit: true,
-		intent: 'capture',
-		vault: true,
-	};
-
 	return (
 		<Fragment>
 			<PageViewTracker
@@ -776,54 +782,50 @@ export default function CheckoutMain( {
 					useAkismetGoogleAnalytics: sitelessCheckoutType === 'akismet',
 				} }
 			/>
-			<PayPalScriptProvider options={ payPalScriptOptions }>
-				<CheckoutProvider
-					onPaymentComplete={ handlePaymentComplete }
-					onPaymentError={ handlePaymentError }
-					onPaymentRedirect={ handlePaymentRedirect }
-					onPageLoadError={ onPageLoadError }
-					onPaymentMethodChanged={ handlePaymentMethodChanged }
-					paymentMethods={ paymentMethods }
-					paymentProcessors={ paymentProcessors }
-					isLoading={ isCheckoutPageLoading }
-					isValidating={ isCartPendingUpdate }
-					theme={ theme }
-					selectFirstAvailablePaymentMethod
-					initiallySelectedPaymentMethodId={ initiallySelectedPaymentMethodId }
-				>
-					<CheckoutMainContent
-						loadingHeader={
-							<CheckoutLoadingPlaceholder checkoutLoadingConditions={ checkoutLoadingConditions } />
-						}
-						onStepChanged={ handleStepChanged }
-						customizedPreviousPath={ customizedPreviousPath }
-						isRemovingProductFromCart={ isRemovingProductFromCart }
-						areThereErrors={ areThereErrors }
-						isInitialCartLoading={ isInitialCartLoading }
-						addItemToCart={ addItemAndLog }
-						changeSelection={ changeSelection }
-						countriesList={ countriesList }
-						createUserAndSiteBeforeTransaction={ createUserAndSiteBeforeTransaction }
-						infoMessage={
-							<PrePurchaseNotices siteId={ updatedSiteId } isSiteless={ isSiteless } />
-						}
-						isLoggedOutCart={ !! isLoggedOutCart }
-						onPageLoadError={ onPageLoadError }
-						paymentMethods={ paymentMethods }
-						removeProductFromCart={ removeProductFromCartAndMaybeRedirect }
-						showErrorMessageBriefly={ showErrorMessageBriefly }
-						siteId={ updatedSiteId }
-						siteUrl={ updatedSiteSlug }
-					/>
-					{
-						// Redirect modal is displayed mainly to all the agency partners who are purchasing Jetpack plans
-						<JetpackProRedirectModal
-							redirectTo={ redirectTo }
-							productSourceFromUrl={ productSourceFromUrl }
-						/>
+			<CheckoutProvider
+				onPaymentComplete={ handlePaymentComplete }
+				onPaymentError={ handlePaymentError }
+				onPaymentRedirect={ handlePaymentRedirect }
+				onPageLoadError={ onPageLoadError }
+				onPaymentMethodChanged={ handlePaymentMethodChanged }
+				paymentMethods={ paymentMethods }
+				paymentProcessors={ paymentProcessors }
+				isLoading={ isCheckoutPageLoading }
+				isValidating={ isCartPendingUpdate }
+				theme={ theme }
+				selectFirstAvailablePaymentMethod
+				initiallySelectedPaymentMethodId={ initiallySelectedPaymentMethodId }
+			>
+				<CheckoutMainContent
+					loadingHeader={
+						<CheckoutLoadingPlaceholder checkoutLoadingConditions={ checkoutLoadingConditions } />
 					}
-				</CheckoutProvider>
-			</PayPalScriptProvider>
+					onStepChanged={ handleStepChanged }
+					customizedPreviousPath={ customizedPreviousPath }
+					isRemovingProductFromCart={ isRemovingProductFromCart }
+					areThereErrors={ areThereErrors }
+					isInitialCartLoading={ isInitialCartLoading }
+					addItemToCart={ addItemAndLog }
+					changeSelection={ changeSelection }
+					countriesList={ countriesList }
+					createUserAndSiteBeforeTransaction={ createUserAndSiteBeforeTransaction }
+					infoMessage={ <PrePurchaseNotices siteId={ updatedSiteId } isSiteless={ isSiteless } /> }
+					isLoggedOutCart={ !! isLoggedOutCart }
+					onPageLoadError={ onPageLoadError }
+					paymentMethods={ paymentMethods }
+					removeProductFromCart={ removeProductFromCartAndMaybeRedirect }
+					showErrorMessageBriefly={ showErrorMessageBriefly }
+					siteId={ updatedSiteId }
+					siteUrl={ updatedSiteSlug }
+				/>
+				{
+					// Redirect modal is displayed mainly to all the agency partners who are purchasing Jetpack plans
+					<JetpackProRedirectModal
+						redirectTo={ redirectTo }
+						productSourceFromUrl={ productSourceFromUrl }
+					/>
+				}
+			</CheckoutProvider>
 		</Fragment>
 	);
 }

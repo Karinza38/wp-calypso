@@ -1,4 +1,4 @@
-@import url( //s1.wp.com/wp-includes/css/dashicons.css?v=20150727 ); // Used for switch-sites icon.
+@import url( //s0.wp.com/wp-includes/css/dashicons.min.css?v=20250127 ); // Used for switch-sites icon.
 
 // Menu links
 .sidebar__jetpack-cloud {
@@ -74,7 +74,7 @@
 		}
 
 		&:active {
-			background-color: rgba ( var ( --color-sidebar-menu-selected-text-rgb ), 0.075);
+			background-color: color-mix(in srgb, var(--color-sidebar-menu-selected-text) 7.5%, transparent);
 
 			.sidebar__menu-icon {
 				fill: var(--color-sidebar-menu-selected-gridicon-fill);

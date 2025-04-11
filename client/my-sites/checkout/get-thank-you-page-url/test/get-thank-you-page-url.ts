@@ -10,7 +10,6 @@ import {
 	PLAN_BUSINESS,
 	PLAN_ECOMMERCE,
 	PLAN_PERSONAL,
-	PLAN_PREMIUM,
 	redirectCheckoutToWpAdmin,
 	TITAN_MAIL_MONTHLY_SLUG,
 	WPCOM_DIFM_LITE,
@@ -111,7 +110,7 @@ describe( 'getThankYouPageUrl', () => {
 			...defaultArgs,
 			siteSlug: 'foo.bar',
 		} );
-		expect( url ).toBe( `/checkout/thank-you/foo.bar/:receiptId` );
+		expect( url ).toBe( '/checkout/thank-you/foo.bar/:receiptId' );
 	} );
 
 	it( 'redirects to the thank-you page with a placeholder receipt id when a site but no orderId is set and the cart contains the personal plan', () => {
@@ -130,29 +129,6 @@ describe( 'getThankYouPageUrl', () => {
 			cart,
 		} );
 		expect( url ).toBe( '/checkout/thank-you/foo.bar/:receiptId' );
-	} );
-
-	// Note: This just verifies the existing behavior; this URL is invalid unless
-	// the `:receiptId` is replaced with a valid receipt ID by the PayPal
-	// transaction flow. When returning from PayPal, the user is redirected
-	// briefly to a backend page that replaces `:receiptId` and 302 redirects to
-	// the updated URL.
-	it( 'redirects to the business plan bump offer page with a placeholder receipt id when a site but no orderId is set and the cart contains the premium plan', () => {
-		const cart = {
-			...getMockCart(),
-			products: [
-				{
-					...getEmptyResponseCartProduct(),
-					product_slug: 'value_bundle',
-				},
-			],
-		};
-		const url = getThankYouPageUrl( {
-			...defaultArgs,
-			siteSlug: 'foo.bar',
-			cart,
-		} );
-		expect( url ).toBe( '/checkout/foo.bar/offer-plan-upgrade/business/:receiptId' );
 	} );
 
 	it( 'redirects to the thank-you page with a placeholder receiptId with a site when the cart is not empty but there is no receipt id', () => {
@@ -194,7 +170,7 @@ describe( 'getThankYouPageUrl', () => {
 			siteSlug: 'foo.bar',
 			feature: 'all-free-features',
 		} );
-		expect( url ).toBe( `/checkout/thank-you/features/all-free-features/foo.bar/:receiptId` );
+		expect( url ).toBe( '/checkout/thank-you/features/all-free-features/foo.bar/:receiptId' );
 	} );
 
 	it( 'redirects to the thank-you page with a feature when a site and a valid feature is set with no receipt but the cart is not empty', () => {
@@ -353,7 +329,7 @@ describe( 'getThankYouPageUrl', () => {
 			},
 			adminUrl,
 		} );
-		expect( url ).toBe( `https://my.site/wp-admin/admin.php?page=jetpack#/recommendations` );
+		expect( url ).toBe( 'https://my.site/wp-admin/admin.php?page=jetpack#/recommendations' );
 	} );
 
 	it( 'redirects to the sites wp-admin with adminPageRedirect if checkout is on Jetpack Cloud and if redirectCheckoutToWpAdmin() flag is true and there is a non-atomic jetpack product and adminPageRedirect is supplied', () => {
@@ -381,7 +357,7 @@ describe( 'getThankYouPageUrl', () => {
 			adminUrl,
 			adminPageRedirect,
 		} );
-		expect( url ).toBe( `https://my.site/wp-admin/admin.php?page=jetpack-backup` );
+		expect( url ).toBe( 'https://my.site/wp-admin/admin.php?page=jetpack-backup' );
 	} );
 
 	it( 'redirects to the sites wp-admin if checkout is on Jetpack Cloud and if redirectCheckoutToWpAdmin() flag is true and there is a non-atomic jetpack product and redirectTo is defined', () => {
@@ -408,7 +384,7 @@ describe( 'getThankYouPageUrl', () => {
 			adminUrl,
 			redirectTo: 'admin.php?page=some-page',
 		} );
-		expect( url ).toBe( `https://my.site/wp-admin/admin.php?page=some-page` );
+		expect( url ).toBe( 'https://my.site/wp-admin/admin.php?page=some-page' );
 	} );
 
 	it( 'redirects to the plans page with thank-you query string if there is a non-atomic jetpack product', () => {
@@ -889,7 +865,7 @@ describe( 'getThankYouPageUrl', () => {
 			cart,
 			getUrlFromCookie,
 		} );
-		expect( url ).toBe( `/cookie/:receiptId` );
+		expect( url ).toBe( '/cookie/:receiptId' );
 	} );
 
 	it( 'redirects to url from cookie followed by placeholder receiptId if there is no site, and there is no receipt', () => {
@@ -1012,66 +988,6 @@ describe( 'getThankYouPageUrl', () => {
 			receiptId: samplePurchaseId,
 		} );
 		expect( url ).toBe( `/checkout/thank-you/foo.bar/${ samplePurchaseId }` );
-	} );
-
-	it( 'redirects to business upgrade nudge if jetpack is not in the cart, and premium is in the cart', () => {
-		const cart = {
-			...getMockCart(),
-			products: [
-				{
-					...getEmptyResponseCartProduct(),
-					product_slug: 'value_bundle',
-					bill_period: '365',
-				},
-			],
-		};
-		const url = getThankYouPageUrl( {
-			...defaultArgs,
-			siteSlug: 'foo.bar',
-			cart,
-			receiptId: samplePurchaseId,
-		} );
-		expect( url ).toBe( `/checkout/foo.bar/offer-plan-upgrade/business/${ samplePurchaseId }` );
-	} );
-
-	it( 'redirects to business monthly upgrade nudge if jetpack is not in the cart, and premium monthly is in the cart', () => {
-		const cart = {
-			...getMockCart(),
-			products: [
-				{
-					...getEmptyResponseCartProduct(),
-					product_slug: 'value_bundle_monthly',
-					bill_period: '31',
-				},
-			],
-		};
-		const url = getThankYouPageUrl( {
-			...defaultArgs,
-			siteSlug: 'foo.bar',
-			cart,
-			receiptId: samplePurchaseId,
-		} );
-		expect( url ).toBe(
-			`/checkout/foo.bar/offer-plan-upgrade/business-monthly/${ samplePurchaseId }`
-		);
-	} );
-
-	it( 'redirects to the business upgrade nudge with a placeholder when jetpack is not in the cart and premium is in the cart but there is no receipt', () => {
-		const cart = {
-			...getMockCart(),
-			products: [
-				{
-					...getEmptyResponseCartProduct(),
-					product_slug: 'value_bundle',
-				},
-			],
-		};
-		const url = getThankYouPageUrl( {
-			...defaultArgs,
-			siteSlug: 'foo.bar',
-			cart,
-		} );
-		expect( url ).toBe( `/checkout/foo.bar/offer-plan-upgrade/business/:receiptId` );
 	} );
 
 	it( 'redirects to the thank you page if jetpack is not in the cart, blogger is in the cart, and the previous route is not the nudge', () => {
@@ -1365,28 +1281,6 @@ describe( 'getThankYouPageUrl', () => {
 			expect( url ).toBe( `/checkout/thank-you/foo.bar/${ samplePurchaseId }` );
 		} );
 
-		it( 'Is not displayed if Premium plan is in the cart; we show the business upgrade instead', () => {
-			const cart = {
-				...getMockCart(),
-				products: [
-					{
-						...getEmptyResponseCartProduct(),
-						product_slug: PLAN_PREMIUM,
-					},
-				],
-			};
-
-			const url = getThankYouPageUrl( {
-				...defaultArgs,
-				cart,
-				domains,
-				receiptId: samplePurchaseId,
-				siteSlug: 'foo.bar',
-			} );
-
-			expect( url ).toBe( `/checkout/foo.bar/offer-plan-upgrade/business/${ samplePurchaseId }` );
-		} );
-
 		it( 'Is not displayed if nudges should be hidden and site has eligible domain and Personal plan is in the cart', () => {
 			const cart = {
 				...getMockCart(),
@@ -1539,70 +1433,6 @@ describe( 'getThankYouPageUrl', () => {
 	} );
 
 	describe( 'Plan Upgrade Upsell Nudge', () => {
-		it( 'offers discounted business plan upgrade when premium plan is purchased.', () => {
-			const cart = {
-				...getMockCart(),
-				products: [
-					{
-						...getEmptyResponseCartProduct(),
-						product_slug: 'value_bundle',
-						bill_period: '365',
-					},
-				],
-			};
-			const url = getThankYouPageUrl( {
-				...defaultArgs,
-				siteSlug: 'foo.bar',
-				receiptId: samplePurchaseId,
-				cart,
-			} );
-			expect( url ).toBe( `/checkout/foo.bar/offer-plan-upgrade/business/${ samplePurchaseId }` );
-		} );
-
-		it( 'offers discounted biennial business plan upgrade when biennial premium plan is purchased.', () => {
-			const cart = {
-				...getMockCart(),
-				products: [
-					{
-						...getEmptyResponseCartProduct(),
-						product_slug: 'value_bundle-2y',
-						bill_period: '730',
-					},
-				],
-			};
-			const url = getThankYouPageUrl( {
-				...defaultArgs,
-				siteSlug: 'foo.bar',
-				receiptId: samplePurchaseId,
-				cart,
-			} );
-			expect( url ).toBe(
-				`/checkout/foo.bar/offer-plan-upgrade/business-2-years/${ samplePurchaseId }`
-			);
-		} );
-
-		it( 'offers discounted monthly business plan upgrade when monthly premium plan is purchased.', () => {
-			const cart = {
-				...getMockCart(),
-				products: [
-					{
-						...getEmptyResponseCartProduct(),
-						product_slug: 'value_bundle_monthly',
-						bill_period: '31',
-					},
-				],
-			};
-			const url = getThankYouPageUrl( {
-				...defaultArgs,
-				siteSlug: 'foo.bar',
-				receiptId: samplePurchaseId,
-				cart,
-			} );
-			expect( url ).toBe(
-				`/checkout/foo.bar/offer-plan-upgrade/business-monthly/${ samplePurchaseId }`
-			);
-		} );
-
 		it( 'Does not offers discounted annual business plan upgrade when annual premium plan and DIFM light is purchased together.', () => {
 			const cart = {
 				...getMockCart(),
@@ -1650,7 +1480,7 @@ describe( 'getThankYouPageUrl', () => {
 					cart,
 				} );
 
-				expect( url ).toBe( `/cookie?notice=purchase-success` );
+				expect( url ).toBe( '/cookie?notice=purchase-success' );
 
 				// clean up the tailored flow name
 				sessionStorage.removeItem( 'wpcom_signup_complete_flow_name' );
@@ -2032,6 +1862,23 @@ describe( 'getThankYouPageUrl', () => {
 					'test@example.com'
 				) }`
 			);
+		} );
+	} );
+
+	describe( 'A4A client checkout', () => {
+		it( 'should return the redirectTo URL when provided for A4A client checkout', () => {
+			const result = getThankYouPageUrl( {
+				sitelessCheckoutType: 'a4a',
+				redirectTo: '/custom/redirect/path',
+			} );
+			expect( result ).toBe( '/custom/redirect/path' );
+		} );
+
+		it( 'should return the default client subscriptions page for A4A client checkout without redirectTo', () => {
+			const result = getThankYouPageUrl( {
+				sitelessCheckoutType: 'a4a',
+			} );
+			expect( result ).toBe( '/client/subscriptions' );
 		} );
 	} );
 } );
