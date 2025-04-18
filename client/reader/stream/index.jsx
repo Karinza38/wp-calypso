@@ -1,3 +1,4 @@
+import './style.scss';
 import { isDefaultLocale } from '@automattic/i18n-utils';
 import clsx from 'clsx';
 import { localize } from 'i18n-calypso';
@@ -16,12 +17,17 @@ import NavTabs from 'calypso/components/section-nav/tabs';
 import { Interval, EVERY_MINUTE } from 'calypso/lib/interval';
 import scrollTo from 'calypso/lib/scroll-to';
 import withDimensions from 'calypso/lib/with-dimensions';
+import ReaderBackButton from 'calypso/reader/components/back-button';
+import { isEditorIframeFocused } from 'calypso/reader/components/quick-post/utils';
 import ReaderMain from 'calypso/reader/components/reader-main';
 import { shouldShowLikes } from 'calypso/reader/like-helper';
 import { keysAreEqual, keyToString } from 'calypso/reader/post-key';
+import { MAX_POSTS_FOR_LOGGED_OUT_USERS } from 'calypso/reader/reader.const';
+import ReaderStreamLoginPrompt from 'calypso/reader/stream/login-prompt';
 import UpdateNotice from 'calypso/reader/update-notice';
 import { showSelectedPost, getStreamType } from 'calypso/reader/utils';
 import XPostHelper from 'calypso/reader/xpost-helper';
+import { isUserLoggedIn } from 'calypso/state/current-user/selectors';
 import { PER_FETCH, INITIAL_FETCH } from 'calypso/state/data-layer/wpcom/read/streams';
 import { like as likePost, unlike as unlikePost } from 'calypso/state/posts/likes/actions';
 import { isLikedPost } from 'calypso/state/posts/selectors/is-liked-post';
@@ -29,6 +35,7 @@ import { getReaderOrganizations } from 'calypso/state/reader/organizations/selec
 import { getPostByKey } from 'calypso/state/reader/posts/selectors';
 import { getBlockedSites } from 'calypso/state/reader/site-blocks/selectors';
 import {
+	clearStream,
 	requestPage,
 	selectItem,
 	selectNextItem,
@@ -42,6 +49,7 @@ import {
 } from 'calypso/state/reader/streams/selectors';
 import { viewStream } from 'calypso/state/reader-ui/actions';
 import { resetCardExpansions } from 'calypso/state/reader-ui/card-expansions/actions';
+import { getSelectedRecentFeedId } from 'calypso/state/reader-ui/sidebar/selectors';
 import getCurrentLocaleSlug from 'calypso/state/selectors/get-current-locale-slug';
 import getPrimarySiteId from 'calypso/state/selectors/get-primary-site-id';
 import isNotificationsOpen from 'calypso/state/selectors/is-notifications-open';
@@ -50,7 +58,6 @@ import { CustomerCouncilBanner } from './customer-council-banner';
 import EmptyContent from './empty';
 import PostLifecycle from './post-lifecycle';
 import PostPlaceholder from './post-placeholder';
-import './style.scss';
 
 // minimal size for the two-column layout to show without cut off
 // 64 is padding, 8 is margin
@@ -75,6 +82,7 @@ class ReaderStream extends Component {
 		showDefaultEmptyContentIfMissing: PropTypes.bool,
 		showFollowButton: PropTypes.bool,
 		showFollowInHeader: PropTypes.bool,
+		showBack: PropTypes.bool,
 		sidebarTabTitle: PropTypes.string,
 		streamHeader: PropTypes.func,
 		streamSidebar: PropTypes.func,
@@ -84,6 +92,7 @@ class ReaderStream extends Component {
 		useCompactCards: PropTypes.bool,
 		fixedHeaderHeight: PropTypes.number,
 		selectedStreamName: PropTypes.string,
+		isLoggedIn: PropTypes.bool,
 	};
 
 	static defaultProps = {
@@ -96,8 +105,10 @@ class ReaderStream extends Component {
 		showDefaultEmptyContentIfMissing: true,
 		showFollowButton: true,
 		showFollowInHeader: false,
+		showBack: true,
 		suppressSiteNameLink: false,
 		useCompactCards: false,
+		isLoggedIn: false,
 	};
 
 	state = {
@@ -126,8 +137,13 @@ class ReaderStream extends Component {
 		this.setState( { selectedTab: 'sites' } );
 	};
 
-	componentDidUpdate( { selectedPostKey, streamKey } ) {
-		if ( streamKey !== this.props.streamKey ) {
+	componentDidUpdate( { selectedPostKey, streamKey, selectedFeedId } ) {
+		// Fetch new page if selected feed or stream is changed.
+		if ( selectedFeedId !== this.props.selectedFeedId ) {
+			this.scrollFeedListToTop();
+			this.props.clearStream( { streamKey } );
+			this.fetchNextPage( {}, { ...this.props, stream: null } ); // Stream as null to start fresh pagination.
+		} else if ( streamKey !== this.props.streamKey ) {
 			this.props.resetCardExpansions();
 			this.props.viewStream( streamKey, window.location.pathname );
 			this.fetchNextPage( {} );
@@ -147,6 +163,7 @@ class ReaderStream extends Component {
 		if ( this.props.shouldRequestRecs ) {
 			this.props.requestPage( {
 				streamKey: this.props.recsStreamKey,
+				feedId: this.props.selectedFeedId,
 				pageHandle: this.props.recsStream.pageHandle,
 				localeSlug: this.props.localeSlug,
 			} );
@@ -273,7 +290,11 @@ class ReaderStream extends Component {
 		}
 
 		const tagName = ( event.target || event.srcElement ).tagName;
-		if ( inputTags.includes( tagName ) || event.target.isContentEditable ) {
+		if (
+			inputTags.includes( tagName ) ||
+			event.target.isContentEditable ||
+			isEditorIframeFocused()
+		) {
 			return;
 		}
 
@@ -447,8 +468,13 @@ class ReaderStream extends Component {
 	};
 
 	poll = () => {
-		const { streamKey, localeSlug } = this.props;
-		this.props.requestPage( { streamKey, isPoll: true, localeSlug: localeSlug } );
+		const { streamKey, localeSlug, selectedFeedId } = this.props;
+		this.props.requestPage( {
+			streamKey,
+			feedId: selectedFeedId,
+			isPoll: true,
+			localeSlug: localeSlug,
+		} );
 	};
 
 	getPageHandle = ( pageHandle, startDate ) => {
@@ -461,28 +487,39 @@ class ReaderStream extends Component {
 	};
 
 	fetchNextPage = ( options, props = this.props ) => {
-		const { streamKey, stream, startDate, localeSlug } = props;
+		if ( this.isLoginPromptVisible() ) {
+			return;
+		}
+
+		const { streamKey, stream, startDate, localeSlug, selectedFeedId } = props;
 		if ( options.triggeredByScroll ) {
 			const pageId = pagesByKey.get( streamKey ) || 0;
 			pagesByKey.set( streamKey, pageId + 1 );
 
 			props.trackScrollPage( pageId );
 		}
-		const pageHandle = this.getPageHandle( stream.pageHandle, startDate );
-		props.requestPage( { streamKey, pageHandle, localeSlug } );
+		const pageHandle = stream ? this.getPageHandle( stream.pageHandle, startDate ) : null;
+		props.requestPage( { feedId: selectedFeedId, streamKey, pageHandle, localeSlug } );
+	};
+
+	isLoginPromptVisible = () => {
+		// Show login prompt for all logged out users after few posts.
+		return ! this.props.isLoggedIn && this.props.items.length > MAX_POSTS_FOR_LOGGED_OUT_USERS;
 	};
 
 	showUpdates = () => {
 		const { streamKey } = this.props;
 		this.props.onUpdatesShown();
 		this.props.showUpdates( { streamKey } );
-		// @todo: do we need to shuffle?
-		// if ( this.props.recommendationsStore ) {
-		// 	shufflePosts( this.props.recommendationsStore.id );
-		// }
-		if ( this.listRef.current ) {
-			this.listRef.current.scrollToTop();
+		this.scrollFeedListToTop();
+	};
+
+	scrollFeedListToTop = () => {
+		if ( ! this.listRef.current ) {
+			return;
 		}
+
+		this.listRef.current.scrollToTop();
 	};
 
 	renderLoadingPlaceholders = () => {
@@ -711,25 +748,46 @@ class ReaderStream extends Component {
 		);
 
 		const TopLevel = this.props.isMain ? ReaderMain : 'div';
+
 		return (
 			<TopLevel className={ baseClassnames }>
 				<div ref={ this.overlayRef } className="stream__init-overlay" />
 				{ shouldPoll && <Interval onTick={ this.poll } period={ EVERY_MINUTE } /> }
-
 				<UpdateNotice streamKey={ streamKey } onClick={ this.showUpdates } />
+				{ this.props.showBack && <ReaderBackButton /> }
 				{ this.props.children }
 				{ showingStream && items.length ? this.props.intro?.() : null }
 				{ body }
 				{ showingStream && items.length && ! isRequesting ? <ListEnd /> : null }
+				{ this.isLoginPromptVisible() && (
+					<ReaderStreamLoginPrompt redirectPath={ window.location.pathname } />
+				) }
 			</TopLevel>
 		);
 	}
 }
 
+/**
+ * Returns a modified stream key if necessary else returns the original stream key.
+ * @returns {string} Stream key.
+ */
+function getStreamKey( state, streamKey ) {
+	// For "following" stream, use a unique streamKey if a feed is selected. This prevent feed overwrites when rapid selections are made.
+	const selectedFeedId = getSelectedRecentFeedId( state );
+	const isFollowingFiltered = streamKey === 'following' && selectedFeedId;
+	if ( isFollowingFiltered ) {
+		return `following:feed-${ selectedFeedId }`;
+	}
+
+	return streamKey;
+}
+
 export default connect(
-	( state, { streamKey, recsStreamKey } ) => {
+	( state, { streamKey: tempStreamKey, recsStreamKey } ) => {
+		const streamKey = getStreamKey( state, tempStreamKey );
 		const stream = getStream( state, streamKey );
 		const selectedPost = getPostByKey( state, stream.selected );
+		const isLoggedIn = isUserLoggedIn( state );
 
 		let localeSlug = getCurrentLocaleSlug( state );
 		if ( isDefaultLocale( localeSlug ) ) {
@@ -744,7 +802,9 @@ export default connect(
 			} ),
 			notificationsOpen: isNotificationsOpen( state ),
 			stream,
+			streamKey,
 			recsStream: getStream( state, recsStreamKey ),
+			selectedFeedId: getSelectedRecentFeedId( state ),
 			selectedPostKey: stream.selected,
 			selectedPost,
 			lastPage: stream.lastPage,
@@ -754,9 +814,11 @@ export default connect(
 			organizations: getReaderOrganizations( state ),
 			primarySiteId: getPrimarySiteId( state ),
 			localeSlug,
+			isLoggedIn,
 		};
 	},
 	{
+		clearStream,
 		resetCardExpansions,
 		likePost,
 		unlikePost,

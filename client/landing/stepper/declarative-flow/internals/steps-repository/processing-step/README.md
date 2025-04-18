@@ -16,7 +16,7 @@ It works together with `ONBOARD_STORE` and some of its state:
 3. Configure your flow in a way that the `processing` step is called after submitting the main step, something like:
 
 ```
-function submit( providedDependencies: ProvidedDependencies = {}, ...params: string[] ) {
+function submit( providedDependencies: ProvidedDependencies = {} ) {
 ...
 	switch ( currentStep ) {
 		case 'myMainStep':
@@ -59,13 +59,13 @@ setPendingAction( async () => {
    setProgress( 0 );
 
    await goToServerAndWork();
-   setProgress( 0.35 );
+   setProgress( 35 );
 
    await doMoreWork();
-   setProgress( 0.8 );
+   setProgress( 80 );
 
    await doEvenMoreWork();
-   setProgress( 1 );
+   setProgress( 100 );
 });
 
 submit?.();
@@ -105,15 +105,15 @@ setPendingAction( async () => {
 
    setProgressTitle( 'Working...' );
    await goToServerAndWork();
-   setProgress( 0.35 );
+   setProgress( 35 );
 
    setProgressTitle( 'Working harder!' );
    await doMoreWork();
-   setProgress( 0.8 );
+   setProgress( 80 );
 
    setProgressTitle( 'Almost done' );
    await doEvenMoreWork();
-   setProgress( 1 );
+   setProgress( 100 );
 });
 
 submit?.();

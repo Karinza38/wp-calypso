@@ -42,12 +42,6 @@ const stepNameToModuleName = {
 	'oauth2-user': 'user',
 	'oauth2-name': 'user',
 	'user-social': 'user',
-	'reader-landing': 'reader-landing',
-	'p2-details': 'p2-details',
-	'p2-site': 'p2-site',
-	'p2-confirm-email': 'p2-confirm-email',
-	'p2-complete-profile': 'p2-complete-profile',
-	'p2-join-workspace': 'p2-join-workspace',
 	'plans-business-monthly': 'plans',
 	'plans-ecommerce-monthly': 'plans',
 	'plans-ecommerce-fulfilled': 'plans',
@@ -68,7 +62,6 @@ const stepNameToModuleName = {
 	'difm-page-picker': 'page-picker',
 	'website-content': 'website-content',
 	intent: 'intent',
-	'initial-intent': 'initial-intent',
 	'store-address': 'woocommerce-install/step-store-address',
 	'business-info': 'woocommerce-install/step-business-info',
 	confirm: 'woocommerce-install/confirm',
@@ -85,6 +78,11 @@ export function getStepModuleMap() {
 }
 export async function getStepComponent( stepName ) {
 	const moduleName = stepNameToModuleName[ stepName ];
+	if ( ! moduleName ) {
+		// eslint-disable-next-line no-console
+		console.error( 'Error: unknown `stepName` to retrieve the component for.' );
+		return;
+	}
 	const module = await import(
 		/* webpackChunkName: "async-load-signup-steps-[request]" */
 		/* webpackInclude: /signup\/steps\/[0-9a-z/-]+\/index\.[j|t]sx$/ */

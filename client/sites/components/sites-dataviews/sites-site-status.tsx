@@ -31,6 +31,17 @@ const DeletedStatus = styled.div`
 	}
 `;
 
+const MigrationPendingStatus = styled.span`
+	display: inline-block;
+	padding: 0px 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	background-color: var( --color-warning-20 );
+	line-height: 20px;
+	font-weight: 500;
+	color: var( --color-warning-80 );
+`;
+
 interface SiteStatusProps {
 	site: SiteExcerptData;
 }
@@ -39,6 +50,8 @@ export const SiteStatus = ( { site }: SiteStatusProps ) => {
 	const { __ } = useI18n();
 
 	const translatedStatus = useSiteLaunchStatusLabel( site );
+	const isPending = getMigrationStatus( site ) === 'pending';
+	const isStarted = getMigrationStatus( site ) === 'started';
 	const isDIFMInProgress = useSelector( ( state ) => isDIFMLiteInProgress( state, site.ID ) );
 
 	if ( site.is_deleted ) {
@@ -49,12 +62,11 @@ export const SiteStatus = ( { site }: SiteStatusProps ) => {
 		);
 	}
 
-	const statusElement =
-		getMigrationStatus( site ) === 'pending' ? (
-			<span className="sites-dataviews__migration-pending-status">{ translatedStatus }</span>
-		) : (
-			translatedStatus
-		);
+	const statusElement = isPending ? (
+		<MigrationPendingStatus>{ translatedStatus }</MigrationPendingStatus>
+	) : (
+		translatedStatus
+	);
 
 	return (
 		<WithAtomicTransfer site={ site }>
@@ -69,7 +81,7 @@ export const SiteStatus = ( { site }: SiteStatusProps ) => {
 						) : (
 							<div>
 								{ statusElement }
-								<SiteLaunchNag site={ site } />
+								{ ! isPending && ! isStarted && <SiteLaunchNag site={ site } /> }
 							</div>
 						) }
 					</>

@@ -9,7 +9,7 @@ import { removeNotice, successNotice } from 'calypso/state/notices/actions';
 import { setAllSitesSelected } from 'calypso/state/ui/actions';
 import { getSelectedSite } from 'calypso/state/ui/selectors';
 import SitesDashboard from './components/sites-dashboard';
-import { areHostingFeaturesSupported } from './hosting-features/features';
+import { areHostingFeaturesSupported } from './hosting/features';
 import type { Context, Context as PageJSContext } from '@automattic/calypso-router';
 
 const getStatusFilterValue = ( status?: string ) => {
@@ -125,13 +125,14 @@ export function sitesDashboard( context: Context, next: () => void ) {
 	next();
 }
 
-export function siteDashboard( feature: string ) {
+export function siteDashboard( feature: string | undefined ) {
 	return ( context: Context, next: () => void ) => {
 		context.primary = (
 			<SitesDashboard
 				initialSiteFeature={ feature }
 				selectedSiteFeaturePreview={ context.primary }
 				queryParams={ getQueryParams( context ) }
+				isOnlyLayoutView={ context.inSiteContext }
 			/>
 		);
 		next();
@@ -152,7 +153,7 @@ export function redirectToHostingFeaturesIfNotAtomic( context: PageJSContext, ne
 	const site = getSelectedSite( state );
 
 	if ( ! areHostingFeaturesSupported( site ) ) {
-		return page.redirect( `/sites/tools/${ site?.slug }` );
+		return page.redirect( `/hosting-features/${ site?.slug }` );
 	}
 
 	next();

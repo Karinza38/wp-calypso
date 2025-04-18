@@ -1,4 +1,3 @@
-import { isEnabled } from '@automattic/calypso-config';
 import { type Callback } from '@automattic/calypso-router';
 import page from '@automattic/calypso-router';
 import PageViewTracker from 'calypso/a8c-for-agencies/components/a4a-page-view-tracker';
@@ -15,10 +14,8 @@ import { MARKETPLACE_TYPE_REFERRAL } from './hoc/with-marketplace-type';
 import HostingOverview from './hosting-overview';
 import { getValidHostingSection } from './lib/hosting';
 import { getValidBrand } from './lib/product-brand';
-import PressableOverview from './pressable-overview';
 import DownloadProducts from './primary/download-products';
 import ProductsOverview from './products-overview';
-import WpcomOverview from './wpcom-overview';
 
 export const marketplaceContext: Callback = () => {
 	page.redirect( A4A_MARKETPLACE_HOSTING_LINK );
@@ -30,6 +27,7 @@ export const marketplaceProductsContext: Callback = ( context, next ) => {
 
 	context.secondary = <MarketplaceSidebar path={ context.path } />;
 	const purchaseType = purchase_type === 'referral' ? 'referral' : undefined;
+
 	context.primary = (
 		<>
 			<PageViewTracker title="Marketplace > Products" path={ context.path } />
@@ -46,7 +44,7 @@ export const marketplaceProductsContext: Callback = ( context, next ) => {
 };
 
 export const marketplaceHostingContext: Callback = ( context, next ) => {
-	if ( isEnabled( 'a4a-hosting-page-redesign' ) && ! context.params.section ) {
+	if ( ! context.params.section ) {
 		const currentAgency = getActiveAgency( context.store.getState() );
 		page.redirect(
 			// If the agency is managing less than 5 sites, then we make wpcom as default section.
@@ -57,40 +55,13 @@ export const marketplaceHostingContext: Callback = ( context, next ) => {
 		return;
 	}
 
-	const { purchase_type } = context.query;
-	const purchaseType = purchase_type === 'referral' ? 'referral' : undefined;
-
 	const section = getValidHostingSection( context.params.section );
 
 	context.secondary = <MarketplaceSidebar path={ context.path } />;
 	context.primary = (
 		<>
 			<PageViewTracker title="Marketplace > Hosting" path={ context.path } />
-			<HostingOverview defaultMarketplaceType={ purchaseType } section={ section } />
-		</>
-	);
-	next();
-};
-
-export const marketplacePressableContext: Callback = ( context, next ) => {
-	context.secondary = <MarketplaceSidebar path={ context.path } />;
-	context.primary = (
-		<>
-			<PageViewTracker title="Marketplace > Hosting > Pressable" path={ context.path } />
-			<PressableOverview />
-		</>
-	);
-	next();
-};
-
-export const marketplaceWpcomContext: Callback = ( context, next ) => {
-	const { purchase_type } = context.query;
-	const purchaseType = purchase_type === 'referral' ? 'referral' : undefined;
-	context.secondary = <MarketplaceSidebar path={ context.path } />;
-	context.primary = (
-		<>
-			<PageViewTracker title="Marketplace > Hosting > WordPress.com" path={ context.path } />
-			<WpcomOverview defaultMarketplaceType={ purchaseType } />
+			<HostingOverview section={ section } />
 		</>
 	);
 	next();

@@ -26,7 +26,6 @@ export function generateSteps( {
 	addAddOnsToCart = noop,
 	createAccount = noop,
 	createSite = noop,
-	createWpForTeamsSite = noop,
 	createSiteOrDomain = noop,
 	createSiteWithCart = noop,
 	setOptionsOnSite = noop,
@@ -39,10 +38,7 @@ export function generateSteps( {
 	isDomainFulfilled = noop,
 	maybeRemoveStepForUserlessCheckout = noop,
 	createSiteAndAddDIFMToCart = noop,
-	excludeStepIfEmailVerified = noop,
-	excludeStepIfProfileComplete = noop,
 	submitWebsiteContent = noop,
-	excludeSegmentSurveyStepIfInactive = noop,
 } = {} ) {
 	return {
 		'domains-launch': {
@@ -95,12 +91,6 @@ export function generateSteps( {
 			},
 		},
 
-		// TODO
-		// The new pricing grid and the legacy one act differently
-		// when a paid domain is picked, and the new pricing grid is currently
-		// having different behavior on different flow on the paid domain +
-		// Free plan case. We can deprecate this once that specific behavior
-		// is settled and that we decide to migrate `site-selected` as a reskinned flow.
 		'plans-site-selected-legacy': {
 			stepName: 'plans-site-selected-legacy',
 			apiRequestFunction: addPlanToCart,
@@ -555,18 +545,16 @@ export function generateSteps( {
 			stepName: 'site-or-domain',
 			props: {
 				getHeaderText( domainCart ) {
-					return i18n.getLocaleSlug() === 'en' ||
-						i18n.hasTranslation( 'Choose how to use your domains' )
-						? i18n.translate( 'Choose how to use your domain', 'Choose how to use your domains', {
-								count: domainCart.length,
-						  } )
-						: i18n.translate( 'Choose how to use your domain' );
+					return i18n.translate(
+						'Choose how to use your domain',
+						'Choose how to use your domains',
+						{
+							count: domainCart.length,
+						}
+					);
 				},
 				get subHeaderText() {
-					return i18n.getLocaleSlug() === 'en' ||
-						i18n.hasTranslation( 'Don’t worry, you can easily change it later.' )
-						? i18n.translate( 'Don’t worry, you can easily change it later.' )
-						: i18n.translate( 'Don’t worry, you can easily add a site later' );
+					return i18n.translate( 'Don’t worry, you can easily change it later.' );
 				},
 			},
 			providesDependencies: [
@@ -645,11 +633,6 @@ export function generateSteps( {
 			providesDependencies: [],
 		},
 
-		'reader-landing': {
-			stepName: 'reader-landing',
-			providesDependencies: [],
-		},
-
 		launch: {
 			stepName: 'launch',
 			apiRequestFunction: launchSiteApi,
@@ -657,30 +640,6 @@ export function generateSteps( {
 			props: {
 				nonInteractive: true,
 			},
-		},
-
-		'p2-details': {
-			stepName: 'p2-details',
-		},
-
-		'p2-site': {
-			stepName: 'p2-site',
-			apiRequestFunction: createWpForTeamsSite,
-			providesDependencies: [ 'siteSlug' ],
-		},
-
-		'p2-confirm-email': {
-			stepName: 'p2-confirm-email',
-			fulfilledStepCallback: excludeStepIfEmailVerified,
-		},
-
-		'p2-complete-profile': {
-			stepName: 'p2-complete-profile',
-			fulfilledStepCallback: excludeStepIfProfileComplete,
-		},
-
-		'p2-join-workspace': {
-			stepName: 'p2-join-workspace',
 		},
 
 		'plans-personal-monthly': {
@@ -891,7 +850,8 @@ export function generateSteps( {
 		},
 		'difm-page-picker': {
 			stepName: 'difm-page-picker',
-			providesDependencies: [ 'selectedPageTitles' ],
+			providesDependencies: [ 'selectedPageTitles', 'newOrExistingSiteChoice' ],
+			optionalDependencies: [ 'newOrExistingSiteChoice' ],
 			props: {
 				hideSkip: true,
 			},
@@ -927,15 +887,6 @@ export function generateSteps( {
 		transfer: {
 			stepName: 'transfer',
 			dependencies: [ 'siteSlug', 'siteConfirmed' ],
-		},
-		'initial-intent': {
-			stepName: 'initial-intent',
-			fulfilledStepCallback: excludeSegmentSurveyStepIfInactive,
-			providesDependencies: [
-				'segmentationSurveyAnswers',
-				'onboardingSegment',
-				'trailMapExperimentVariant',
-			],
 		},
 	};
 }

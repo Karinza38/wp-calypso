@@ -1,8 +1,9 @@
 import { Page } from 'playwright';
+import envVariables from '../../env-variables';
 import { EditorComponent } from './editor-component';
 
 const selectors = {
-	exitButton: `a[aria-label="Go back to the Dashboard"]`,
+	exitButton: 'a[aria-label="Go back to the Dashboard"]',
 	templatePartsItem: 'button[id="/wp_template_part"]',
 	manageAllTemplatePartsItem: 'button:text("Manage all template parts")',
 	navigationScreenTitle: '.edit-site-sidebar-navigation-screen__title',
@@ -91,10 +92,15 @@ export class FullSiteEditorNavSidebarComponent {
 	 */
 	async clickNavButtonByExactText( text: string ): Promise< void > {
 		const editorParent = await this.editor.parent();
-		await editorParent
-			.getByLabel( 'Navigation' )
-			.getByRole( 'button', { name: text, exact: true } )
-			.click();
+
+		if ( envVariables.VIEWPORT_NAME === 'mobile' ) {
+			await editorParent.getByRole( 'button', { name: text, exact: true } ).click();
+		} else {
+			await editorParent
+				.getByLabel( 'Navigation' )
+				.getByRole( 'button', { name: text, exact: true } )
+				.click();
+		}
 	}
 
 	/**

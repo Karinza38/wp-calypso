@@ -1,30 +1,40 @@
-import {
-	isBlogOnboardingFlow,
-	isDomainUpsellFlow,
-	isNewHostedSiteCreationFlow,
-	StepContainer,
-} from '@automattic/onboarding';
+import { isDomainUpsellFlow, isStartWritingFlow, StepContainer } from '@automattic/onboarding';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
+import { useQuery } from '../../../../hooks/use-query';
 import PlansWrapper from './plans-wrapper';
-import type { ProvidedDependencies, Step } from '../../types';
+import type { Step } from '../../types';
 import type { MinimalRequestCartProduct } from '@automattic/shopping-cart';
-
-const plans: Step = function Plans( { navigation, flow } ) {
+/**
+ * @deprecated Use `unified-plans` instead. This step is deprecated and will be removed in the future.
+ */
+const plans: Step< {
+	submits: {
+		plan: MinimalRequestCartProduct | null;
+		goToCheckout: boolean;
+	};
+} > = function Plans( { navigation, flow } ) {
 	const { goBack, submit } = navigation;
 
-	const handleSubmit = ( plan: MinimalRequestCartProduct | null ) => {
-		const providedDependencies: ProvidedDependencies = {
-			plan,
-		};
+	const query = useQuery();
+	const queryParams = Object.fromEntries( query );
+	const plan = queryParams.plan;
 
-		if ( isDomainUpsellFlow( flow ) || isBlogOnboardingFlow( flow ) ) {
-			providedDependencies.goToCheckout = true;
-		}
+	const handleSubmit = ( plan: MinimalRequestCartProduct | null ) => {
+		const providedDependencies = {
+			plan,
+			goToCheckout: isDomainUpsellFlow( flow ) || isStartWritingFlow( flow ),
+		};
 
 		submit?.( providedDependencies );
 	};
 
-	const isAllowedToGoBack = isDomainUpsellFlow( flow ) || isNewHostedSiteCreationFlow( flow );
+	// If we have a plan from URL params, submit it immediately and don't render anything
+	if ( plan ) {
+		handleSubmit( { product_slug: plan } );
+		return null;
+	}
+
+	const isAllowedToGoBack = isDomainUpsellFlow( flow );
 
 	return (
 		<StepContainer
@@ -36,13 +46,7 @@ const plans: Step = function Plans( { navigation, flow } ) {
 			hideFormattedHeader
 			isLargeSkipLayout={ false }
 			hideBack={ ! isAllowedToGoBack }
-			stepContent={
-				<PlansWrapper
-					flowName={ flow }
-					onSubmit={ handleSubmit }
-					shouldIncludeFAQ={ isNewHostedSiteCreationFlow( flow ) }
-				/>
-			}
+			stepContent={ <PlansWrapper flowName={ flow } onSubmit={ handleSubmit } /> }
 			recordTracksEvent={ recordTracksEvent }
 		/>
 	);

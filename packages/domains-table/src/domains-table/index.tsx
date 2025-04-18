@@ -1,3 +1,4 @@
+import config from '@automattic/calypso-config';
 import { DomainData } from '@automattic/data-stores';
 import { useMobileBreakpoint } from '@automattic/viewport-react';
 import clsx from 'clsx';
@@ -21,7 +22,7 @@ export function DomainsTable( props: DomainsTableProps & { footer?: ReactNode } 
 
 	const state = useGenerateDomainsTableState( allProps );
 
-	const { isAllSitesView, domains } = props;
+	const { isAllSitesView, domains, sidebarMode } = props;
 
 	const showDomainsToolbar =
 		isAllSitesView ||
@@ -30,10 +31,13 @@ export function DomainsTable( props: DomainsTableProps & { footer?: ReactNode } 
 				( domain ) => ! domain?.is_subdomain
 			).length > 1 );
 
+	const isDomainsDataViewsEnabled = config.isEnabled( 'calypso/domains-dataviews' );
+	const showBulkUpdateNotice = ! isDomainsDataViewsEnabled;
+
 	return (
 		<DomainsTableStateContext.Provider value={ state }>
 			<div className={ clsx( className, 'domains-table' ) }>
-				<DomainsTableBulkUpdateNotice />
+				{ showBulkUpdateNotice && <DomainsTableBulkUpdateNotice /> }
 				{ showDomainsToolbar && <DomainsTableToolbar /> }
 				{ useMobileCards ?? isMobile ? (
 					<DomainsTableMobileCards />
@@ -43,7 +47,7 @@ export function DomainsTable( props: DomainsTableProps & { footer?: ReactNode } 
 							'has-checkbox': state.canSelectAnyDomains && ! hideCheckbox,
 						} ) }
 					>
-						<DomainsTableHeader />
+						{ ! sidebarMode && <DomainsTableHeader /> }
 						<DomainsTableBody />
 					</table>
 				) }

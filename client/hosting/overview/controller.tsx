@@ -1,20 +1,17 @@
-import { Context as PageJSContext } from '@automattic/calypso-router';
+import page, { Context as PageJSContext } from '@automattic/calypso-router';
 import { removeQueryArgs } from '@wordpress/url';
 import i18n from 'i18n-calypso';
-import HostingActivate from 'calypso/hosting/server-settings/hosting-activate';
 import Hosting from 'calypso/hosting/server-settings/main';
-import HostingOverview from 'calypso/sites/overview/components/hosting-overview';
+import { PanelWithSidebar } from 'calypso/sites/components/panel-sidebar';
+import { SettingsSidebar } from 'calypso/sites/settings/controller';
 import { successNotice } from 'calypso/state/notices/actions';
 
-export function hostingOverview( context: PageJSContext, next: () => void ) {
-	context.primary = <HostingOverview />;
-	next();
-}
+export async function hostingConfiguration( context: PageJSContext, next: () => void ) {
+	const { dispatch } = context.store;
 
-export function hostingConfiguration( context: PageJSContext, next: () => void ) {
 	// Update the url and show the notice after a redirect
 	if ( context.query && context.query.hosting_features === 'activated' ) {
-		context.store.dispatch(
+		dispatch(
 			successNotice( i18n.translate( 'Hosting features activated successfully!' ), {
 				displayOnNextPage: true,
 			} )
@@ -26,19 +23,18 @@ export function hostingConfiguration( context: PageJSContext, next: () => void )
 			removeQueryArgs( window.location.href, 'hosting_features' )
 		);
 	}
+
 	context.primary = (
-		<div className="hosting-configuration">
-			<Hosting />
-		</div>
+		<PanelWithSidebar>
+			<SettingsSidebar />
+			<div className="hosting-configuration">
+				<Hosting />
+			</div>
+		</PanelWithSidebar>
 	);
 	next();
 }
 
-export function hostingActivate( context: PageJSContext, next: () => void ) {
-	context.primary = (
-		<div className="hosting-configuration">
-			<HostingActivate />
-		</div>
-	);
-	next();
+export async function redirectToServerSettingsIfDuplicatedView( context: PageJSContext ) {
+	return page.redirect( `/sites/settings/server/${ context.params.site_id }` );
 }

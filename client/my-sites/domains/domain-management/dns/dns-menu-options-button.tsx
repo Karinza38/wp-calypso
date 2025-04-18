@@ -171,7 +171,20 @@ function DnsMenuOptionsButton( {
 	const restoreDefaultCnameRecord = useCallback( async () => {
 		dispatchUpdateDns( domainName, getDefaultCnameRecord(), getCnameRecordToRemove() )
 			.then( () => dispatchSuccessNotice( __( 'Default CNAME record restored' ) ) )
-			.catch( () => dispatchErrorNotice( __( 'Failed to restore the default CNAME record' ) ) );
+			.catch( ( e ) => {
+				// The backend error message when there's already an existing record for the `www` subdomain has the format:
+				// CNAME www.your-domain.com. conflicts with A www.your-domain.com.
+				if ( e.message.match( /^CNAME www\..+ conflicts with .*$/ ) ) {
+					return dispatchErrorNotice(
+						__(
+							'Failed to restore the default CNAME record. Please remove any DNS records you added for the “www” subdomain before restoring the default CNAME record.'
+						)
+					);
+				}
+
+				// Other DNS errors will be presented with a generic error message
+				return dispatchErrorNotice( __( 'Failed to restore the default CNAME record' ) );
+			} );
 	}, [
 		__,
 		dispatchErrorNotice,
@@ -303,12 +316,13 @@ function DnsMenuOptionsButton( {
 			<RestoreDefaultARecordsDialog
 				visible={ isRestoreARecordsDialogVisible }
 				onClose={ closeRestoreARecordsDialog }
-				defaultRecords={ null }
+				domain={ domain }
 			/>
 
 			<RestoreDefaultCnameRecordDialog
 				visible={ isRestoreCnameRecordDialogVisible }
 				onClose={ closeRestoreCnameRecordDialog }
+				domain={ domain }
 			/>
 
 			<RestoreDefaultEmailRecordsDIalog

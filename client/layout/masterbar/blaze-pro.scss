@@ -5,7 +5,6 @@
 	font-family: Inter;
 	font-weight: 400 700;
 	font-style: normal;
-	// stylelint-disable-next-line property-no-unknown
 	font-named-instance: "Regular";
 	src:
 		url(https://s0.wp.com/i/fonts/inter/Inter-roman.var.woff2?t=woff2-variations&v=3.19) format("woff2-variations"),
@@ -326,10 +325,14 @@ body.is-section-signup {
 		margin-bottom: 24px;
 
 		.social-buttons__button {
-			font-family: $inter;
-			font-size: rem(13px);
-			font-weight: 600;
-			line-height: 14px;
+			--color-accent: var(--color-orange);
+
+			> span {
+				font-family: $inter;
+				font-size: rem(13px);
+				font-weight: 600;
+			}
+
 		}
 	}
 

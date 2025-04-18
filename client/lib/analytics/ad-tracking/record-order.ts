@@ -13,6 +13,7 @@ import {
 	ICON_MEDIA_ORDER_PIXEL_URL,
 } from './constants';
 import { cartToCriteoItems, recordInCriteo } from './criteo';
+import { circularReferenceSafeJSONStringify } from './debug';
 import { recordParamsInFloodlightGtag } from './floodlight';
 import {
 	fireEcommercePurchase as fireEcommercePurchaseGA4,
@@ -166,7 +167,7 @@ export async function recordOrder(
 	// Uses JSON.stringify() to print the expanded object because during localhost or .live testing after firing this
 	// event we redirect the user to wordpress.com which causes a domain change preventing the expanding and inspection
 	// of any object in the JS console since they are no longer available.
-	debug( 'recordOrder: dataLayer:', JSON.stringify( window.dataLayer, null, 2 ) );
+	debug( 'recordOrder: dataLayer:', circularReferenceSafeJSONStringify( window.dataLayer, 2 ) );
 }
 
 /**
@@ -603,7 +604,7 @@ function recordOrderInAkismetGTM(
 
 		window.dataLayer.push( purchaseEventMeta );
 
-		debug( `recordOrderInAkismetGTM: Record Akismet GTM purchase`, purchaseEventMeta );
+		debug( 'recordOrderInAkismetGTM: Record Akismet GTM purchase', purchaseEventMeta );
 	}
 }
 
@@ -642,7 +643,7 @@ function recordOrderInJetpackGTM(
 
 		window.dataLayer.push( purchaseEventMeta );
 
-		debug( `recordOrderInJetpackGTM: Record Jetpack GTM purchase`, purchaseEventMeta );
+		debug( 'recordOrderInJetpackGTM: Record Jetpack GTM purchase', purchaseEventMeta );
 	}
 }
 
@@ -668,7 +669,7 @@ function recordOrderInParsely( wpcomJetpackCartInfo: WpcomJetpackCartInfo ): voi
 			window.PARSELY && window.PARSELY.conversions.trackPurchase( cartContents );
 		} )
 		.then( () => {
-			debug( `recordOrderInParsely: Record Parsely purchase`, cartContents );
+			debug( 'recordOrderInParsely: Record Parsely purchase', cartContents );
 		} )
 		.catch( ( error ) => {
 			debug( 'recordOrderInParsely: Error loading Parsely', error );
@@ -749,7 +750,7 @@ function recordOrderInWooGTM(
 
 			window.dataLayer.push( purchaseEventMeta );
 
-			debug( `recordOrderInWooGTM: Record Woo GTM purchase`, purchaseEventMeta );
+			debug( 'recordOrderInWooGTM: Record Woo GTM purchase', purchaseEventMeta );
 		} )
 		.catch( ( error ) => {
 			debug( 'recordOrderInWooGTM: Error loading GTM container', error );

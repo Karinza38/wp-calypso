@@ -3,26 +3,22 @@ import { useMergeRefs } from '@wordpress/compose';
 import { sprintf } from '@wordpress/i18n';
 import { useI18n } from '@wordpress/react-i18n';
 import { useRef } from 'react';
-import { GuidedTourStep } from 'calypso/a8c-for-agencies/components/guided-tour-step';
+import { GuidedTourStep } from 'calypso/components/guided-tour/step';
 import { useSiteAdminInterfaceData } from 'calypso/state/sites/hooks';
-import type { ItemData } from 'calypso/a8c-for-agencies/components/items-dashboard/item-preview-pane/types';
+import type { ItemData } from 'calypso/layout/hosting-dashboard/item-view/types';
 
 type Props = {
 	focusRef: React.RefObject< HTMLButtonElement >;
 	itemData: ItemData;
-	closeSitePreviewPane?: () => void;
 };
 
-const PreviewPaneHeaderButtons = ( { focusRef, closeSitePreviewPane, itemData }: Props ) => {
+const PreviewPaneHeaderButtons = ( { focusRef, itemData }: Props ) => {
 	const adminButtonRef = useRef< HTMLButtonElement | null >( null );
 	const { adminLabel, adminUrl } = useSiteAdminInterfaceData( itemData.blogId );
 	const { __ } = useI18n();
 
 	return (
 		<>
-			<Button onClick={ closeSitePreviewPane } className="item-preview__close-preview-button">
-				{ __( 'Close' ) }
-			</Button>
 			<Button
 				primary
 				className="item-preview__admin-button"

@@ -6,7 +6,6 @@ import isSiteWpcomStaging from 'calypso/state/selectors/is-site-wpcom-staging';
 import isVipSite from 'calypso/state/selectors/is-vip-site';
 import { isJetpackSite } from 'calypso/state/sites/selectors';
 import { getSelectedSiteId, getSelectedSiteSlug } from 'calypso/state/ui/selectors';
-import { isHostingMenuUntangled } from '../utils';
 import type { Context as PageJSContext } from '@automattic/calypso-router';
 import type { AppState } from 'calypso/types';
 
@@ -38,7 +37,7 @@ function canDeleteSite( state: AppState, siteId: number | null ) {
 export function redirectIfCantDeleteSite( context: PageJSContext, next: () => void ) {
 	const state = context.store.getState();
 	if ( ! canDeleteSite( state, getSelectedSiteId( state ) ) ) {
-		return redirectToAdministration( getSelectedSiteSlug( state ) );
+		return redirectToAdministration( context, getSelectedSiteSlug( state ) );
 	}
 
 	next();
@@ -47,13 +46,11 @@ export function redirectIfCantDeleteSite( context: PageJSContext, next: () => vo
 export function redirectIfCantStartSiteOwnerTransfer( context: PageJSContext, next: () => void ) {
 	const state = context.store.getState();
 	if ( ! canCurrentUserStartSiteOwnerTransfer( state, getSelectedSiteId( state ) ) ) {
-		return redirectToAdministration( getSelectedSiteSlug( state ) );
+		return redirectToAdministration( context, getSelectedSiteSlug( state ) );
 	}
 	next();
 }
 
-function redirectToAdministration( siteSlug: string | null ) {
-	return isHostingMenuUntangled()
-		? page.redirect( '/sites/settings/administration/' + siteSlug )
-		: page.redirect( '/settings/general/' + siteSlug );
+async function redirectToAdministration( context: PageJSContext, siteSlug: string | null ) {
+	return page.redirect( '/sites/settings/site/' + siteSlug );
 }

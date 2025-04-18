@@ -4,7 +4,7 @@ import { preventWidows } from 'calypso/lib/formatting';
 import type { ElementType, FC, PropsWithChildren, ReactNode } from 'react';
 import './style.scss';
 
-interface Props extends PropsWithChildren {
+export interface Props extends PropsWithChildren {
 	align?: 'center' | 'left' | 'right';
 	brandFont?: boolean;
 	className?: string;
@@ -14,7 +14,6 @@ interface Props extends PropsWithChildren {
 	id?: string;
 	isSecondary?: boolean;
 	screenReader?: ReactNode;
-	subHeaderAlign?: 'center';
 	subHeaderAs?: ElementType;
 	subHeaderText?: ReactNode;
 	tooltipText?: ReactNode;
@@ -32,7 +31,6 @@ const FormattedHeader: FC< Props > = ( {
 	id = '',
 	isSecondary = false,
 	screenReader = null,
-	subHeaderAlign,
 	subHeaderAs: SubHeaderAs = 'p',
 	subHeaderText,
 	tooltipText,
@@ -47,9 +45,6 @@ const FormattedHeader: FC< Props > = ( {
 	} );
 
 	const headerClasses = clsx( 'formatted-header__title', { 'wp-brand-font': brandFont } );
-	const subtitleClasses = clsx( 'formatted-header__subtitle', {
-		'is-center-align': 'center' === subHeaderAlign,
-	} );
 	const tooltip = tooltipText && (
 		<InfoPopover icon="help-outline" position="right" iconSize={ 18 } showOnHover>
 			{ tooltipText }
@@ -76,7 +71,9 @@ const FormattedHeader: FC< Props > = ( {
 				) }
 				{ screenReader && <h2 className="screen-reader-text">{ screenReader }</h2> }
 				{ formattedSubHeaderText && (
-					<SubHeaderAs className={ subtitleClasses }>{ formattedSubHeaderText }</SubHeaderAs>
+					<SubHeaderAs className="formatted-header__subtitle">
+						{ formattedSubHeaderText }
+					</SubHeaderAs>
 				) }
 			</div>
 			{ children }

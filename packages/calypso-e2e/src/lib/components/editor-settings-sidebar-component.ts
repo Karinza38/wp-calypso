@@ -19,7 +19,7 @@ const selectors = {
 	postPasswordInput: '.editor-post-visibility__password-input',
 
 	// Schedule
-	scheduleButton: `button.editor-post-schedule__dialog-toggle`,
+	scheduleButton: 'button.editor-post-schedule__dialog-toggle',
 	schedulePopoverCloseButton:
 		'[data-wp-component="Popover"][aria-label="Change publish date"] [aria-label="Close"]',
 	scheduleInput: ( name: string ) => `.editor-post-schedule__dialog label:has-text("${ name }")`,
@@ -29,8 +29,9 @@ const selectors = {
 	categoryCheckbox: ( categoryName: string ) =>
 		`${ panel } div[aria-label=Categories] label:text("${ categoryName }")`,
 
-	// Tag
-	tagInput: `${ panel } .components-form-token-field:has-text("Add New Tag") input`,
+	// Add tag.
+	// String was changed for WP 6.8, so we need both for a bit: https://core.trac.wordpress.org/changeset/59784
+	tagInput: `${ panel } .components-form-token-field:is(:has-text("Add New Tag"),:has-text("Add Tag")) input`,
 	addedTag: ( tag: string ) =>
 		`${ panel } .components-form-token-field__token-text:has-text("${ tag }")`,
 };
@@ -56,6 +57,26 @@ export class EditorSettingsSidebarComponent {
 	//#region Generic methods
 
 	/**
+	 * Returns the root element of the sidebar.
+	 */
+	async getRoot() {
+		const editorParent = await this.editor.parent();
+
+		return editorParent.getByRole( 'region', { name: 'Editor settings' } );
+	}
+
+	/**
+	 * Returns the root element (panel body) of the section.
+	 */
+	async getSection( name: string ) {
+		const sidebar = await this.getRoot();
+
+		return sidebar.locator( '.components-panel__body' ).filter( {
+			has: this.page.locator( `h2.components-panel__body-title button:has-text("${ name }")` ),
+		} );
+	}
+
+	/**
 	 * Clicks a button matching the accessible name.
 	 *
 	 * @param {string} name Accessible name of the button.
@@ -73,17 +94,17 @@ export class EditorSettingsSidebarComponent {
 	 * text box.
 	 *
 	 * @param {string} text Text to enter.
-	 * @param param1 Keyed object parametr.
+	 * @param param1 Keyed object parameter.
 	 * @param {string} param1.label Locate text field by label.
 	 */
 	async enterText( text: string, { label }: { label: string } ): Promise< void > {
 		const editorParent = await this.editor.parent();
 
 		if ( label ) {
-			return await editorParent.getByLabel( label ).fill( text );
+			return await editorParent.getByRole( 'textbox', { name: label } ).fill( text );
 		}
 
-		throw new Error( `Must specify a method to locate the text field.` );
+		throw new Error( 'Must specify a method to locate the text field.' );
 	}
 
 	//#endregion
@@ -121,10 +142,13 @@ export class EditorSettingsSidebarComponent {
 	 * If the section is already open, this method will pass.
 	 *
 	 * @param {string} name Name of section to be expanded.
+	 *
+	 * @returns The section element.
 	 */
-	async expandSection( name: string ): Promise< void > {
+	async expandSection( name: string ) {
+		const section = await this.getSection( name );
 		if ( await this.targetIsOpen( selectors.section( name ) ) ) {
-			return;
+			return section;
 		}
 
 		const editorParent = await this.editor.parent();
@@ -135,6 +159,8 @@ export class EditorSettingsSidebarComponent {
 			`${ selectors.section( name ) }[aria-expanded="true"]`
 		);
 		await expandedLocator.waitFor();
+
+		return section;
 	}
 
 	/**
@@ -244,7 +270,7 @@ export class EditorSettingsSidebarComponent {
 			// single responsibility principle for this case.
 			// @TODO: eventually refactor this out to a ConfirmationDialogComponent.
 			const dialogConfirmLocator = editorParent.locator(
-				`div[role="dialog"] button:has-text("OK")`
+				'div[role="dialog"] button:has-text("OK")'
 			);
 			await dialogConfirmLocator.click();
 		}

@@ -100,6 +100,7 @@ export type ResponseDomain = {
 	isEligibleForInboundTransfer: boolean;
 	isIcannVerificationSuspended: boolean | null;
 	isGravatarDomain: boolean;
+	isGravatarRestrictedDomain: boolean;
 	isHundredYearDomain: boolean;
 	isLocked: boolean;
 	isMappedToAtomicSite: boolean;
@@ -111,6 +112,7 @@ export type ResponseDomain = {
 	isPrimary: boolean;
 	isRedeemable: boolean;
 	isRenewable: boolean;
+	isRootDomainRegisteredWithAutomattic: boolean;
 	isSubdomain: boolean;
 	isWPCOMDomain: boolean;
 	isWpcomStagingDomain: boolean;
@@ -125,7 +127,6 @@ export type ResponseDomain = {
 	pendingRegistration: boolean;
 	pendingRegistrationAtRegistry: boolean;
 	pendingRegistrationAtRegistryUrl: string;
-	pendingRegistrationTime: string;
 	pendingTransfer?: boolean;
 	pointsToWpcom: boolean;
 	privacyAvailable: boolean;

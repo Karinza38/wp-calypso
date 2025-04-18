@@ -10,11 +10,12 @@ import {
 	commentAuthorAvatar,
 	people,
 	starEmpty,
+	plugins,
 } from '@wordpress/icons';
 import { useTranslate } from 'i18n-calypso';
 import { useMemo } from 'react';
 import { isPathAllowed } from 'calypso/a8c-for-agencies/lib/permission';
-import Badge from 'calypso/components/badge';
+import wooPaymentsIcon from 'calypso/assets/images/a8c-for-agencies/woopayments/woo-sidebar-icon.svg';
 import { isSectionNameEnabled } from 'calypso/sections-filter';
 import { useSelector } from 'calypso/state';
 import { getActiveAgency } from 'calypso/state/a8c-for-agencies/agency/selectors';
@@ -28,11 +29,13 @@ import {
 	A4A_MARKETPLACE_HOSTING_LINK,
 	A4A_MIGRATIONS_LINK,
 	A4A_SETTINGS_LINK,
+	A4A_PLUGINS_LINK,
 	A4A_PARTNER_DIRECTORY_DASHBOARD_LINK,
 	A4A_REFERRALS_DASHBOARD,
 	A4A_TEAM_LINK,
 	A4A_AGENCY_TIER_LINK,
 	A4A_MIGRATIONS_OVERVIEW_LINK,
+	A4A_WOOPAYMENTS_LINK,
 } from '../lib/constants';
 import { createItem } from '../lib/utils';
 
@@ -42,62 +45,35 @@ const useMainMenuItems = ( path: string ) => {
 	const agency = useSelector( getActiveAgency );
 
 	const menuItems = useMemo( () => {
-		const isAutomatedReferralsEnabled = config.isEnabled( 'a4a-automated-referrals' );
-		const isTrackingSiteMigrationsEnabled = config.isEnabled( 'a4a-tracking-site-migrations' );
-
 		let referralItems = [] as any[];
 
 		if ( isSectionNameEnabled( 'a8c-for-agencies-referrals' ) ) {
-			referralItems = isAutomatedReferralsEnabled
-				? [
-						{
-							icon: reusableBlock,
-							path: A4A_REFERRALS_LINK,
-							link: A4A_REFERRALS_DASHBOARD,
-							title: translate( 'Referrals' ),
-							trackEventProps: {
-								menu_item: 'Automattic for Agencies / Referrals',
-							},
-							withChevron: true,
-						},
-				  ]
-				: [
-						{
-							icon: reusableBlock,
-							path: '/',
-							link: A4A_REFERRALS_LINK,
-							title: translate( 'Referrals' ),
-							trackEventProps: {
-								menu_item: 'Automattic for Agencies / Referrals',
-							},
-						},
-				  ];
+			referralItems = [
+				{
+					icon: reusableBlock,
+					path: A4A_REFERRALS_LINK,
+					link: A4A_REFERRALS_DASHBOARD,
+					title: translate( 'Referrals' ),
+					trackEventProps: {
+						menu_item: 'Automattic for Agencies / Referrals',
+					},
+					withChevron: true,
+				},
+			];
 		}
 
-		let migrationMenuItem = {};
-
-		if ( isSectionNameEnabled( 'a8c-for-agencies-migrations' ) ) {
-			migrationMenuItem = isTrackingSiteMigrationsEnabled
-				? {
-						icon: moveTo,
-						path: A4A_MIGRATIONS_LINK,
-						link: A4A_MIGRATIONS_OVERVIEW_LINK,
-						title: translate( 'Migrations' ),
-						trackEventProps: {
-							menu_item: 'Automattic for Agencies / Migrations',
-						},
-						withChevron: true,
-				  }
-				: {
-						icon: moveTo,
-						path: '/',
-						link: A4A_MIGRATIONS_LINK,
-						title: translate( 'Migrations' ),
-						trackEventProps: {
-							menu_item: 'Automattic for Agencies / Migrations',
-						},
-				  };
-		}
+		const migrationMenuItem = isSectionNameEnabled( 'a8c-for-agencies-migrations' )
+			? {
+					icon: moveTo,
+					path: A4A_MIGRATIONS_LINK,
+					link: A4A_MIGRATIONS_OVERVIEW_LINK,
+					title: translate( 'Migrations' ),
+					trackEventProps: {
+						menu_item: 'Automattic for Agencies / Migrations',
+					},
+					withChevron: true,
+			  }
+			: {};
 
 		return [
 			{
@@ -119,18 +95,6 @@ const useMainMenuItems = ( path: string ) => {
 				},
 				withChevron: true,
 			},
-			/*
-			// Hide this section until we support plugin management in A4A
-			{
-				icon: plugins,
-				path: '/',
-				link: A4A_PLUGINS_LINK,
-				title: translate( 'Plugins' ),
-				trackEventProps: {
-					menu_item: 'Automattic for Agencies / Plugins',
-				},
-			},
-			*/
 			{
 				icon: tag,
 				path: A4A_MARKETPLACE_LINK,
@@ -153,6 +117,28 @@ const useMainMenuItems = ( path: string ) => {
 			},
 			...referralItems,
 			migrationMenuItem,
+			{
+				icon: <img src={ wooPaymentsIcon } alt="WooPayments" />,
+				path: '/',
+				link: A4A_WOOPAYMENTS_LINK,
+				title: translate( 'WooPayments' ),
+				trackEventProps: {
+					menu_item: 'Automattic for Agencies / WooPayments',
+				},
+			},
+			...( isSectionNameEnabled( 'a8c-for-agencies-plugins' )
+				? [
+						{
+							icon: plugins,
+							path: '/',
+							link: A4A_PLUGINS_LINK,
+							title: translate( 'Plugins' ),
+							trackEventProps: {
+								menu_item: 'Automattic for Agencies / Plugins',
+							},
+						},
+				  ]
+				: [] ),
 			...( config.isEnabled( 'a4a-partner-directory' ) ||
 			config.isEnabled( 'a8c-for-agencies-agency-tier' )
 				? [
@@ -200,7 +186,6 @@ const useMainMenuItems = ( path: string ) => {
 							path: '/',
 							link: A4A_AGENCY_TIER_LINK,
 							title: translate( 'Agency Tier' ),
-							extraContent: <Badge type="info-blue">{ translate( 'beta' ) }</Badge>,
 							trackEventProps: {
 								menu_item: 'Automattic for Agencies / Agency Tier',
 							},

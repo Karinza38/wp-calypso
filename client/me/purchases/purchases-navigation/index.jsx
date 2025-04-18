@@ -1,18 +1,11 @@
-import { useTranslate } from 'i18n-calypso';
 import PropTypes from 'prop-types';
-import { useDispatch } from 'react-redux';
-import Search from 'calypso/components/search';
 import SectionNav from 'calypso/components/section-nav';
 import NavItem from 'calypso/components/section-nav/item';
 import NavTabs from 'calypso/components/section-nav/tabs';
 import { billingHistory, paymentMethods, purchasesRoot } from 'calypso/me/purchases/paths.js';
 import titles from 'calypso/me/purchases/titles';
-import { setQuery } from 'calypso/state/billing-transactions/ui/actions';
 
 export default function PurchasesNavigation( { section } ) {
-	const translate = useTranslate();
-	const dispatch = useDispatch();
-
 	return (
 		<SectionNav selectedText={ titles[ section ] }>
 			<NavTabs>
@@ -28,18 +21,6 @@ export default function PurchasesNavigation( { section } ) {
 					{ titles.paymentMethods }
 				</NavItem>
 			</NavTabs>
-
-			{ section === 'billingHistory' && (
-				<Search
-					pinned
-					fitsContainer
-					onSearch={ ( term ) => {
-						dispatch( setQuery( 'past', term ) );
-					} }
-					placeholder={ translate( 'Search all receipts…' ) }
-					analyticsGroup="Billing"
-				/>
-			) }
 		</SectionNav>
 	);
 }

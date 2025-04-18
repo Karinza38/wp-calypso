@@ -5,6 +5,7 @@ import { Button, CheckboxControl } from '@wordpress/components';
 import { useTranslate } from 'i18n-calypso';
 import React, { useState } from 'react';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
+import { STATS_PRODUCT_NAME } from 'calypso/my-sites/stats/constants';
 import { useJetpackConnectionStatus } from 'calypso/my-sites/stats/hooks/use-jetpack-connection-status';
 import useStatsPurchases from 'calypso/my-sites/stats/hooks/use-stats-purchases';
 import { useSelector } from 'calypso/state';
@@ -131,7 +132,7 @@ const PersonalPurchase = ( {
 							<CheckboxControl
 								className={ `${ COMPONENT_CLASS_NAME }__control--checkbox` }
 								checked={ isAdsChecked }
-								label={ translate( `I don't have ads on my site` ) }
+								label={ translate( "I don't have ads on my site" ) }
 								onChange={ ( value ) => {
 									setAdsChecked( value );
 								} }
@@ -141,7 +142,7 @@ const PersonalPurchase = ( {
 							<CheckboxControl
 								className={ `${ COMPONENT_CLASS_NAME }__control--checkbox` }
 								checked={ isSellingChecked }
-								label={ translate( `I don't sell products/services on my site` ) }
+								label={ translate( "I don't sell products/services on my site" ) }
 								onChange={ ( value ) => {
 									setSellingChecked( value );
 								} }
@@ -151,7 +152,7 @@ const PersonalPurchase = ( {
 							<CheckboxControl
 								className={ `${ COMPONENT_CLASS_NAME }__control--checkbox` }
 								checked={ isBusinessChecked }
-								label={ translate( `I don't promote a business on my site` ) }
+								label={ translate( "I don't promote a business on my site" ) }
 								onChange={ ( value ) => {
 									setBusinessChecked( value );
 								} }
@@ -161,7 +162,7 @@ const PersonalPurchase = ( {
 							<CheckboxControl
 								className={ `${ COMPONENT_CLASS_NAME }__control--checkbox` }
 								checked={ isDonationChecked }
-								label={ translate( `I don't solicit donations or sponsorships on my site` ) }
+								label={ translate( "I don't solicit donations or sponsorships on my site" ) }
 								onChange={ ( value ) => {
 									setDonationChecked( value );
 								} }
@@ -191,7 +192,9 @@ const PersonalPurchase = ( {
 							} )
 						}
 					>
-						{ translate( 'Continue with Jetpack Stats for free' ) }
+						{ translate( 'Continue with %(product)s for free', {
+							args: { product: STATS_PRODUCT_NAME },
+						} ) }
 					</ButtonComponent>
 				</div>
 			) : (

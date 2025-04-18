@@ -1,42 +1,27 @@
-import config from '@automattic/calypso-config';
 import { Site } from '@automattic/data-stores';
-import { FREE_THEME } from '@automattic/design-picker';
 import {
-	ECOMMERCE_FLOW,
+	AI_SITE_BUILDER_FLOW,
 	ENTREPRENEUR_FLOW,
 	StepContainer,
-	WOOEXPRESS_FLOW,
 	addPlanToCart,
 	addProductsToCart,
 	createSiteWithCart,
 	isCopySiteFlow,
-	isDesignFirstFlow,
-	isFreeFlow,
-	isLinkInBioFlow,
-	isImportFocusedFlow,
-	isMigrationSignupFlow,
-	isStartWritingFlow,
-	isWooExpressFlow,
 	isEntrepreneurFlow,
 	isNewHostedSiteCreationFlow,
 	isNewsletterFlow,
-	isBlogOnboardingFlow,
-	isSiteAssemblerFlow,
 	isReadymadeFlow,
+	isStartWritingFlow,
 	isOnboardingFlow,
-	setThemeOnSite,
-	AI_ASSEMBLER_FLOW,
+	isHostedSiteMigrationFlow,
+	Step,
 } from '@automattic/onboarding';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { useI18n } from '@wordpress/react-i18n';
-import { getQueryArg } from '@wordpress/url';
 import { useEffect } from 'react';
 import DocumentHead from 'calypso/components/data/document-head';
-import { LoadingBar } from 'calypso/components/loading-bar';
-import { LoadingEllipsis } from 'calypso/components/loading-ellipsis';
+import Loading from 'calypso/components/loading';
 import useAddEcommerceTrialMutation from 'calypso/data/ecommerce/use-add-ecommerce-trial-mutation';
-import useAddTempSiteToSourceOptionMutation from 'calypso/data/site-migration/use-add-temp-site-mutation';
-import { useSourceMigrationStatusQuery } from 'calypso/data/site-migration/use-source-migration-status-query';
 import { useQuery } from 'calypso/landing/stepper/hooks/use-query';
 import { ONBOARD_STORE } from 'calypso/landing/stepper/stores';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
@@ -49,13 +34,12 @@ import {
 import { useSelector } from 'calypso/state';
 import { getCurrentUserName } from 'calypso/state/current-user/selectors';
 import { getUrlData } from 'calypso/state/imports/url-analyzer/selectors';
-import type { Step } from '../../types';
+import { shouldUseStepContainerV2 } from '../../../helpers/should-use-step-container-v2';
+import type { Step as StepType } from '../../types';
 import type { OnboardSelect } from '@automattic/data-stores';
 import './styles.scss';
 
 const DEFAULT_SITE_MIGRATION_THEME = 'pub/zoologist';
-const DEFAULT_LINK_IN_BIO_THEME = 'pub/lynx';
-const DEFAULT_WOOEXPRESS_FLOW = 'pub/twentytwentytwo';
 const DEFAULT_ENTREPRENEUR_FLOW = 'pub/twentytwentytwo';
 const DEFAULT_NEWSLETTER_THEME = 'pub/lettre';
 // Changing this? Consider also updating WRITE_INTENT_DEFAULT_DESIGN so the write *intent* matches the write flow
@@ -68,7 +52,7 @@ function hasSourceSlug( data: unknown ): data is { sourceSlug: string } {
 	return false;
 }
 
-const CreateSite: Step = function CreateSite( { navigation, flow, data } ) {
+const CreateSite: StepType = function CreateSite( { navigation, flow, data } ) {
 	const { submit } = navigation;
 	const { __ } = useI18n();
 
@@ -100,7 +84,6 @@ const CreateSite: Step = function CreateSite( { navigation, flow, data } ) {
 	);
 
 	const { mutateAsync: addEcommerceTrial } = useAddEcommerceTrialMutation( partnerBundle );
-
 	/**
 	 * Support singular and multiple domain cart items.
 	 */
@@ -111,41 +94,18 @@ const CreateSite: Step = function CreateSite( { navigation, flow, data } ) {
 
 	const username = useSelector( getCurrentUserName );
 
-	const { setPendingAction, setProgress } = useDispatch( ONBOARD_STORE );
+	const { setPendingAction } = useDispatch( ONBOARD_STORE );
 
 	// when it's empty, the default WordPress theme will be used.
 	let theme = '';
-	if ( isImportFocusedFlow( flow ) || isCopySiteFlow( flow ) ) {
+	if ( isCopySiteFlow( flow ) ) {
 		theme = DEFAULT_SITE_MIGRATION_THEME;
-	} else if ( isWooExpressFlow( flow ) ) {
-		theme = DEFAULT_WOOEXPRESS_FLOW;
 	} else if ( isEntrepreneurFlow( flow ) ) {
 		theme = DEFAULT_ENTREPRENEUR_FLOW;
 	} else if ( isStartWritingFlow( flow ) ) {
 		theme = DEFAULT_START_WRITING_THEME;
-	} else if ( isLinkInBioFlow( flow ) ) {
-		theme = DEFAULT_LINK_IN_BIO_THEME;
 	} else if ( isNewsletterFlow( flow ) ) {
 		theme = DEFAULT_NEWSLETTER_THEME;
-	} else if ( flow === AI_ASSEMBLER_FLOW ) {
-		theme = 'pub/assembler';
-	}
-
-	let preselectedThemeSlug = '';
-	let preselectedThemeStyleVariation = '';
-
-	// Maybe set the theme for the user instead of taking them to the update-design flow.
-	// See: https://github.com/Automattic/wp-calypso/issues/83077
-	if ( isDesignFirstFlow( flow ) ) {
-		const themeSlug = getQueryArg( window.location.href, 'theme' );
-		const themeType = getQueryArg( window.location.href, 'theme_type' );
-		const styleVariation = getQueryArg( window.location.href, 'style_variation' );
-
-		// Only do this for preselected free themes with style variation.
-		if ( !! themeSlug && themeType === FREE_THEME && !! styleVariation ) {
-			preselectedThemeSlug = `pub/${ themeSlug }`;
-			preselectedThemeStyleVariation = styleVariation as string;
-		}
 	}
 
 	const isPaidDomainItem = Boolean(
@@ -155,20 +115,17 @@ const CreateSite: Step = function CreateSite( { navigation, flow, data } ) {
 
 	// Default visibility is public
 	let siteVisibility = Site.Visibility.PublicIndexed;
-	const wooFlows = [ ECOMMERCE_FLOW, ENTREPRENEUR_FLOW, WOOEXPRESS_FLOW ];
+	const wooFlows = [ ENTREPRENEUR_FLOW ];
 
 	// These flows default to "Coming Soon"
 	if (
 		isOnboardingFlow( flow ) ||
 		isCopySiteFlow( flow ) ||
-		isFreeFlow( flow ) ||
-		isLinkInBioFlow( flow ) ||
-		isImportFocusedFlow( flow ) ||
-		isBlogOnboardingFlow( flow ) ||
+		isStartWritingFlow( flow ) ||
 		isNewHostedSiteCreationFlow( flow ) ||
-		isSiteAssemblerFlow( flow ) ||
 		isReadymadeFlow( flow ) ||
-		wooFlows.includes( flow || '' )
+		wooFlows.includes( flow || '' ) ||
+		flow === AI_SITE_BUILDER_FLOW
 	) {
 		siteVisibility = Site.Visibility.PublicNotIndexed;
 	}
@@ -180,16 +137,11 @@ const CreateSite: Step = function CreateSite( { navigation, flow, data } ) {
 	const isManageSiteFlow = Boolean(
 		wasSignupCheckoutPageUnloaded() && signupDestinationCookieExists && isReEnteringFlow
 	);
-	const { addTempSiteToSourceOption } = useAddTempSiteToSourceOptionMutation();
 	const urlQueryParams = useQuery();
-	const sourceSiteSlug = urlQueryParams.get( 'from' ) || '';
-	const { data: sourceMigrationStatus } = useSourceMigrationStatusQuery( sourceSiteSlug );
-	const useThemeHeadstart =
-		! isStartWritingFlow( flow ) &&
-		! isNewHostedSiteCreationFlow( flow ) &&
-		! isSiteAssemblerFlow( flow ) &&
-		! isMigrationSignupFlow( flow );
-	const shouldGoToCheckout = Boolean( planCartItem || mergedDomainCartItems.length );
+	const skipMigration = urlQueryParams.get( 'skipMigration' ) || '';
+	const platform = urlQueryParams.get( 'platform' ) || '';
+	const useThemeHeadstart = ! isStartWritingFlow( flow ) && ! isNewHostedSiteCreationFlow( flow );
+	const shouldGoToCheckout = Boolean( planCartItem );
 
 	async function createSite() {
 		if ( isManageSiteFlow ) {
@@ -199,6 +151,10 @@ const CreateSite: Step = function CreateSite( { navigation, flow, data } ) {
 				await addPlanToCart( slug, flow, true, theme, planCartItem );
 			}
 
+			if ( productCartItems?.length && slug ) {
+				await addProductsToCart( slug, flow, productCartItems );
+			}
+
 			return {
 				siteSlug: getSignupCompleteSlug(),
 				goToCheckout: shouldGoToCheckout,
@@ -206,11 +162,7 @@ const CreateSite: Step = function CreateSite( { navigation, flow, data } ) {
 			};
 		}
 
-		const siteIntent =
-			config.isEnabled( 'migration-flow/enable-white-labeled-plugin' ) &&
-			isMigrationSignupFlow( flow )
-				? 'migration'
-				: '';
+		const siteIntent = isHostedSiteMigrationFlow( flow ) ? 'migration' : '';
 
 		const sourceSlug = hasSourceSlug( data ) ? data.sourceSlug : undefined;
 		const site = await createSiteWithCart(
@@ -233,10 +185,6 @@ const CreateSite: Step = function CreateSite( { navigation, flow, data } ) {
 			sourceSlug,
 			siteIntent
 		);
-
-		if ( preselectedThemeSlug && site?.siteSlug ) {
-			await setThemeOnSite( site.siteSlug, preselectedThemeSlug, preselectedThemeStyleVariation );
-		}
 
 		if ( isEntrepreneurFlow( flow ) && site ) {
 			await addEcommerceTrial( { siteId: site.siteId } );
@@ -261,24 +209,17 @@ const CreateSite: Step = function CreateSite( { navigation, flow, data } ) {
 			await addProductsToCart( site.siteSlug, flow, productCartItems );
 		}
 
-		if ( isImportFocusedFlow( flow ) && site?.siteSlug && sourceMigrationStatus?.source_blog_id ) {
-			// Store temporary target blog id to source site option
-			addTempSiteToSourceOption( site.siteId, sourceMigrationStatus?.source_blog_id );
-		}
-
 		return {
 			siteId: site?.siteId,
 			siteSlug: site?.siteSlug,
 			goToCheckout: shouldGoToCheckout,
-			hasSetPreselectedTheme: Boolean( preselectedThemeSlug ),
 			siteCreated: true,
+			skipMigration,
+			platform,
 		};
 	}
 
 	useEffect( () => {
-		if ( ! isFreeFlow( flow ) ) {
-			setProgress( 0.1 );
-		}
 		if ( submit ) {
 			setPendingAction( createSite );
 			submit();
@@ -286,43 +227,26 @@ const CreateSite: Step = function CreateSite( { navigation, flow, data } ) {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [] );
 
-	const getCurrentMessage = () => {
-		return isWooExpressFlow( flow )
-			? __( "Woo! We're creating your store" )
-			: __( 'Creating your site' );
-	};
+	const title = __( 'Creating your site' );
 
-	const getSubTitle = () => {
-		if ( isWooExpressFlow( flow ) ) {
-			return __(
-				'#FunWooFact: Did you know that Woo powers almost 4 million stores worldwide? You’re in good company.'
-			);
-		}
-		return null;
-	};
-
-	const subTitle = getSubTitle();
+	if ( shouldUseStepContainerV2( flow ) ) {
+		return (
+			<>
+				<DocumentHead title={ title } />
+				<Step.Loading title={ title } progress={ progress } delay={ 1000 } />
+			</>
+		);
+	}
 
 	return (
 		<>
-			<DocumentHead title={ getCurrentMessage() } />
+			<DocumentHead title={ title } />
 			<StepContainer
 				shouldHideNavButtons
 				hideFormattedHeader
 				stepName="create-site"
-				isHorizontalLayout
 				recordTracksEvent={ recordTracksEvent }
-				stepContent={
-					<>
-						<h1>{ getCurrentMessage() }</h1>
-						{ progress >= 0 || isWooExpressFlow( flow ) ? (
-							<LoadingBar progress={ progress } />
-						) : (
-							<LoadingEllipsis />
-						) }
-						{ subTitle && <p className="processing-step__subtitle">{ subTitle }</p> }
-					</>
-				}
+				stepContent={ <Loading title={ title } progress={ progress } /> }
 				showFooterWooCommercePowered={ false }
 			/>
 		</>

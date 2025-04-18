@@ -1,4 +1,3 @@
-import { isEnabled } from '@automattic/calypso-config';
 import {
 	WPCOM_FEATURES_INSTALL_PLUGINS,
 	PLAN_PERSONAL,
@@ -25,6 +24,7 @@ import getCustomizeUrl from 'calypso/state/selectors/get-customize-url';
 import isSiteWpcomAtomic from 'calypso/state/selectors/is-site-wpcom-atomic';
 import isSiteWpcomStaging from 'calypso/state/selectors/is-site-wpcom-staging';
 import siteHasFeature from 'calypso/state/selectors/site-has-feature';
+import { withSiteGlobalStylesOnPersonal } from 'calypso/state/sites/hooks/with-site-global-styles-on-personal';
 import {
 	isJetpackSite,
 	isJetpackSiteMultiSite,
@@ -74,7 +74,7 @@ function getPlanPathSlugForThemes( state, siteId, minimumPlan ) {
 	return mappedPlan?.getPathSlug();
 }
 
-function getAllThemeOptions( { translate, isFSEActive } ) {
+function getAllThemeOptions( { translate, isFSEActive, isGlobalStylesOnPersonal } ) {
 	const purchase = {
 		label: translate( 'Purchase', {
 			context: 'verb',
@@ -102,7 +102,7 @@ function getAllThemeOptions( { translate, isFSEActive } ) {
 
 			// @TODO Cleanup once the test phase is over.
 			let minimumPlan;
-			if ( isEnabled( 'global-styles/on-personal-plan' ) ) {
+			if ( isGlobalStylesOnPersonal ) {
 				minimumPlan = tierMinimumUpsellPlan;
 			} else if ( tierMinimumUpsellPlan === PLAN_PERSONAL && isLockedStyleVariation ) {
 				minimumPlan = PLAN_PREMIUM;
@@ -191,7 +191,7 @@ function getAllThemeOptions( { translate, isFSEActive } ) {
 			const slug = getSiteSlug( state, siteId );
 
 			const redirectTo = encodeURIComponent(
-				addQueryArgs( `${ origin }/setup/site-setup/designSetup`, {
+				addQueryArgs( `${ origin }/setup/site-setup/design-setup`, {
 					siteSlug: slug,
 					theme: themeId,
 					style_variation: options?.styleVariationSlug,
@@ -391,13 +391,8 @@ function getAllThemeOptions( { translate, isFSEActive } ) {
 			siteCount: getCurrentUserSiteCount( state ),
 			siteId: getSelectedSiteId( state ),
 		} )
-			? translate( 'Select a site for this theme', {
-					comment:
-						'On the theme details page, button text shown so the user selects one of their sites before activating the selected theme',
-			  } )
-			: translate( 'Pick this design', {
-					comment: 'when signing up for a WordPress.com account with a selected theme',
-			  } );
+			? translate( 'Activate' )
+			: translate( 'Get started' );
 
 	const signup = {
 		label: signupLabel,
@@ -524,4 +519,9 @@ const connectOptionsHoc = connect(
 	}
 );
 
-export const connectOptions = compose( localize, withIsFSEActive, connectOptionsHoc );
+export const connectOptions = compose(
+	localize,
+	withIsFSEActive,
+	withSiteGlobalStylesOnPersonal,
+	connectOptionsHoc
+);

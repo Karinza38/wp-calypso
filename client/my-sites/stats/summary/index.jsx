@@ -1,16 +1,14 @@
 import { isEnabled } from '@automattic/calypso-config';
-import { FEATURE_GOOGLE_ANALYTICS, PLAN_PREMIUM, getPlan } from '@automattic/calypso-products';
 import { localize } from 'i18n-calypso';
 import { merge } from 'lodash';
 import { Component, Fragment } from 'react';
 import { connect } from 'react-redux';
 import titlecase from 'to-title-case';
-import UpsellNudge from 'calypso/blocks/upsell-nudge';
 import QueryMedia from 'calypso/components/data/query-media';
 import JetpackColophon from 'calypso/components/jetpack-colophon';
-import Main from 'calypso/components/main';
 import NavigationHeader from 'calypso/components/navigation-header';
 import AnnualSiteStats from 'calypso/my-sites/stats/annual-site-stats';
+import Main from 'calypso/my-sites/stats/components/stats-main';
 import StatsModuleAuthors from 'calypso/my-sites/stats/features/modules/stats-authors';
 import StatsModuleClicks from 'calypso/my-sites/stats/features/modules/stats-clicks';
 import StatsModuleCountries from 'calypso/my-sites/stats/features/modules/stats-countries';
@@ -20,15 +18,14 @@ import StatsModuleSearch from 'calypso/my-sites/stats/features/modules/stats-sea
 import StatsModuleTopPosts from 'calypso/my-sites/stats/features/modules/stats-top-posts';
 import getMediaItem from 'calypso/state/selectors/get-media-item';
 import getEnvStatsFeatureSupportChecks from 'calypso/state/sites/selectors/get-env-stats-feature-supports';
-import { getUpsellModalView } from 'calypso/state/stats/paid-stats-upsell/selectors';
 import { getSelectedSiteId, getSelectedSiteSlug } from 'calypso/state/ui/selectors';
+import StatsModuleLocations from '../features/modules/stats-locations';
 import StatsModuleUTM from '../features/modules/stats-utm';
 import { StatsGlobalValuesContext } from '../pages/providers/global-provider';
 import DownloadCsv from '../stats-download-csv';
 import AllTimeNav from '../stats-module/all-time-nav';
 import PageViewTracker from '../stats-page-view-tracker';
 import statsStringsFactory from '../stats-strings';
-import StatsUpsellModal from '../stats-upsell-modal';
 import VideoPlayDetails from '../stats-video-details';
 import StatsVideoSummary from '../stats-video-summary';
 import VideoPressStatsModule from '../videopress-stats-module';
@@ -90,11 +87,14 @@ class StatsSummary extends Component {
 		};
 
 		// Update query with date range if it provided.
+		// Note that we force the period to 'day' for custom date ranges as other periods do not make sense
+		// in the context of our updated Traffic page and do not match the results as shown there.
 		const dateRange = this.props.dateRange;
 		if ( dateRange ) {
 			query.start_date = dateRange.startDate.format( 'YYYY-MM-DD' );
 			query.date = dateRange.endDate.format( 'YYYY-MM-DD' );
 			query.summarize = 1;
+			query.period = 'day'; // Override for custom date ranges.
 		}
 
 		const moduleQuery = merge( {}, statsQueryOptions, query );
@@ -148,28 +148,42 @@ class StatsSummary extends Component {
 				summaryView = (
 					<Fragment key="countries-summary">
 						{ this.renderSummaryHeader( path, statType, false, moduleQuery ) }
-						<StatsModuleCountries
+						{ isEnabled( 'stats/locations' ) ? (
+							<StatsModuleLocations
+								moduleStrings={ StatsStrings.countries }
+								period={ this.props.period }
+								query={ moduleQuery }
+								summary
+								listItemClassName={ listItemClassName }
+							/>
+						) : (
+							<StatsModuleCountries
+								moduleStrings={ StatsStrings.countries }
+								period={ this.props.period }
+								query={ moduleQuery }
+								summary
+								listItemClassName={ listItemClassName }
+							/>
+						) }
+					</Fragment>
+				);
+				break;
+
+			case 'locations':
+				title = translate( 'Locations' );
+				path = 'locations';
+				statType = 'statsCountryViews';
+				summaryView = (
+					<Fragment key="countries-summary">
+						{ this.renderSummaryHeader( path, statType, false, moduleQuery ) }
+						<StatsModuleLocations
 							moduleStrings={ StatsStrings.countries }
 							period={ this.props.period }
 							query={ moduleQuery }
 							summary
 							listItemClassName={ listItemClassName }
+							initialGeoMode={ urlParams.get( 'geoMode' ) }
 						/>
-						<div className="stats-module__footer-actions--summary-tall">
-							<UpsellNudge
-								title={ translate( 'Add Google Analytics' ) }
-								description={ translate(
-									'Upgrade to a %(premiumPlanName)s Plan for Google Analytics integration.',
-									{ args: { premiumPlanName: getPlan( PLAN_PREMIUM )?.getTitle() } }
-								) }
-								event="googleAnalytics-stats-countries"
-								feature={ FEATURE_GOOGLE_ANALYTICS }
-								plan={ PLAN_PREMIUM }
-								tracksImpressionName="calypso_upgrade_nudge_impression"
-								tracksClickName="calypso_upgrade_nudge_cta_click"
-								showIcon
-							/>
-						</div>
 					</Fragment>
 				);
 				break;
@@ -202,7 +216,7 @@ class StatsSummary extends Component {
 				/* eslint-disable wpcalypso/jsx-classname-namespace */
 				summaryView = (
 					<Fragment key="authors-summary">
-						{ this.renderSummaryHeader( path, statType, true, query ) }
+						{ this.renderSummaryHeader( path, statType, false, query ) }
 						<StatsModuleAuthors
 							moduleStrings={ StatsStrings.authors }
 							period={ this.props.period }
@@ -245,7 +259,7 @@ class StatsSummary extends Component {
 
 				summaryView = (
 					<Fragment key="filedownloads-summary">
-						{ this.renderSummaryHeader( path, statType, true, query ) }
+						{ this.renderSummaryHeader( path, statType, false, query ) }
 						<StatsModuleDownloads
 							moduleStrings={ StatsStrings.filedownloads }
 							period={ this.props.period }
@@ -386,7 +400,6 @@ class StatsSummary extends Component {
 					) }
 					<JetpackColophon />
 				</div>
-				{ this.props.upsellModalView && <StatsUpsellModal siteId={ siteId } /> }
 			</Main>
 		);
 	}
@@ -394,7 +407,6 @@ class StatsSummary extends Component {
 
 export default connect( ( state, { context, postId } ) => {
 	const siteId = getSelectedSiteId( state );
-	const upsellModalView = isEnabled( 'stats/paid-wpcom-v2' ) && getUpsellModalView( state, siteId );
 
 	const { supportsUTMStats } = getEnvStatsFeatureSupportChecks( state, siteId );
 
@@ -402,7 +414,6 @@ export default connect( ( state, { context, postId } ) => {
 		siteId: getSelectedSiteId( state ),
 		siteSlug: getSelectedSiteSlug( state, siteId ),
 		media: context.params.module === 'videodetails' ? getMediaItem( state, siteId, postId ) : false,
-		upsellModalView,
 		supportsUTMStats,
 	};
 } )( localize( StatsSummary ) );

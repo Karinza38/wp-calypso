@@ -57,9 +57,9 @@ export const sendLoginEmail = ( action ) => {
 			: [] ),
 		http(
 			{
-				path: `/auth/send-login-email`,
-				method: 'POST',
+				path: '/auth/send-login-email',
 				apiVersion: '1.3',
+				method: 'POST',
 				body: {
 					client_id: config( 'wpcom_signup_id' ),
 					client_secret: config( 'wpcom_signup_key' ),
@@ -118,7 +118,12 @@ export const onError = (
 	error
 ) => [
 	...( loginFormFlow || requestLoginEmailFormFlow
-		? [ { type: MAGIC_LOGIN_REQUEST_LOGIN_EMAIL_ERROR, error: error.message } ]
+		? [
+				{
+					type: MAGIC_LOGIN_REQUEST_LOGIN_EMAIL_ERROR,
+					error: { code: error.error, message: error.message },
+				},
+		  ]
 		: [] ),
 	...( requestLoginEmailFormFlow
 		? [

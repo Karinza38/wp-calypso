@@ -1,14 +1,13 @@
-import { isEnabled } from '@automattic/calypso-config';
+import { ExternalLink } from '@automattic/components';
 import { localizeUrl } from '@automattic/i18n-utils';
 import { localize } from 'i18n-calypso';
 import PropTypes from 'prop-types';
 import { Component } from 'react';
 import { connect } from 'react-redux';
 import QueryJetpackConnection from 'calypso/components/data/query-jetpack-connection';
-import ExternalLink from 'calypso/components/external-link';
 import FormFieldset from 'calypso/components/forms/form-fieldset';
 import FormSettingExplanation from 'calypso/components/forms/form-setting-explanation';
-import { PanelHeading, PanelSection } from 'calypso/components/panel';
+import { PanelCard, PanelCardHeading } from 'calypso/components/panel';
 import SupportInfo from 'calypso/components/support-info';
 import JetpackModuleToggle from 'calypso/my-sites/site-settings/jetpack-module-toggle';
 import getJetpackModule from 'calypso/state/selectors/get-jetpack-module';
@@ -40,15 +39,25 @@ class Sitemaps extends Component {
 	}
 
 	renderSitemapLink( sitemapUrl ) {
+		let url;
+		try {
+			url = new URL( sitemapUrl );
+		} catch ( error ) {
+			return null;
+		}
+
+		url.protocol = 'https:';
+		const secureSitemap = url.toString();
+
 		return (
-			<div key={ sitemapUrl }>
+			<div key={ secureSitemap }>
 				<ExternalLink
-					href={ sitemapUrl }
+					href={ secureSitemap }
 					icon
 					target="_blank"
 					style={ { overflowWrap: 'anywhere' } }
 				>
-					{ sitemapUrl }
+					{ secureSitemap }
 				</ExternalLink>
 			</div>
 		);
@@ -82,7 +91,6 @@ class Sitemaps extends Component {
 
 	renderNonPublicExplanation() {
 		const { siteSlug, translate } = this.props;
-
 		return (
 			<FormSettingExplanation>
 				{ translate(
@@ -90,15 +98,7 @@ class Sitemaps extends Component {
 						'You must set your {{a}}privacy settings{{/a}} to "public".',
 					{
 						components: {
-							a: (
-								<a
-									href={
-										isEnabled( 'untangling/hosting-menu' )
-											? '/sites/settings/site/' + siteSlug
-											: '/settings/general/' + siteSlug
-									}
-								/>
-							),
+							a: <a href={ '/sites/settings/site/' + siteSlug } />,
 						},
 					}
 				) }
@@ -188,10 +188,10 @@ class Sitemaps extends Component {
 		const { siteId, siteIsJetpack, translate } = this.props;
 
 		return (
-			<PanelSection>
+			<PanelCard>
 				{ siteId && <QueryJetpackConnection siteId={ siteId } /> }
 
-				<PanelHeading>
+				<PanelCardHeading>
 					{ translate( 'Sitemaps' ) }
 					{ siteIsJetpack
 						? this.renderInfoLink( 'https://jetpack.com/support/sitemaps/' )
@@ -199,17 +199,16 @@ class Sitemaps extends Component {
 								localizeUrl( 'https://wordpress.com/support/sitemaps/' ),
 								false
 						  ) }
-				</PanelHeading>
+				</PanelCardHeading>
 
 				{ siteIsJetpack ? this.renderJetpackSettings() : this.renderWpcomSettings() }
-			</PanelSection>
+			</PanelCard>
 		);
 	}
 }
 
 export default connect( ( state ) => {
 	const siteId = getSelectedSiteId( state );
-
 	return {
 		siteId,
 		activatingSitemapsModule: !! isActivatingJetpackModule( state, siteId, 'sitemaps' ),

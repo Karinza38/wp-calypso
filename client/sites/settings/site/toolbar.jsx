@@ -1,20 +1,17 @@
-import { Card } from '@automattic/components';
 import { isJetpackSite } from '@automattic/data-stores/src/site/selectors';
 import { localize } from 'i18n-calypso';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import QueryJetpackConnection from 'calypso/components/data/query-jetpack-connection';
 import FormFieldset from 'calypso/components/forms/form-fieldset';
-import { PanelHeading, PanelSection } from 'calypso/components/panel';
+import { PanelCard, PanelCardHeading } from 'calypso/components/panel';
 import SupportInfo from 'calypso/components/support-info';
 import JetpackModuleToggle from 'calypso/my-sites/site-settings/jetpack-module-toggle';
-import SettingsSectionHeader from 'calypso/my-sites/site-settings/settings-section-header';
 import isJetpackModuleUnavailableInDevelopmentMode from 'calypso/state/selectors/is-jetpack-module-unavailable-in-development-mode';
 import isJetpackSiteInDevelopmentMode from 'calypso/state/selectors/is-jetpack-site-in-development-mode';
 import isSiteAutomatedTransfer from 'calypso/state/selectors/is-site-automated-transfer';
 import { useSelectedSiteSelector } from 'calypso/state/sites/hooks';
 import { getSelectedSiteId } from 'calypso/state/ui/selectors';
-import { isHostingMenuUntangled } from '../utils';
 
 const Masterbar = ( {
 	isRequestingSettings,
@@ -25,7 +22,6 @@ const Masterbar = ( {
 } ) => {
 	const siteIsJetpack = useSelectedSiteSelector( isJetpackSite );
 	const siteIsAtomic = useSelectedSiteSelector( isSiteAutomatedTransfer );
-
 	const isNonAtomicJetpackSite = siteIsJetpack && ! siteIsAtomic;
 
 	if ( ! isNonAtomicJetpackSite ) {
@@ -61,23 +57,12 @@ const Masterbar = ( {
 		);
 	};
 
-	if ( ! isHostingMenuUntangled() ) {
-		return (
-			<div>
-				<QueryJetpackConnection siteId={ selectedSiteId } />
-
-				<SettingsSectionHeader title={ translate( 'WordPress.com toolbar' ) } />
-				<Card className="masterbar__card site-settings__security-settings">{ renderForm() }</Card>
-			</div>
-		);
-	}
-
 	return (
-		<PanelSection>
+		<PanelCard>
 			<QueryJetpackConnection siteId={ selectedSiteId } />
-			<PanelHeading>{ translate( 'WordPress.com toolbar' ) }</PanelHeading>
+			<PanelCardHeading>{ translate( 'WordPress.com toolbar' ) }</PanelCardHeading>
 			{ renderForm() }
-		</PanelSection>
+		</PanelCard>
 	);
 };
 

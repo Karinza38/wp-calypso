@@ -1,4 +1,5 @@
 import config from '@automattic/calypso-config';
+import { Button } from '@wordpress/components';
 import clsx from 'clsx';
 import { useTranslate } from 'i18n-calypso';
 import {
@@ -19,6 +20,7 @@ import { errorNotice } from 'calypso/state/notices/actions';
 import { getRedirectUri } from './utils';
 import type { AppState } from 'calypso/types';
 
+import '@automattic/components/styles/wp-button-override.scss';
 import './style.scss';
 
 type GithubLoginButtonProps = {
@@ -28,6 +30,7 @@ type GithubLoginButtonProps = {
 	socialServiceResponse?: ExchangeCodeForTokenResponse | null;
 	userHasDisconnected?: boolean;
 	isLogin: boolean;
+	overrideRedirectUri?: string;
 };
 
 type ExchangeCodeForTokenResponse = {
@@ -42,10 +45,11 @@ const GitHubLoginButton = ( {
 	socialServiceResponse,
 	userHasDisconnected,
 	isLogin,
+	overrideRedirectUri,
 }: GithubLoginButtonProps ) => {
 	const translate = useTranslate();
-	const redirectUri = useSelector( ( state: AppState ) =>
-		getRedirectUri( 'github', state, isLogin )
+	const redirectUri = useSelector(
+		( state: AppState ) => overrideRedirectUri || getRedirectUri( 'github', state, isLogin )
 	);
 	const { code, service } = useSelector( ( state: AppState ) => state.route?.query?.initial ) ?? {};
 
@@ -123,8 +127,11 @@ const GitHubLoginButton = ( {
 	};
 
 	useEffect( () => {
-		if ( service === 'github' && socialServiceResponse ) {
-			responseHandler( { ...socialServiceResponse, service: 'github' } );
+		if ( service === 'github' && socialServiceResponse?.access_token ) {
+			responseHandler( {
+				access_token: socialServiceResponse.access_token,
+				service: 'github',
+			} );
 		}
 	}, [ socialServiceResponse, service, responseHandler ] );
 
@@ -173,10 +180,14 @@ const GitHubLoginButton = ( {
 			{ customButton ? (
 				customButton
 			) : (
-				<button
-					className={ clsx( 'social-buttons__button button github', { disabled: isDisabled } ) }
+				<Button
+					className={ clsx( 'a8c-components-wp-button social-buttons__button github', {
+						disabled: isDisabled,
+					} ) }
 					data-social-service="github"
 					{ ...eventHandlers }
+					variant="secondary"
+					__next40pxDefaultSize
 				>
 					<GitHubIcon isDisabled={ isDisabled } />
 
@@ -187,7 +198,7 @@ const GitHubLoginButton = ( {
 								'%(service)s is the name of a third-party authentication provider, e.g. "Google", "Facebook", "Apple" ...',
 						} ) }
 					</span>
-				</button>
+				</Button>
 			) }
 		</>
 	);

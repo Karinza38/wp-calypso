@@ -1,13 +1,17 @@
 import { Button, Gridicon } from '@automattic/components';
+import { isOnboardingFlow } from '@automattic/onboarding';
 import styled from '@emotion/styled';
 import { useTranslate } from 'i18n-calypso';
+import { ReactNode } from 'react';
 import FormattedHeader from 'calypso/components/formatted-header';
+import { shouldUseStepContainerV2 } from 'calypso/landing/stepper/declarative-flow/helpers/should-use-step-container-v2';
+import { SelectedFeatureData } from '../hooks/use-selected-feature';
 
-const Subheader = styled.p`
+const Subheader = styled.p< { isUsingStepContainerV2?: boolean } >`
 	margin: -32px 0 40px 0;
 	color: var( --studio-gray-60 );
 	font-size: 1rem;
-	text-align: center;
+	text-align: ${ ( props ) => ( props.isUsingStepContainerV2 ? 'left' : 'center' ) };
 	button.is-borderless {
 		font-weight: 500;
 		color: var( --studio-gray-90 );
@@ -18,16 +22,41 @@ const Subheader = styled.p`
 	@media ( max-width: 960px ) {
 		margin-top: -16px;
 	}
+	@media ( min-width: 600px ) {
+		text-align: center;
+	}
 `;
 
-const SecondaryFormattedHeader = ( { siteSlug }: { siteSlug?: string | null } ) => {
+const SecondaryFormattedHeader = ( {
+	siteSlug,
+	selectedFeature,
+}: {
+	siteSlug?: string | null;
+	selectedFeature: SelectedFeatureData | null;
+} ) => {
 	const translate = useTranslate();
-	const headerText = translate( 'Upgrade your plan to access this feature and more' );
-	const subHeaderText = (
+	let headerText: ReactNode = translate( 'Upgrade your plan to access this feature and more' );
+	let subHeaderText: ReactNode = (
 		<Button className="plans-features-main__view-all-plans is-link" href={ `/plans/${ siteSlug }` }>
 			{ translate( 'View all plans' ) }
 		</Button>
 	);
+	if ( selectedFeature?.description ) {
+		headerText = selectedFeature.description;
+		subHeaderText = translate(
+			'Upgrade your plan to access this feature and more. Or {{button}}view all plans{{/button}}.',
+			{
+				components: {
+					button: (
+						<Button
+							className="plans-features-main__view-all-plans is-link"
+							href={ `/plans/${ siteSlug }` }
+						/>
+					),
+				},
+			}
+		);
+	}
 
 	return (
 		<FormattedHeader
@@ -102,23 +131,31 @@ const PlansPageSubheader = ( {
 	deemphasizeFreePlan,
 	showPlanBenefits,
 	offeringFreePlan,
+	flowName,
 	onFreePlanCTAClick,
+	selectedFeature,
 }: {
 	siteSlug?: string | null;
 	isDisplayingPlansNeededForFeature: boolean;
 	deemphasizeFreePlan?: boolean;
 	offeringFreePlan?: boolean;
 	showPlanBenefits?: boolean;
+	flowName?: string | null;
 	onFreePlanCTAClick: () => void;
+	selectedFeature: SelectedFeatureData | null;
 } ) => {
 	const translate = useTranslate();
 
-	return (
-		<>
-			{ deemphasizeFreePlan && offeringFreePlan ? (
-				<Subheader>
+	const isOnboarding = isOnboardingFlow( flowName ?? null );
+
+	const isUsingStepContainerV2 = Boolean( flowName && shouldUseStepContainerV2( flowName ) );
+
+	const renderSubheader = () => {
+		if ( deemphasizeFreePlan && offeringFreePlan ) {
+			return (
+				<Subheader isUsingStepContainerV2={ isUsingStepContainerV2 }>
 					{ translate(
-						`Unlock a powerful bundle of features. Or {{link}}start with a free plan{{/link}}.`,
+						'Unlock a powerful bundle of features. Or {{link}}start with a free plan{{/link}}.',
 						{
 							components: {
 								link: <Button onClick={ onFreePlanCTAClick } borderless />,
@@ -126,10 +163,30 @@ const PlansPageSubheader = ( {
 						}
 					) }
 				</Subheader>
-			) : (
-				showPlanBenefits && <PlanBenefitHeader />
+			);
+		}
+
+		if ( showPlanBenefits ) {
+			return <PlanBenefitHeader />;
+		}
+
+		if ( isOnboarding ) {
+			return (
+				<Subheader isUsingStepContainerV2={ isUsingStepContainerV2 }>
+					{ translate( 'Whatever site you’re building, there’s a plan to make it happen sooner.' ) }
+				</Subheader>
+			);
+		}
+
+		return null;
+	};
+
+	return (
+		<>
+			{ renderSubheader() }
+			{ isDisplayingPlansNeededForFeature && (
+				<SecondaryFormattedHeader siteSlug={ siteSlug } selectedFeature={ selectedFeature } />
 			) }
-			{ isDisplayingPlansNeededForFeature && <SecondaryFormattedHeader siteSlug={ siteSlug } /> }
 		</>
 	);
 };

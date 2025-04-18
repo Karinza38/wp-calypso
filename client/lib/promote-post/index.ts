@@ -3,7 +3,7 @@ import { initSentry, captureException } from '@automattic/calypso-sentry';
 import { loadScript } from '@automattic/load-script';
 import { __ } from '@wordpress/i18n';
 import debugFactory from 'debug';
-import { translate } from 'i18n-calypso/types';
+import { translate } from 'i18n-calypso';
 import { Dispatch } from 'redux';
 import { getHotjarSiteSettings, mayWeLoadHotJarScript } from 'calypso/lib/analytics/hotjar';
 import { getMobileDeviceInfo, isWcMobileApp, isWpMobileApp } from 'calypso/lib/mobile-app';
@@ -281,12 +281,20 @@ export function getRecordDSPEventHandler( dispatch: Dispatch, dspOriginProps?: D
 type SupportedDSPMethods = 'GET' | 'POST' | 'PUT' | 'DELETE';
 type SupportedDSPApiVersions = '1' | '1.1';
 
+type wpcomRequestParams = {
+	path: string;
+	method: SupportedDSPMethods;
+	apiNamespace: string;
+	responseType?: 'blob';
+};
+
 export const requestDSP = async < T >(
 	siteId: number,
 	apiUri: string,
 	method: SupportedDSPMethods = 'GET',
 	body: Record< string, unknown > | undefined = undefined,
-	apiVersion: SupportedDSPApiVersions = '1'
+	apiVersion: SupportedDSPApiVersions = '1',
+	isFile: boolean = false
 ): Promise< T > => {
 	const URL_BASE = `/sites/${ siteId }/wordads/dsp/api/v${ apiVersion }`;
 
@@ -306,13 +314,17 @@ export const requestDSP = async < T >(
 		};
 	}
 
-	const params = {
+	const params: wpcomRequestParams = {
 		path,
 		method,
 		apiNamespace: config.isEnabled( 'is_running_in_jetpack_site' )
 			? 'jetpack/v4/blaze-app'
 			: 'wpcom/v2',
 	};
+
+	if ( isFile ) {
+		params.responseType = 'blob';
+	}
 
 	switch ( method ) {
 		case 'POST':
@@ -331,10 +343,11 @@ export const requestDSPHandleErrors = async < T >(
 	apiUri: string,
 	method: SupportedDSPMethods = 'GET',
 	body: Record< string, unknown > | undefined = undefined,
-	apiVersion: SupportedDSPApiVersions = '1'
+	apiVersion: SupportedDSPApiVersions = '1',
+	isFile: boolean = false
 ): Promise< T > => {
 	try {
-		return await requestDSP( siteId, apiUri, method, body, apiVersion );
+		return await requestDSP( siteId, apiUri, method, body, apiVersion, isFile );
 	} catch ( error ) {
 		if ( ( error as DSPError ).errorCode === DSP_ERROR_NO_LOCAL_USER ) {
 			const createUserQuery = await requestDSP< NewDSPUserResult >(
@@ -410,4 +423,32 @@ export const usePromoteWidget = (): PromoteWidgetStatus => {
 		default:
 			return PromoteWidgetStatus.FETCHING;
 	}
+};
+
+/**
+ * Hook to verify if Jetpack/Blaze Ads version is greater than or equals the provided versions.
+ * It will return true if any of the checks passes.
+ * @param siteId Site Id.
+ * @param minJetpackVersion Minimum Jetpack version to check.
+ * @param minBlazeAdsVersion Minimum Blaze Ads version to check.
+ */
+export const useJetpackBlazeVersionCheck = (
+	siteId: number,
+	minJetpackVersion: string,
+	minBlazeAdsVersion: string
+): boolean => {
+	const siteJetpackVersion =
+		useSelector( ( state ) => getSiteOption( state, siteId, 'jetpack_version' ) ) ?? 0;
+	const blazeAdsVersion =
+		useSelector( ( state ) => getSiteOption( state, siteId, 'blaze_ads_version' ) ) ?? 0;
+
+	// If we don't have a version (Jetpack or Blaze Ads), we must be in a simple site, and we use latest Jetpack version in there.
+	if ( ! siteJetpackVersion && ! blazeAdsVersion ) {
+		return true;
+	}
+
+	return Boolean(
+		( siteJetpackVersion && versionCompare( siteJetpackVersion, minJetpackVersion, '>=' ) ) ||
+			( blazeAdsVersion && versionCompare( siteJetpackVersion, minBlazeAdsVersion, '>=' ) )
+	);
 };

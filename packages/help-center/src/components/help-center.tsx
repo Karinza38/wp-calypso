@@ -3,7 +3,7 @@
  * External Dependencies
  */
 import { initializeAnalytics } from '@automattic/calypso-analytics';
-import config from '@automattic/calypso-config';
+import { useGetSupportInteractions } from '@automattic/odie-client/src/data/use-get-support-interactions';
 import { useSelect } from '@wordpress/data';
 import { createPortal, useEffect, useRef } from '@wordpress/element';
 /**
@@ -27,7 +27,6 @@ const HelpCenter: React.FC< Container > = ( {
 	handleClose,
 	hidden,
 	currentRoute = window.location.pathname + window.location.search,
-	shouldUseHelpCenterExperience,
 } ) => {
 	const portalParent = useRef( document.createElement( 'div' ) ).current;
 
@@ -39,6 +38,12 @@ const HelpCenter: React.FC< Container > = ( {
 		};
 	}, [] );
 	const { currentUser, canConnectToZendesk } = useHelpCenterContext();
+	const { data: supportInteractionsOpen, isLoading: isLoadingOpenInteractions } =
+		useGetSupportInteractions( 'zendesk', 10, 'open' );
+	const hasOpenZendeskConversations =
+		! isLoadingOpenInteractions && supportInteractionsOpen
+			? supportInteractionsOpen?.length > 0
+			: false;
 
 	useEffect( () => {
 		if ( currentUser ) {
@@ -48,7 +53,7 @@ const HelpCenter: React.FC< Container > = ( {
 
 	useActionHooks();
 
-	const openingCoordinates = useOpeningCoordinates( isHelpCenterShown, isMinimized );
+	const openingCoordinates = useOpeningCoordinates( ! isHelpCenterShown, isMinimized );
 
 	useEffect( () => {
 		const classes = [ 'help-center' ];
@@ -73,7 +78,9 @@ const HelpCenter: React.FC< Container > = ( {
 				currentRoute={ currentRoute }
 				openingCoordinates={ openingCoordinates }
 			/>
-			{ shouldUseHelpCenterExperience && canConnectToZendesk && <HelpCenterSmooch /> }
+			{ canConnectToZendesk && (
+				<HelpCenterSmooch enableAuth={ isHelpCenterShown || hasOpenZendeskConversations } />
+			) }
 		</>,
 		portalParent
 	);
@@ -82,12 +89,9 @@ const HelpCenter: React.FC< Container > = ( {
 export default function ContextualizedHelpCenter(
 	props: Container & HelpCenterRequiredInformation
 ) {
-	const shouldUseHelpCenterExperience =
-		config.isEnabled( 'help-center-experience' ) || props.shouldUseHelpCenterExperience;
-
 	return (
-		<HelpCenterRequiredContextProvider value={ { ...props, shouldUseHelpCenterExperience } }>
-			<HelpCenter { ...props } shouldUseHelpCenterExperience={ shouldUseHelpCenterExperience } />
+		<HelpCenterRequiredContextProvider value={ props }>
+			<HelpCenter { ...props } />
 		</HelpCenterRequiredContextProvider>
 	);
 }

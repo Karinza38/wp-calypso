@@ -1,11 +1,12 @@
 import { Reader, SubscriptionManager } from '@automattic/data-stores';
 import { Button, __experimentalVStack as VStack } from '@wordpress/components';
+import { Icon, seen } from '@wordpress/icons';
 import clsx from 'clsx';
 import { useTranslate } from 'i18n-calypso';
 import { useRecordViewFeedButtonClicked } from 'calypso/landing/subscriptions/tracks';
 import { getFeedUrl } from 'calypso/reader/route';
 import { SubscriptionsEllipsisMenu } from '../../subscriptions-ellipsis-menu';
-import { FeedIcon, UnsubscribeIcon } from '../icons';
+import UnsubscribeIcon from '../icons/unsubscribe-icon';
 import DeliveryFrequencyInput from './delivery-frequency-input';
 import EmailMeNewCommentsToggle from './email-me-new-comments-toggle';
 import EmailMeNewPostsToggle from './email-me-new-posts-toggle';
@@ -48,9 +49,10 @@ const SiteSettings = ( {
 		<div className="settings site-settings">
 			{ isLoggedIn && (
 				<EmailMeNewPostsToggle
+					className="setting-item"
 					value={ emailMeNewPosts }
 					onChange={ onEmailMeNewPostsChange }
-					isUpdating={ updatingEmailMeNewPosts }
+					isDisabled={ updatingEmailMeNewPosts }
 				/>
 			) }
 			{ emailMeNewPosts && (
@@ -62,16 +64,19 @@ const SiteSettings = ( {
 			) }
 			{ isLoggedIn && (
 				<EmailMeNewCommentsToggle
+					className="setting-item"
 					value={ emailMeNewComments }
 					onChange={ onEmailMeNewCommentsChange }
-					isUpdating={ updatingEmailMeNewComments }
+					isDisabled={ updatingEmailMeNewComments }
 				/>
 			) }
 			{ isLoggedIn && (
 				<NotifyMeOfNewPostsToggle
+					className="setting-item setting-item__last"
 					value={ notifyMeOfNewPosts }
 					onChange={ onNotifyMeOfNewPostsChange }
-					isUpdating={ updatingNotifyMeOfNewPosts }
+					isDisabled={ updatingNotifyMeOfNewPosts }
+					showJetpackAppHint
 				/>
 			) }
 		</div>
@@ -126,7 +131,7 @@ export const SiteSettingsPopover = ( {
 						{ Boolean( feedId ) && (
 							<Button
 								className="site-settings-popover__view-feed-button"
-								icon={ <FeedIcon className="subscriptions-ellipsis-menu__item-icon" /> }
+								icon={ <Icon className="subscriptions-ellipsis-menu__item-icon" icon={ seen } /> }
 								href={ getFeedUrl( feedId ) }
 								onClick={ () => {
 									recordViewFeedButtonClicked( {

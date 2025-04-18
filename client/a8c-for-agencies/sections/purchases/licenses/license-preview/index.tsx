@@ -1,4 +1,3 @@
-import config from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
 import { getUrlParts } from '@automattic/calypso-url';
 import { Badge, Button, Gridicon } from '@automattic/components';
@@ -7,8 +6,14 @@ import { getQueryArg, removeQueryArgs } from '@wordpress/url';
 import clsx from 'clsx';
 import { useTranslate } from 'i18n-calypso';
 import { useCallback, useEffect, useState, useContext, useRef } from 'react';
+import useShowFeedback from 'calypso/a8c-for-agencies/components/a4a-feedback/hooks/use-show-a4a-feedback';
+import { FeedbackType } from 'calypso/a8c-for-agencies/components/a4a-feedback/types';
 import A4APopover from 'calypso/a8c-for-agencies/components/a4a-popover';
-import { A4A_SITES_LINK_NEEDS_SETUP } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
+import {
+	A4A_SITES_LINK_NEEDS_SETUP,
+	A4A_FEEDBACK_LINK,
+	A4A_LICENSES_LINK,
+} from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
 import {
 	isPressableHostingProduct,
 	isWPCOMHostingProduct,
@@ -35,47 +40,44 @@ import LicensesOverviewContext from '../licenses-overview/context';
 import LicenseActions from './license-actions';
 import LicenseBundleDropDown from './license-bundle-dropdown';
 import type { ReferralAPIResponse } from 'calypso/a8c-for-agencies/sections/referrals/types';
-import type { LicenseMeta } from 'calypso/state/partner-portal/types';
+import type { License, LicenseMeta } from 'calypso/state/partner-portal/types';
 
 import './style.scss';
 
 interface Props {
-	licenseKey: string;
-	product: string;
-	blogId: number | null;
-	siteUrl: string | null;
-	hasDownloads: boolean;
-	issuedAt: string;
-	attachedAt: string | null;
-	revokedAt: string | null;
+	license: License;
 	licenseType: LicenseType;
 	parentLicenseId?: number | null;
+	productName: string;
 	quantity?: number | null;
 	isChildLicense?: boolean;
 	meta?: LicenseMeta;
 	referral?: ReferralAPIResponse | null;
+	productId: number;
 }
 
 export default function LicensePreview( {
-	licenseKey,
-	blogId,
-	product,
-	siteUrl,
-	hasDownloads,
-	issuedAt,
-	attachedAt,
-	revokedAt,
+	license,
 	licenseType,
 	parentLicenseId,
+	productName,
 	quantity,
 	isChildLicense,
 	meta,
 	referral,
+	productId,
 }: Props ) {
+	const licenseKey = license.licenseKey;
+	const blogId = license.blogId;
+	const siteUrl = license.siteUrl;
+	const issuedAt = license.issuedAt;
+	const attachedAt = license.attachedAt;
+	const revokedAt = license.revokedAt;
+
 	const translate = useTranslate();
 	const dispatch = useDispatch();
 
-	const isAutomatedReferralsEnabled = config.isEnabled( 'a4a-automated-referrals' );
+	const { isFeedbackShown } = useShowFeedback( FeedbackType.PurchaseCompleted );
 
 	const site = useSelector( ( state ) => getSite( state, blogId as number ) );
 	const isPressableLicense = isPressableHostingProduct( licenseKey );
@@ -104,13 +106,11 @@ export default function LicensePreview( {
 	const licenseState = getLicenseState( attachedAt, revokedAt );
 	const domain = siteUrl && ! isPressableLicense ? getUrlParts( siteUrl ).hostname || siteUrl : '';
 
-	const isClientLicense = isAutomatedReferralsEnabled && referral;
-
 	const assign = useCallback( () => {
 		const redirectUrl = isWPCOMLicense
 			? A4A_SITES_LINK_NEEDS_SETUP
 			: addQueryArgs( { key: licenseKey }, '/marketplace/assign-license' );
-		if ( paymentMethodRequired && ! isClientLicense ) {
+		if ( paymentMethodRequired && ! referral ) {
 			const noticeLinkHref = addQueryArgs(
 				{
 					return: redirectUrl,
@@ -133,7 +133,7 @@ export default function LicensePreview( {
 		}
 
 		page.redirect( redirectUrl );
-	}, [ isWPCOMLicense, licenseKey, paymentMethodRequired, isClientLicense, translate, dispatch ] );
+	}, [ isWPCOMLicense, licenseKey, paymentMethodRequired, referral, translate, dispatch ] );
 
 	useEffect( () => {
 		if ( isHighlighted ) {
@@ -236,7 +236,7 @@ export default function LicensePreview( {
 	//       We have to refactor this once we have updates. Context: p1714663834375719-slack-C06JY8QL0TU
 	const productTitle = licenseKey.startsWith( 'wpcom-hosting-business' )
 		? translate( 'WordPress.com Site' )
-		: product;
+		: productName;
 
 	const isDevelopmentSite = Boolean( meta?.isDevSite );
 
@@ -259,13 +259,13 @@ export default function LicensePreview( {
 					<span className="license-preview__product">
 						<div className="license-preview__product-title">
 							{ productTitle }
-							{ isClientLicense && (
+							{ referral && (
 								<Badge className="license-preview__client-badge" type="info">
 									{ translate( 'Referral' ) }
 								</Badge>
 							) }
 						</div>
-						{ isClientLicense && (
+						{ referral && (
 							<div className="license-preview__client-email">
 								<ClientSite referral={ referral } />
 							</div>
@@ -277,12 +277,12 @@ export default function LicensePreview( {
 					{ quantity ? (
 						<div className="license-preview__bundle">
 							<Gridicon icon="minus" className="license-preview__no-value" />
-							<div className="license-preview__product-small">{ product }</div>
+							<div className="license-preview__product-small">{ productName }</div>
 							<div>{ bundleCountContent }</div>
 						</div>
 					) : (
 						<>
-							<div className="license-preview__product-small">{ product }</div>
+							<div className="license-preview__product-small">{ productName }</div>
 							{ domain }
 							{ isPressableLicense &&
 								! revokedAt &&
@@ -292,6 +292,19 @@ export default function LicensePreview( {
 										target="_blank"
 										rel="norefferer noopener noreferrer"
 										href={ pressableManageUrl }
+										onClick={ () => {
+											if ( ! isFeedbackShown ) {
+												page.redirect(
+													addQueryArgs(
+														{
+															type: FeedbackType.PurchaseCompleted,
+															redirectUrl: A4A_LICENSES_LINK,
+														},
+														A4A_FEEDBACK_LINK
+													)
+												);
+											}
+										} }
 									>
 										{ translate( 'Manage in Pressable' ) }
 										<Icon className="gridicon" icon={ external } size={ 18 } />
@@ -370,9 +383,11 @@ export default function LicensePreview( {
 				<div>
 					{ !! isParentLicense && ! revokedAt && (
 						<LicenseBundleDropDown
-							product={ product }
+							productName={ productName }
 							licenseKey={ licenseKey }
 							bundleSize={ quantity }
+							productId={ productId }
+							isClientLicense={ !! referral }
 						/>
 					) }
 					{ isWPCOMLicense && isSiteAtomic ? (
@@ -383,6 +398,10 @@ export default function LicensePreview( {
 							revokedAt={ revokedAt }
 							licenseType={ licenseType }
 							isChildLicense={ isChildLicense }
+							isClientLicense={ !! referral }
+							productName={ productName }
+							licenseKey={ licenseKey }
+							productId={ productId }
 						/>
 					) : (
 						/*
@@ -403,18 +422,12 @@ export default function LicensePreview( {
 					<BundleDetails parentLicenseId={ parentLicenseId } />
 				) : (
 					<LicenseDetails
-						licenseKey={ licenseKey }
-						product={ product }
-						siteUrl={ siteUrl }
-						blogId={ blogId }
-						hasDownloads={ hasDownloads }
-						issuedAt={ issuedAt }
-						attachedAt={ attachedAt }
-						revokedAt={ revokedAt }
+						license={ license }
 						onCopyLicense={ onCopyLicense }
 						licenseType={ licenseType }
 						isChildLicense={ isChildLicense }
 						referral={ referral }
+						isDevSite={ isDevelopmentSite }
 					/>
 				) ) }
 		</div>

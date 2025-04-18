@@ -1,16 +1,17 @@
+import { recordTracksEvent } from '@automattic/calypso-analytics';
 import { PLAN_100_YEARS, getPlan } from '@automattic/calypso-products';
 import { Gridicon } from '@automattic/components';
+import { HelpCenter } from '@automattic/data-stores';
 import { useHasEnTranslation } from '@automattic/i18n-utils';
 import styled from '@emotion/styled';
 import { Button, Modal } from '@wordpress/components';
-import { useSelect } from '@wordpress/data';
+import { useDispatch as useDataStoreDispatch, useSelect } from '@wordpress/data';
 import { useTranslate } from 'i18n-calypso';
 import { useState } from 'react';
 import QuerySites from 'calypso/components/data/query-sites';
 import FormattedHeader from 'calypso/components/formatted-header';
 import SiteSelector from 'calypso/components/site-selector';
 import { SITE_STORE } from 'calypso/landing/stepper/stores';
-import { usePresalesChat } from 'calypso/lib/presales-chat';
 import HundredYearPlanStepWrapper from '../hundred-year-plan-step-wrapper';
 import { SMALL_BREAKPOINT } from '../hundred-year-plan-step-wrapper/constants';
 import type { Step } from '../../types';
@@ -123,19 +124,35 @@ const ConfirmationModal = ( {
 	isFetching,
 	siteTitle,
 	siteDomain,
+	siteId,
 	onConfirm,
 	closeModal,
 }: {
 	isFetching: boolean;
 	siteTitle?: string;
 	siteDomain?: string;
+	siteId?: number;
 	onConfirm: () => void;
 	closeModal: () => void;
 } ) => {
 	const translate = useTranslate();
 	const hasEnTranslation = useHasEnTranslation();
 
-	const { openChat } = usePresalesChat( 'wpcom' );
+	const { setShowHelpCenter, setNewMessagingChat } = useDataStoreDispatch( HelpCenter.register() );
+
+	const initialMessage =
+		'Automated message: This is a user looking to purchase the 100-Year Plan and is currently in the site picker step: https://wordpress.com/setup/hundred-year-plan/site-picker';
+	const openHelpCenter = () => {
+		recordTracksEvent( 'calypso_hundred_year_plan_help_click' );
+		setNewMessagingChat( {
+			initialMessage,
+			section: '100-year-plan',
+			siteUrl: siteDomain,
+			siteId: siteId,
+		} );
+		setShowHelpCenter( true, true );
+		closeModal();
+	};
 
 	return (
 		<StyledModal
@@ -190,12 +207,12 @@ const ConfirmationModal = ( {
 							{ hasEnTranslation( 'Need help? {{ChatLink}}Contact us{{/ChatLink}}' )
 								? translate( 'Need help? {{ChatLink}}Contact us{{/ChatLink}}', {
 										components: {
-											ChatLink: <Button variant="link" onClick={ openChat } />,
+											ChatLink: <Button variant="link" onClick={ openHelpCenter } />,
 										},
 								  } )
 								: translate( 'Need help? {{ChatLink}}Chat with us{{/ChatLink}}', {
 										components: {
-											ChatLink: <Button variant="link" onClick={ openChat } />,
+											ChatLink: <Button variant="link" onClick={ openHelpCenter } />,
 										},
 								  } ) }
 						</HelpLink>
@@ -214,94 +231,96 @@ const ConfirmationModal = ( {
 	);
 };
 
-const HundredYearPlanSitePicker: Step = function HundredYearPlanSitePicker( { navigation, flow } ) {
-	const translate = useTranslate();
+const HundredYearPlanSitePicker: Step< { submits: { siteSlug: string; siteId: number } } > =
+	function HundredYearPlanSitePicker( { navigation, flow } ) {
+		const translate = useTranslate();
 
-	const [ selectedSiteId, setSelectedSiteId ] = useState< SiteId | null >( null );
-	const [ showConfirmModal, setShowConfirmModal ] = useState( false );
+		const [ selectedSiteId, setSelectedSiteId ] = useState< SiteId | null >( null );
+		const [ showConfirmModal, setShowConfirmModal ] = useState( false );
 
-	const siteDomain = useSelect(
-		( select ) =>
-			( selectedSiteId &&
-				( select( SITE_STORE ) as SiteSelect ).getPrimarySiteDomain( selectedSiteId ) ) ||
-			undefined,
-		[ selectedSiteId ]
-	);
-	const siteTitle = useSelect(
-		( select ) =>
-			( selectedSiteId && ( select( SITE_STORE ) as SiteSelect ).getSiteTitle( selectedSiteId ) ) ||
-			'',
-		[ selectedSiteId ]
-	);
-	const site = useSelect(
-		( select ) =>
-			( selectedSiteId && ( select( SITE_STORE ) as SiteSelect ).getSite( selectedSiteId ) ) ||
-			null,
-		[ selectedSiteId ]
-	);
-	const isFetching = ! site || ! siteDomain || ! siteTitle;
+		const siteDomain = useSelect(
+			( select ) =>
+				( selectedSiteId &&
+					( select( SITE_STORE ) as SiteSelect ).getPrimarySiteDomain( selectedSiteId ) ) ||
+				undefined,
+			[ selectedSiteId ]
+		);
+		const siteTitle = useSelect(
+			( select ) =>
+				( selectedSiteId &&
+					( select( SITE_STORE ) as SiteSelect ).getSiteTitle( selectedSiteId ) ) ||
+				'',
+			[ selectedSiteId ]
+		);
+		const site = useSelect(
+			( select ) =>
+				( selectedSiteId && ( select( SITE_STORE ) as SiteSelect ).getSite( selectedSiteId ) ) ||
+				null,
+			[ selectedSiteId ]
+		);
+		const isFetching = ! site || ! siteDomain || ! siteTitle;
 
-	const selectSite = () => {
-		const siteSlug = new URL( site?.URL || '' ).host;
-		const siteId = site?.ID;
-		if ( ! siteSlug || ! siteId ) {
-			return;
-		}
-		navigation.submit?.( { siteSlug, siteId } );
-	};
+		const selectSite = () => {
+			const siteSlug = new URL( site?.URL || '' ).host;
+			const siteId = site?.ID;
+			if ( ! siteSlug || ! siteId ) {
+				return;
+			}
+			navigation.submit?.( { siteSlug, siteId } );
+		};
 
-	const onSelectSite = ( siteId: SiteId ) => {
-		setSelectedSiteId( siteId );
-		setShowConfirmModal( true );
-	};
+		const onSelectSite = ( siteId: SiteId ) => {
+			setSelectedSiteId( siteId );
+			setShowConfirmModal( true );
+		};
 
-	const closeModal = () => {
-		setSelectedSiteId( null );
-		setShowConfirmModal( false );
-	};
+		const closeModal = () => {
+			setSelectedSiteId( null );
+			setShowConfirmModal( false );
+		};
 
-	const filter = ( site: SiteDetails ) => {
-		return !! (
-			site.capabilities?.manage_options &&
-			( site.is_wpcom_atomic || ! site.jetpack ) &&
-			! site.options?.is_wpforteams_site &&
-			! site.is_wpcom_staging_site
+		const filter = ( site: SiteDetails ) => {
+			return !! (
+				site.capabilities?.manage_options &&
+				( site.is_wpcom_atomic || ! site.jetpack ) &&
+				! site.options?.is_wpforteams_site &&
+				! site.is_wpcom_staging_site
+			);
+		};
+
+		return (
+			<>
+				<HundredYearPlanStepWrapper
+					stepName="hundred-year-plan-site-picker"
+					stepContent={
+						<div className="hundred-year-plan-site-picker__container">
+							<QuerySites allSites />
+							<SiteSelector filter={ filter } onSiteSelect={ onSelectSite } />
+						</div>
+					}
+					formattedHeader={
+						<FormattedHeader
+							align="center"
+							headerText={ translate( 'Select your site' ) }
+							subHeaderText={ translate(
+								'Start crafting your 100-Year legacy by appointing one of your sites.'
+							) }
+						/>
+					}
+					flowName={ flow }
+				/>
+				{ showConfirmModal && (
+					<ConfirmationModal
+						isFetching={ isFetching }
+						onConfirm={ selectSite }
+						closeModal={ closeModal }
+						siteTitle={ siteTitle }
+						siteDomain={ siteDomain?.domain }
+						siteId={ site?.ID }
+					/>
+				) }
+			</>
 		);
 	};
-
-	return (
-		<>
-			<HundredYearPlanStepWrapper
-				stepName="hundred-year-plan-site-picker"
-				stepContent={
-					<div className="hundred-year-plan-site-picker__container">
-						<QuerySites allSites />
-						<SiteSelector filter={ filter } onSiteSelect={ onSelectSite } />
-					</div>
-				}
-				formattedHeader={
-					<FormattedHeader
-						align="center"
-						subHeaderAlign="center"
-						headerText={ translate( 'Select your site' ) }
-						subHeaderText={ translate(
-							'Start crafting your 100-Year legacy by appointing one of your sites.'
-						) }
-					/>
-				}
-				flowName={ flow }
-			/>
-			{ showConfirmModal && (
-				<ConfirmationModal
-					isFetching={ isFetching }
-					onConfirm={ selectSite }
-					closeModal={ closeModal }
-					siteTitle={ siteTitle }
-					siteDomain={ siteDomain?.domain }
-				/>
-			) }
-		</>
-	);
-};
 
 export default HundredYearPlanSitePicker;

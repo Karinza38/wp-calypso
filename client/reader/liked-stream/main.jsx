@@ -1,10 +1,9 @@
-import { translate } from 'i18n-calypso';
+import { translate, fixMe } from 'i18n-calypso';
 import { Component } from 'react';
 import DocumentHead from 'calypso/components/data/document-head';
 import NavigationHeader from 'calypso/components/navigation-header';
 import Stream from 'calypso/reader/stream';
 import EmptyContent from './empty';
-import './style.scss';
 
 const title = translate( 'My Likes' );
 const documentTitle = translate( '%s ‹ Reader', {
@@ -27,7 +26,11 @@ class LikedStream extends Component {
 					<DocumentHead title={ documentTitle } />
 					<NavigationHeader
 						title={ translate( 'Likes' ) }
-						subtitle={ translate( 'Rediscover content that you liked.' ) }
+						subtitle={ fixMe( {
+							text: 'Revisit the posts and comments you liked.',
+							newCopy: translate( 'Revisit the posts and comments you liked.' ),
+							oldCopy: translate( 'Rediscover content that you liked.' ),
+						} ) }
 						className="liked-stream-header"
 					/>
 				</Stream>

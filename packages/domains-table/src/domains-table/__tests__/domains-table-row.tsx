@@ -115,7 +115,7 @@ test( 'domain name links to management interface (site-specific table)', async (
 	);
 } );
 
-test( `redirect links use the site's unmapped URL for the site slug (all-domains table)`, async () => {
+test( "redirect links use the site's unmapped URL for the site slug (all-domains table)", async () => {
 	const [ partialRedirectDomain, fullRedirectDomain ] = testDomain( {
 		domain: 'redirect.blog',
 		primary_domain: true,
@@ -157,7 +157,7 @@ test( `redirect links use the site's unmapped URL for the site slug (all-domains
 	);
 } );
 
-test( `redirect links use the site's unmapped URL for the site slug (site-specific table)`, async () => {
+test( "redirect links use the site's unmapped URL for the site slug (site-specific table)", async () => {
 	const [ partialRedirectDomain, fullRedirectDomain ] = testDomain( {
 		domain: 'redirect.blog',
 		primary_domain: true,
@@ -315,7 +315,7 @@ test( 'Parenthetical username is removed from owner column', async () => {
 	await waitFor( () => expect( screen.queryByText( 'Joe Blogs' ) ).toBeInTheDocument() );
 } );
 
-test( `Doesn't strip parentheses used in the name portion of the owner field`, async () => {
+test( "Doesn't strip parentheses used in the name portion of the owner field", async () => {
 	const [ primaryPartial, primaryFull ] = testDomain( {
 		domain: 'primary-domain.blog',
 		blog_id: 123,
@@ -340,12 +340,32 @@ test( `Doesn't strip parentheses used in the name portion of the owner field`, a
 	await waitFor( () => expect( screen.queryByText( 'Joe (Danger) Blogs' ) ).toBeInTheDocument() );
 } );
 
+describe( 'selected domain', () => {
+	test( 'when a domain is selected, the row should have the is-selected class', () => {
+		const partialDomain = testPartialDomain( { domain: 'example1.com' } );
+		render( <DomainsTableRow domain={ partialDomain } />, {
+			selectedDomainName: 'example1.com',
+		} );
+
+		expect( screen.getByRole( 'row' ) ).toHaveClass( 'is-selected' );
+	} );
+
+	test( 'when a domain is not selected, the row should not have the is-selected class', () => {
+		const partialDomain = testPartialDomain( { domain: 'example1.com' } );
+		render( <DomainsTableRow domain={ partialDomain } />, {
+			selectedDomainName: 'example2.com',
+		} );
+
+		expect( screen.getByRole( 'row' ) ).not.toHaveClass( 'is-selected' );
+	} );
+} );
+
 describe( 'site linking ctas', () => {
 	beforeAll( () => {
 		global.ResizeObserver = require( 'resize-observer-polyfill' );
 	} );
 
-	test( 'when a site is not associated with a domain, display the site linking ctas', async () => {
+	test( 'when a site is not associated with a domain and the user has no connectable sites, display the site linking ctas targeting site creation', async () => {
 		const [ primaryPartial, primaryFull ] = testDomain( {
 			domain: 'primary-domain.blog',
 			blog_id: 123,
@@ -371,7 +391,7 @@ describe( 'site linking ctas', () => {
 		} );
 
 		await waitFor( () => {
-			const createLink = screen.queryByText( 'Add site' );
+			const createLink = screen.getByRole( 'link', { name: 'Add site' } );
 
 			expect( createLink ).toBeInTheDocument();
 			expect( createLink ).toHaveAttribute(
@@ -386,7 +406,59 @@ describe( 'site linking ctas', () => {
 		fireEvent.click( domainActionsButton );
 
 		await waitFor( () => {
-			const connectAction = screen.getByText( 'Attach to an existing site' );
+			const connectAction = screen.getByTestId( 'add-site-menu-link' );
+
+			// The link itself is wrapped with a span element.
+			expect( connectAction.closest( '[role=menuitem]' ) ).toHaveAttribute(
+				'href',
+				'/start/site-selected/?siteSlug=primarydomainblog.wordpress.com&siteId=123'
+			);
+		} );
+	} );
+
+	test( 'when a site is not associated with a domain and the user has connectable sites, display the site linking ctas targeting site transfer', async () => {
+		const [ primaryPartial, primaryFull ] = testDomain( {
+			domain: 'primary-domain.blog',
+			blog_id: 123,
+			primary_domain: true,
+			current_user_can_create_site_from_domain_only: true,
+		} );
+
+		const fetchSiteDomains = jest.fn().mockResolvedValue( {
+			domains: [ primaryFull ],
+		} );
+
+		const fetchSite = jest.fn().mockResolvedValue( {
+			ID: 123,
+			URL: 'https://primarydomainblog.wordpress.com',
+			options: { is_redirect: false },
+		} );
+
+		render( <DomainsTableRow domain={ primaryPartial } />, {
+			domains: [ primaryPartial ],
+			fetchSite,
+			fetchSiteDomains,
+			isAllSitesView: true,
+			hasConnectableSites: true,
+		} );
+
+		await waitFor( () => {
+			const createLink = screen.getByRole( 'link', { name: 'Add site' } );
+
+			expect( createLink ).toBeInTheDocument();
+			expect( createLink ).toHaveAttribute(
+				'href',
+				'/domains/manage/all/primary-domain.blog/transfer/other-site/primarydomainblog.wordpress.com'
+			);
+		} );
+
+		const domainActionsButton = screen.getByLabelText( 'Domain actions' );
+
+		expect( domainActionsButton ).toBeInTheDocument();
+		fireEvent.click( domainActionsButton );
+
+		await waitFor( () => {
+			const connectAction = screen.getByTestId( 'add-site-menu-link' );
 
 			// The link itself is wrapped with a span element.
 			expect( connectAction.closest( '[role=menuitem]' ) ).toHaveAttribute(
@@ -901,10 +973,6 @@ describe( 'domain status cell', () => {
 
 		const changeAddress = screen.queryByText( 'Point to WordPress.com' );
 		expect( changeAddress ).toBeInTheDocument();
-		expect( changeAddress ).toHaveAttribute(
-			'href',
-			'/domains/manage/example.com/edit/example.com?nameservers=true'
-		);
 
 		fireEvent.mouseOver( screen.getByLabelText( 'More information' ) );
 
@@ -912,7 +980,7 @@ describe( 'domain status cell', () => {
 			const tooltip = screen.getByRole( 'tooltip' );
 
 			expect( tooltip ).toHaveTextContent(
-				'Transfer successful! To make this domain work with your WordPress.com site you need to point it to WordPress.com name servers.'
+				'Transfer successful! To make this domain work with your WordPress.com site you need to point it to WordPress.com.'
 			);
 		} );
 	} );

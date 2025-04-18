@@ -16,10 +16,8 @@ const Container = styled.div`
 	}
 
 	span {
-		color: var( --studio-green-50 );
+		color: var( --studio-green-60 );
 	}
-
-	font-weight: 500;
 
 	.title {
 		margin-right: 4px;

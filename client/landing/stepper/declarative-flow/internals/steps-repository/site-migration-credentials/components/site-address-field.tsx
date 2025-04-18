@@ -25,7 +25,7 @@ export const SiteAddressField: React.FC< CredentialsFormFieldProps > = ( { contr
 
 	return (
 		<div className="site-migration-credentials__form-field">
-			<FormLabel htmlFor="from_url">{ translate( 'Current site address' ) }</FormLabel>
+			<FormLabel htmlFor="from_url">{ translate( 'Current WordPress site address' ) }</FormLabel>
 			<Controller
 				control={ control }
 				name="from_url"
@@ -39,7 +39,7 @@ export const SiteAddressField: React.FC< CredentialsFormFieldProps > = ( { contr
 						isError={ !! errors?.from_url }
 						placeholder={ placeholder }
 						type="text"
-						{ ...{ ...field, ...{ value: field.value.replace( /\/$/, '' ) } } }
+						{ ...field }
 					/>
 				) }
 			/>

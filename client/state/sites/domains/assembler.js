@@ -119,6 +119,7 @@ export const createSiteDomainObject = ( domain ) => {
 		isDnssecEnabled: Boolean( domain.is_dnssec_enabled ),
 		isDnssecSupported: Boolean( domain.is_dnssec_supported ),
 		isGravatarDomain: Boolean( domain.is_gravatar_domain ),
+		isGravatarRestrictedDomain: Boolean( domain.is_gravatar_restricted_domain ),
 		isHundredYearDomain: Boolean( domain.is_hundred_year_domain ),
 		isLocked: Boolean( domain.is_locked ),
 		isRenewable: Boolean( domain.is_renewable ),
@@ -136,6 +137,9 @@ export const createSiteDomainObject = ( domain ) => {
 		isPremium: Boolean( domain.is_premium ),
 		isPrimary: Boolean( domain.primary_domain ),
 		isPendingWhoisUpdate: Boolean( domain.pending_whois_update ),
+		isRootDomainRegisteredWithAutomattic: Boolean(
+			domain.is_root_domain_registered_with_automattic
+		),
 		isSubdomain: Boolean( domain.is_subdomain ),
 		isWPCOMDomain: Boolean( domain.wpcom_domain ),
 		isWpcomStagingDomain: Boolean( domain.is_wpcom_staging_domain ),
@@ -154,7 +158,6 @@ export const createSiteDomainObject = ( domain ) => {
 		pendingRegistration: Boolean( domain.pending_registration ),
 		pendingRegistrationAtRegistry: Boolean( domain.pending_registration_at_registry ),
 		pendingRegistrationAtRegistryUrl: String( domain.pending_registration_at_registry_url ),
-		pendingRegistrationTime: String( domain.pending_registration_time ),
 		pendingTransfer: domain.pending_transfer,
 		pointsToWpcom: Boolean( domain.points_to_wpcom ),
 		productSlug: ! domain.product_slug ? null : String( domain.product_slug ),

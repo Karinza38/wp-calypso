@@ -18,9 +18,14 @@ import type { ReactElement } from 'react';
 
 const globalOverrides = css`
 	.is-section-add-ons {
+		height: 100%;
 		#content.layout__content {
 			background: #fdfdfd;
+			height: 100%;
 		}
+	}
+	.layout__primary {
+		height: 100%;
 	}
 `;
 
@@ -31,6 +36,7 @@ const globalOverrides = css`
 const mobileBreakpoint = 660;
 
 const ContainerMain = styled.div`
+	height: 100%;
 	.add-ons__main {
 		.add-ons__formatted-header {
 			text-align: center;
@@ -89,10 +95,8 @@ const NoAccess = () => {
 };
 
 const AddOnsMain = () => {
-	const translate = useTranslate();
 	const selectedSite = useSelector( getSelectedSite ) ?? null;
 	const addOns = AddOns.useAddOns( { selectedSiteId: selectedSite?.ID } );
-	const filteredAddOns = addOns.filter( ( addOn ) => ! addOn?.exceedsSiteStorageLimits );
 
 	const checkoutLink = AddOns.useAddOnCheckoutLink();
 
@@ -123,20 +127,20 @@ const AddOnsMain = () => {
 	};
 
 	return (
-		<div>
+		<>
 			<Global styles={ globalOverrides } />
 			<QuerySitePurchases siteId={ selectedSite?.ID } />
 			<PageViewTracker path="/add-ons/:site" title="Add-Ons" />
 			<ContentWithHeader>
 				<AddOnsGrid
-					actionPrimary={ { text: translate( 'Buy add-on' ), handler: handleActionPrimary } }
-					actionSecondary={ { text: translate( 'Manage add-on' ), handler: handleActionSelected } }
-					useAddOnAvailabilityStatus={ AddOns.useAddOnPurchaseStatus }
-					addOns={ filteredAddOns }
+					actionPrimary={ handleActionPrimary }
+					actionSecondary={ handleActionSelected }
+					addOns={ addOns }
+					siteId={ selectedSite?.ID }
 					highlightFeatured
 				/>
 			</ContentWithHeader>
-		</div>
+		</>
 	);
 };
 

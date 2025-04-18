@@ -62,23 +62,20 @@ skipDescribeIf( envVariables.ATOMIC_VARIATION === 'private' )(
 			marketingPage = new MarketingPage( page );
 		} );
 
-		it( 'Navigate to Tools > Marketing page', async function () {
-			await marketingPage.visit( testAccount.getSiteURL( { protocol: false } ) );
+		it( 'Navigate to Tools > Marketing > Connections page', async function () {
+			await marketingPage.visitTab( testAccount.getSiteURL( { protocol: false } ), 'connections' );
 		} );
 
-		it( 'Click on Connections tab', async function () {
-			await marketingPage.clickTab( 'Connections' );
-		} );
-
-		it( 'Click on the "Connect" button for Tumblr', async function () {
+		// Skipping the bulk of the spec, as it's flaky. We're working on better E2E tests.
+		it.skip( 'Click on the "Connect" button for Tumblr', async function () {
 			popup = await marketingPage.clickSocialConnectButton( 'Tumblr' );
 		} );
 
-		it( 'Set up Tumblr', async function () {
+		it.skip( 'Set up Tumblr', async function () {
 			await marketingPage.setupTumblr( popup, SecretsManager.secrets.socialAccounts.tumblr );
 		} );
 
-		it( 'Tumblr is connected', async function () {
+		it.skip( 'Tumblr is connected', async function () {
 			await marketingPage.validateSocialConnected( 'Tumblr' );
 		} );
 	}

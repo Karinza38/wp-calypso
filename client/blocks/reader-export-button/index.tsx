@@ -79,10 +79,8 @@ const ReaderExportButton = ( {
 		try {
 			const data =
 				exportType === READER_EXPORT_TYPE_LIST
-					? await wp.req.get( `/read/lists/${ listId }/export`, {
-							apiNamespace: 'wpcom/v2',
-					  } )
-					: await wp.req.get( `/read/following/mine/export`, { apiVersion: '1.2' } );
+					? await wp.req.get( `/read/lists/${ listId }/export`, { apiNamespace: 'wpcom/v2' } )
+					: await wp.req.get( '/read/following/mine/export', { apiVersion: '1.2' } );
 			onApiResponse( data );
 		} catch ( error ) {
 			showErrorNotice();
@@ -95,10 +93,9 @@ const ReaderExportButton = ( {
 			disabled={ disabled || isExportInProgress }
 			onClick={ onClick }
 			icon={ download }
+			text={ translate( 'Export OPML' ) }
 			{ ...props }
-		>
-			<span className="reader-export-button__label">{ translate( 'Export OPML' ) }</span>
-		</Button>
+		/>
 	);
 };
 

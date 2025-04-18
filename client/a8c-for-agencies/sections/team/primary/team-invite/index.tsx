@@ -1,18 +1,24 @@
 import page from '@automattic/calypso-router';
 import { Button, TextControl, TextareaControl } from '@wordpress/components';
+import { addQueryArgs } from '@wordpress/url';
 import { useTranslate } from 'i18n-calypso';
 import { useCallback, useState } from 'react';
+import useShowFeedback from 'calypso/a8c-for-agencies/components/a4a-feedback/hooks/use-show-a4a-feedback';
+import { FeedbackType } from 'calypso/a8c-for-agencies/components/a4a-feedback/types';
 import Form from 'calypso/a8c-for-agencies/components/form';
 import FormField from 'calypso/a8c-for-agencies/components/form/field';
 import FormSection from 'calypso/a8c-for-agencies/components/form/section';
-import Layout from 'calypso/a8c-for-agencies/components/layout';
-import LayoutBody from 'calypso/a8c-for-agencies/components/layout/body';
+import { LayoutWithGuidedTour as Layout } from 'calypso/a8c-for-agencies/components/layout/layout-with-guided-tour';
+import LayoutTop from 'calypso/a8c-for-agencies/components/layout/layout-with-payment-notification';
+import {
+	A4A_FEEDBACK_LINK,
+	A4A_TEAM_LINK,
+} from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
+import useSendTeamMemberInvite from 'calypso/a8c-for-agencies/data/team/use-send-team-member-invite';
+import LayoutBody from 'calypso/layout/hosting-dashboard/body';
 import LayoutHeader, {
 	LayoutHeaderBreadcrumb as Breadcrumb,
-} from 'calypso/a8c-for-agencies/components/layout/header';
-import LayoutTop from 'calypso/a8c-for-agencies/components/layout/top';
-import { A4A_TEAM_LINK } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
-import useSendTeamMemberInvite from 'calypso/a8c-for-agencies/data/team/use-send-team-member-invite';
+} from 'calypso/layout/hosting-dashboard/header';
 import { useDispatch } from 'calypso/state';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
 import { errorNotice, successNotice } from 'calypso/state/notices/actions';
@@ -30,6 +36,8 @@ export default function TeamInvite() {
 	const [ error, setError ] = useState( '' );
 
 	const { mutate: sendInvite, isPending: isSending } = useSendTeamMemberInvite();
+
+	const { isFeedbackShown } = useShowFeedback( FeedbackType.MemberInviteSent );
 
 	const onSendInvite = useCallback( () => {
 		setError( '' );
@@ -58,10 +66,18 @@ export default function TeamInvite() {
 						successNotice( 'The invitation has been successfully sent.', {
 							id: 'submit-user-invite-success',
 							duration: 5000,
+							displayOnNextPage: true,
 						} )
 					);
 					dispatch( recordTracksEvent( 'calypso_a4a_team_invite_success' ) );
-					page( `${ A4A_TEAM_LINK }/${ TAB_INVITED_MEMBERS }` );
+					isFeedbackShown
+						? page.redirect( `${ A4A_TEAM_LINK }/${ TAB_INVITED_MEMBERS }` )
+						: page.redirect(
+								addQueryArgs( A4A_FEEDBACK_LINK, {
+									args: { email: username },
+									type: FeedbackType.MemberInviteSent,
+								} )
+						  );
 				},
 
 				onError: ( error ) => {
@@ -74,7 +90,7 @@ export default function TeamInvite() {
 				},
 			}
 		);
-	}, [ dispatch, message, sendInvite, translate, username ] );
+	}, [ dispatch, message, sendInvite, isFeedbackShown, translate, username ] );
 
 	const onUsernameChange = useCallback( ( value: string ) => {
 		setError( '' );
@@ -102,7 +118,7 @@ export default function TeamInvite() {
 				>
 					<FormSection title={ translate( 'Team member information' ) }>
 						<FormField
-							label={ translate( 'Email or WordPress.com Username' ) }
+							label={ translate( 'Email or WordPress.com Username' ) }
 							error={ error }
 							isRequired
 						>

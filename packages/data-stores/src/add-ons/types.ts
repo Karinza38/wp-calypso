@@ -6,12 +6,11 @@ export interface AddOnMeta {
 	addOnSlug: AddOnSlug;
 	productSlug: StoreProductSlug;
 	featureSlugs?: string[] | null;
-	icon: JSX.Element;
+	icon?: JSX.Element;
 	featured?: boolean; // used to display the popular badge in the add-ons grid
-	name: string | null;
-	quantity?: number; // used for determining checkout costs for quantity based products
-	description: string | null;
-	displayCost: TranslateResult | null;
+	name?: TranslateResult; // when the name is optional, it will be filled by the product list data
+	description?: TranslateResult; // same as the above.
+	displayCost?: TranslateResult;
 	purchased?: boolean;
 	isLoading?: boolean;
 	prices?: {
@@ -19,9 +18,10 @@ export interface AddOnMeta {
 		yearlyPrice: number;
 		formattedMonthlyPrice: string;
 		formattedYearlyPrice: string;
+		currencyCode: string;
 	} | null;
+	quantity?: number; // used for determining checkout costs for quantity based products
 	checkoutLink?: string;
-	exceedsSiteStorageLimits?: boolean;
 }
 
 export type AddOnSlug = ( typeof ADD_ONS )[ number ];

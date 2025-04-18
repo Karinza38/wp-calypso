@@ -62,10 +62,6 @@ const useHighlightLabels = ( {
 				if ( isPersonalPlan( planSlug ) ) {
 					label = translate( 'Best for Newsletter' );
 				}
-			} else if ( 'plans-link-in-bio' === intent ) {
-				if ( isPremiumPlan( planSlug ) ) {
-					label = translate( 'Best for Link in Bio' );
-				}
 			} else if ( 'plans-videopress' === intent ) {
 				if ( isBusinessPlan( planSlug ) ) {
 					label = translate( 'Best for Video' );
@@ -74,6 +70,8 @@ const useHighlightLabels = ( {
 				if ( isPremiumPlan( planSlug ) ) {
 					label = translate( 'Best for Blog' );
 				}
+			} else if ( 'plans-affiliate' === intent && isBusinessPlan( planSlug ) ) {
+				label = translate( 'Popular' );
 			} else if ( isBusinessPlan( planSlug ) && ! selectedPlan ) {
 				label = translate( 'Best for devs' );
 			} else if ( isPopularPlan( planSlug ) && ! selectedPlan ) {

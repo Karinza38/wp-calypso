@@ -9,7 +9,7 @@ import {
 	LoginPage,
 	UserSignupPage,
 	SignupPickPlanPage,
-	GeneralSettingsPage,
+	SiteSettingsPage,
 	CartCheckoutPage,
 	StartSiteFlow,
 	SecretsManager,
@@ -40,7 +40,6 @@ describe( 'Lifecyle: Signup, onboard, launch and cancel subscription', function 
 	const testUser = DataHelper.getNewTestUser( {
 		usernamePrefix: 'ftmepersonal',
 	} );
-	const blogTagLine = DataHelper.getRandomPhrase();
 
 	let page: Page;
 	let newUserDetails: NewUserResponse;
@@ -144,18 +143,9 @@ describe( 'Lifecyle: Signup, onboard, launch and cancel subscription', function 
 			page.waitForURL( /setup\/site-setup\/goals\?/, { timeout: 30 * 1000 } );
 		} );
 
-		it( 'Select "Sell" goal', async function () {
-			await startSiteFlow.selectGoal( 'Sell' );
-			await startSiteFlow.clickButton( 'Continue' );
-		} );
-
-		it( 'Enter blog name', async function () {
-			await startSiteFlow.enterBlogName( testUser.siteName );
-		} );
-
-		it( 'Enter blog tagline', async function () {
-			await startSiteFlow.enterTagline( blogTagLine );
-			await startSiteFlow.clickButton( 'Continue' );
+		it( 'Select "Sell services or digital goods" goal', async function () {
+			await startSiteFlow.selectGoal( 'Sell services or digital goods' );
+			await startSiteFlow.clickButton( 'Next' );
 		} );
 	} );
 
@@ -172,11 +162,9 @@ describe( 'Lifecyle: Signup, onboard, launch and cancel subscription', function 
 			await startSiteFlow.clickButton( 'Continue' );
 		} );
 
-		it( 'Land in Home dashboard', async function () {
-			await page.waitForURL(
-				DataHelper.getCalypsoURL( `/home/${ newSiteDetails.blog_details.blogid }` ),
-				{ timeout: 30 * 1000 }
-			);
+		it( 'Focused Launchpad is shown', async function () {
+			const title = await page.getByText( "Let's get started!" );
+			await title.waitFor( { timeout: 30 * 1000 } );
 		} );
 
 		it( 'Site slug exists', async function () {
@@ -184,7 +172,7 @@ describe( 'Lifecyle: Signup, onboard, launch and cancel subscription', function 
 		} );
 	} );
 
-	describe( 'Launch site', function () {
+	describe( 'Check if site is launched', function () {
 		it( 'Verify site is not yet launched', async function () {
 			const tmpPage = await browser.newPage();
 			await tmpPage.goto( newSiteDetails.blog_details.url as string );
@@ -196,11 +184,13 @@ describe( 'Lifecyle: Signup, onboard, launch and cancel subscription', function 
 			// Dispose the test page and context.
 			await tmpPage.close();
 		} );
+	} );
 
+	describe( 'Launch site without Focused Launchpad', function () {
 		it( 'Start site launch', async function () {
-			const generalSettingsPage = new GeneralSettingsPage( page );
-			await generalSettingsPage.visit( newSiteDetails.blog_details.site_slug );
-			await generalSettingsPage.launchSite();
+			const siteSettingsPage = new SiteSettingsPage( page );
+			await siteSettingsPage.visit( newSiteDetails.blog_details.site_slug );
+			await siteSettingsPage.launchSite();
 		} );
 
 		it( 'Skip domain purchase', async function () {
@@ -210,8 +200,11 @@ describe( 'Lifecyle: Signup, onboard, launch and cancel subscription', function 
 		} );
 
 		it( 'Navigated to Home dashboard', async function () {
+			await page.waitForURL( /home/ );
 			const myHomePage = new MyHomePage( page );
-			await myHomePage.validateTaskHeadingMessage( 'You launched your site!' );
+			await new Promise( ( r ) => setTimeout( r, 2000 ) );
+			await page.reload();
+			return await myHomePage.validateTaskHeadingMessage( 'You launched your site!' );
 		} );
 	} );
 
@@ -268,5 +261,8 @@ describe( 'Lifecyle: Signup, onboard, launch and cancel subscription', function 
 			username: newUserDetails.body.username,
 			email: testUser.email,
 		} );
+
+		// Close the page to prevent hanging
+		await page.close();
 	} );
 } );

@@ -7,8 +7,8 @@ import titleCase from 'to-title-case';
 import QueryReaderFollowedTags from 'calypso/components/data/query-reader-followed-tags';
 import QueryReaderTag from 'calypso/components/data/query-reader-tag';
 import isReaderTagEmbedPage from 'calypso/lib/reader/is-reader-tag-embed-page';
+import ReaderBackButton from 'calypso/reader/components/back-button';
 import ReaderMain from 'calypso/reader/components/reader-main';
-import HeaderBack from 'calypso/reader/header-back';
 import { recordAction, recordGaEvent } from 'calypso/reader/stats';
 import Stream from 'calypso/reader/stream';
 import ReaderTagSidebar from 'calypso/reader/stream/reader-tag-sidebar';
@@ -103,11 +103,11 @@ class TagStream extends Component {
 		const tag = find( this.props.tags, { slug: this.props.encodedTagSlug } );
 		const titleText = titleCase( title.replace( /-/g, ' ' ) );
 
-		let imageSearchString = this.props.encodedTagSlug;
+		let encodedTagSlug = this.props.encodedTagSlug;
 
 		// If the tag contains emoji, convert to text equivalent
 		if ( this.state.emojiText && this.state.isEmojiTitle ) {
-			imageSearchString = this.state.emojiText.convert( title, {
+			encodedTagSlug = this.state.emojiText.convert( title, {
 				delimiter: '',
 			} );
 		}
@@ -117,16 +117,15 @@ class TagStream extends Component {
 				<ReaderMain className="tag-stream__main">
 					<QueryReaderFollowedTags />
 					<QueryReaderTag tag={ this.props.decodedTagSlug } />
-					{ this.props.showBack && <HeaderBack /> }
+					<ReaderBackButton />
 					<TagStreamHeader
 						title={ title }
-						imageSearchString={ imageSearchString }
+						encodedTagSlug={ encodedTagSlug }
 						// This shouldn not be necessary as user should not have been able to
 						// subscribe to an error tag. Nevertheless, we should give them a route to
 						// unfollow if that was the case.
 						showFollow={ tag.id && this.isSubscribed() }
 						showSort={ false }
-						showBack={ this.props.showBack }
 					/>
 					{ emptyContent() }
 				</ReaderMain>
@@ -138,20 +137,16 @@ class TagStream extends Component {
 			<TagStreamHeader
 				title={ titleText }
 				description={ this.props.description }
-				imageSearchString={ imageSearchString }
+				encodedTagSlug={ encodedTagSlug }
 				showFollow={ !! ( tag && tag.id ) }
 				following={ this.isSubscribed() }
 				onFollowToggle={ this.toggleFollowing }
-				showBack={ this.props.showBack }
 				showSort={ showSort }
 				sort={ this.props.sort }
-				recordReaderTracksEvent={ this.props.recordReaderTracksEvent }
 			/>
 		);
 		const sidebarProps = ! isReaderTagEmbedPage( window.location ) && {
-			streamSidebar: () => (
-				<ReaderTagSidebar tag={ this.props.decodedTagSlug } showFollow={ false } />
-			),
+			streamSidebar: () => <ReaderTagSidebar tag={ this.props.decodedTagSlug } />,
 			sidebarTabTitle: this.props.translate( 'Related' ),
 		};
 
@@ -177,7 +172,6 @@ class TagStream extends Component {
 			>
 				<QueryReaderFollowedTags />
 				<QueryReaderTag tag={ this.props.decodedTagSlug } />
-				{ this.props.showBack && <HeaderBack /> }
 			</Stream>
 		);
 	}

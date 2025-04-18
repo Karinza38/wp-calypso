@@ -77,6 +77,24 @@ const getDisplayableJetpackProducts = ( filteredProductsAndBundles: APIProductFa
 	} ) as APIProductFamilyProduct[];
 };
 
+const getDisplayableFeaturedProducts = (
+	filteredProductsAndBundles: APIProductFamilyProduct[]
+) => {
+	const featuredProductSlugs = [
+		'woocommerce-woopayments',
+		'woocommerce-constellation',
+		'woocommerce-dynamic-pricing',
+		'woocommerce-rental-products',
+		'woocommerce-smart-coupons',
+		'woocommerce-variation-swatches-and-photos',
+	]; // For now, we hardcode this until we understand how we want pick featured products.
+
+	// We do it this way to ensure we follow the same order as the featuredProductSlugs.
+	return featuredProductSlugs
+		.map( ( slug ) => filteredProductsAndBundles.find( ( product ) => product.slug === slug ) )
+		.filter( ( product ) => product !== undefined ) as APIProductFamilyProduct[];
+};
+
 const getDisplayableWoocommerceExtensions = (
 	filteredProductsAndBundles: APIProductFamilyProduct[]
 ) => {
@@ -143,6 +161,7 @@ export default function useProductAndPlans( {
 				PRODUCT_TYPE_JETPACK_BACKUP_ADDON,
 				filteredProductsAndBundles
 			),
+			featuredProducts: getDisplayableFeaturedProducts( filteredProductsAndBundles ),
 			wooExtensions: getDisplayableWoocommerceExtensions( filteredProductsAndBundles ),
 			pressablePlans: filterProductsAndPlansByType(
 				PRODUCT_TYPE_PRESSABLE_PLAN,

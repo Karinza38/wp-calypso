@@ -1,7 +1,8 @@
-import { JetpackLogo, WooLogo } from '@automattic/components';
+import { JetpackLogo } from '@automattic/components';
 import { getQueryArg } from '@wordpress/url';
 import { useTranslate } from 'i18n-calypso';
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
+import WooLogoColor from 'calypso/assets/images/icons/Woo_logo_color.svg';
 import QueryProductsList from 'calypso/components/data/query-products-list';
 import { parseQueryStringProducts } from 'calypso/jetpack-cloud/sections/partner-portal/lib/querystring-products';
 import {
@@ -10,18 +11,14 @@ import {
 } from 'calypso/jetpack-cloud/sections/partner-portal/primary/issue-license/lib/incompatible-products';
 import { useDispatch } from 'calypso/state';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
-import FilterSearch from '../../../../components/filter-search';
-import { MarketplaceTypeContext, ShoppingCartContext } from '../../context';
+import { ShoppingCartContext } from '../../context';
 import useProductAndPlans from '../../hooks/use-product-and-plans';
-import ListingSection from '../../listing-section';
-import MultiProductCard from '../multi-product-card';
+import { SelectedFilters } from '../../lib/product-filter';
+import { getSupportedBundleSizes } from '../hooks/use-product-bundle-size';
+import useSubmitForm from '../hooks/use-submit-form';
 import ProductCard from '../product-card';
-import ProductFilter from '../product-filter';
-import EmptyResultMessage from './empty-result-message';
-import { getSupportedBundleSizes, useProductBundleSize } from './hooks/use-product-bundle-size';
-import useSelectedProductFilters from './hooks/use-selected-product-filters';
-import useSubmitForm from './hooks/use-submit-form';
-import VolumePriceSelector from './volume-price-selector';
+import ProductListingEmpty from './empty';
+import ProductListingSection from './section';
 import type { ShoppingCartItem } from '../../types';
 import type { SiteDetails } from '@automattic/data-stores';
 import type { APIProductFamilyProduct } from 'calypso/state/partner-portal/types';
@@ -32,37 +29,30 @@ interface ProductListingProps {
 	selectedSite?: SiteDetails | null;
 	suggestedProduct?: string;
 	productBrand: string;
-	searchQuery?: string;
+	productSearchQuery?: string;
+	isReferralMode: boolean;
+	selectedBundleSize: number;
+	selectedFilters: SelectedFilters;
+	stickyHeadingTopOffset?: number;
 }
 
 export default function ProductListing( {
 	selectedSite,
 	suggestedProduct,
-	productBrand,
-	searchQuery,
+	productSearchQuery,
+	isReferralMode,
+	selectedBundleSize,
+	selectedFilters,
+	stickyHeadingTopOffset,
 }: ProductListingProps ) {
 	const translate = useTranslate();
 	const dispatch = useDispatch();
 
 	const { selectedCartItems, setSelectedCartItems } = useContext( ShoppingCartContext );
-	const { marketplaceType } = useContext( MarketplaceTypeContext );
-	const isReferingProducts = marketplaceType === 'referral';
-
-	const [ productSearchQuery, setProductSearchQuery ] = useState< string >( searchQuery ?? '' );
-
-	const {
-		selectedSize: selectedBundleSize,
-		availableSizes: availableBundleSizes,
-		setSelectedSize: setSelectedBundleSize,
-	} = useProductBundleSize();
-
-	const { selectedFilters, setSelectedFilters, resetFilters } = useSelectedProductFilters( {
-		productBrand,
-	} );
 
 	const quantity = useMemo(
-		() => ( isReferingProducts ? 1 : selectedBundleSize ),
-		[ isReferingProducts, selectedBundleSize ]
+		() => ( isReferralMode ? 1 : selectedBundleSize ),
+		[ isReferralMode, selectedBundleSize ]
 	);
 
 	const {
@@ -72,11 +62,11 @@ export default function ProductListing( {
 		jetpackBackupAddons,
 		jetpackProducts,
 		wooExtensions,
+		featuredProducts,
 		data,
 		suggestedProductSlugs,
 	} = useProductAndPlans( {
 		selectedSite,
-		selectedBundleSize: quantity,
 		selectedProductFilters: selectedFilters,
 		productSearchQuery,
 	} );
@@ -166,13 +156,6 @@ export default function ProductListing( {
 		[ dispatch, quantity, selectedCartItems, setSelectedCartItems ]
 	);
 
-	const onSelectProduct = useCallback(
-		( product: APIProductFamilyProduct ) => {
-			handleSelectBundleLicense( product );
-		},
-		[ handleSelectBundleLicense ]
-	);
-
 	const onSelectOrReplaceProduct = useCallback(
 		( product: APIProductFamilyProduct, replace?: APIProductFamilyProduct ) => {
 			if ( replace ) {
@@ -219,16 +202,6 @@ export default function ProductListing( {
 		[ quantity, selectedCartItems ]
 	);
 
-	const onProductSearch = useCallback(
-		( value: string ) => {
-			setProductSearchQuery( value );
-			dispatch(
-				recordTracksEvent( 'calypso_a4a_marketplace_products_overview_search_submit', { value } )
-			);
-		},
-		[ dispatch ]
-	);
-
 	const onClickVariantOption = useCallback(
 		( product: APIProductFamilyProduct ) => {
 			dispatch(
@@ -240,54 +213,69 @@ export default function ProductListing( {
 		[ dispatch ]
 	);
 
-	const trackClickCallback = useCallback(
-		( component: string ) => () =>
-			dispatch(
-				recordTracksEvent( `calypso_a4a_marketplace_products_overview_${ component }_click` )
-			),
-		[ dispatch ]
-	);
-
 	const isSingleLicenseView = quantity === 1;
 
-	const getProductCards = ( products: APIProductFamilyProduct[] ) => {
-		return products.map( ( productOption ) =>
-			Array.isArray( productOption ) ? (
-				<MultiProductCard
-					asReferral={ isReferingProducts }
-					key={ productOption.map( ( { slug } ) => slug ).join( ',' ) }
-					products={ productOption }
+	const getProductCards = (
+		products: APIProductFamilyProduct[],
+		withCustomCard: boolean = false
+	) => {
+		return products.map( ( productOption ) => {
+			let options;
+
+			if ( Array.isArray( productOption ) ) {
+				options =
+					quantity === 1
+						? productOption
+						: productOption.filter(
+								( option ) =>
+									option.supported_bundles?.some(
+										( bundle: { quantity: number } ) => bundle.quantity === quantity
+									)
+						  );
+			} else {
+				options = [ productOption ];
+			}
+
+			if ( options.length === 0 ) {
+				return null;
+			}
+
+			const productDoNotHaveSupportedBundles =
+				! isSingleLicenseView &&
+				! options.some(
+					( option ) =>
+						option.supported_bundles?.some(
+							( bundle: { quantity: number } ) => bundle.quantity === quantity
+						)
+				);
+
+			return (
+				<ProductCard
+					asReferral={ isReferralMode }
+					key={ options.map( ( { slug } ) => slug ).join( ',' ) }
+					products={ options }
 					onSelectProduct={ onSelectOrReplaceProduct }
 					onVariantChange={ onClickVariantOption }
-					isSelected={ isSelected( productOption.map( ( { slug } ) => slug ) ) }
-					selectedOption={ productOption.find( ( option ) =>
-						selectedCartItems.find(
-							( item ) => item.slug === option.slug && item.quantity === quantity
-						)
-					) }
+					isSelected={ isSelected( options.map( ( { slug } ) => slug ) ) }
 					isDisabled={
+						productDoNotHaveSupportedBundles ||
 						! isReady ||
 						( isIncompatibleProduct( productOption, incompatibleProducts ) &&
-							! isSelected( productOption.map( ( { slug } ) => slug ) ) )
+							! isSelected( options.map( ( { slug } ) => slug ) ) )
 					}
 					hideDiscount={ isSingleLicenseView }
 					suggestedProduct={ suggestedProduct }
-					quantity={ quantity }
+					quantity={ productDoNotHaveSupportedBundles ? 1 : quantity }
+					withCustomCard={ withCustomCard }
+					tooltip={
+						productDoNotHaveSupportedBundles
+							? translate( 'This product does not offer volume discounts.' )
+							: undefined
+					}
+					tooltipPosition="bottom"
 				/>
-			) : (
-				<ProductCard
-					asReferral={ isReferingProducts }
-					key={ productOption.slug }
-					product={ productOption }
-					onSelectProduct={ onSelectProduct }
-					isSelected={ isSelected( productOption.slug ) }
-					isDisabled={ ! isReady || isIncompatibleProduct( productOption, incompatibleProducts ) }
-					hideDiscount={ isSingleLicenseView }
-					suggestedProduct={ suggestedProduct }
-					quantity={ quantity }
-				/>
-			)
-		);
+			);
+		} );
 	};
 
 	if ( isLoadingProducts ) {
@@ -299,89 +287,71 @@ export default function ProductListing( {
 	}
 
 	return (
-		<div className="product-listing">
+		<>
 			<QueryProductsList currency="USD" />
 
-			<div className="product-listing__actions">
-				<div className="product-listing__actions-search-and-filter">
-					<FilterSearch
-						label={ translate( 'Search products' ) }
-						onSearch={ onProductSearch }
-						onClick={ trackClickCallback( 'search' ) }
-						initialValue={ productSearchQuery }
-					/>
+			{ isEmptyList && <ProductListingEmpty /> }
 
-					<ProductFilter
-						selectedFilters={ selectedFilters }
-						setSelectedFilters={ setSelectedFilters }
-						resetFilters={ resetFilters }
-					/>
-				</div>
-
-				{ ! isReferingProducts && availableBundleSizes.length > 1 && (
-					<VolumePriceSelector
-						selectedBundleSize={ quantity }
-						availableBundleSizes={ availableBundleSizes }
-						onBundleSizeChange={ setSelectedBundleSize }
-					/>
-				) }
-			</div>
-
-			{ isEmptyList && (
-				<div className="product-listing">
-					<EmptyResultMessage />
-				</div>
+			{ featuredProducts.length > 0 && (
+				<ProductListingSection
+					title={ translate( 'Featured Products' ) }
+					stickyHeadingTopOffset={ stickyHeadingTopOffset }
+				>
+					{ getProductCards( featuredProducts, true ) }
+				</ProductListingSection>
 			) }
 
 			{ wooExtensions.length > 0 && (
-				<ListingSection
-					id="woocommerce-extensions"
-					icon={ <WooLogo width={ 45 } height={ 28 } /> }
+				<ProductListingSection
+					icon={ <img width={ 45 } src={ WooLogoColor } alt="WooCommerce" /> }
 					title={ translate( 'WooCommerce Extensions' ) }
 					description={ translate(
-						'You must have WooCommerce installed to utilize these paid extensions.'
+						"Explore the tools and integrations you need to grow your client's Woo store."
 					) }
+					stickyHeadingTopOffset={ stickyHeadingTopOffset }
 				>
 					{ getProductCards( wooExtensions ) }
-				</ListingSection>
+				</ProductListingSection>
 			) }
 
 			{ jetpackPlans.length > 0 && (
-				<ListingSection
-					id="jetpack-plans"
+				<ProductListingSection
 					icon={ <JetpackLogo size={ 26 } /> }
 					title={ translate( 'Jetpack Plans' ) }
 					description={ translate(
 						'Save big with comprehensive bundles of Jetpack security, performance, and growth tools.'
 					) } // FIXME: Add proper description for A4A
+					stickyHeadingTopOffset={ stickyHeadingTopOffset }
 				>
 					{ getProductCards( jetpackPlans ) }
-				</ListingSection>
+				</ProductListingSection>
 			) }
 
 			{ jetpackProducts.length > 0 && (
-				<ListingSection
+				<ProductListingSection
 					icon={ <JetpackLogo size={ 26 } /> }
 					title={ translate( 'Jetpack Products' ) }
 					description={ translate(
 						'Mix and match powerful security, performance, and growth tools for your sites.'
 					) }
+					stickyHeadingTopOffset={ stickyHeadingTopOffset }
 				>
 					{ getProductCards( jetpackProducts ) }
-				</ListingSection>
+				</ProductListingSection>
 			) }
 
 			{ jetpackBackupAddons.length > 0 && (
-				<ListingSection
+				<ProductListingSection
 					icon={ <JetpackLogo size={ 26 } /> }
 					title={ translate( 'Jetpack VaultPress Backup Add-ons' ) }
 					description={ translate(
 						'Add additional storage to your current VaultPress Backup plans.'
 					) }
+					stickyHeadingTopOffset={ stickyHeadingTopOffset }
 				>
 					{ getProductCards( jetpackBackupAddons ) }
-				</ListingSection>
+				</ProductListingSection>
 			) }
-		</div>
+		</>
 	);
 }

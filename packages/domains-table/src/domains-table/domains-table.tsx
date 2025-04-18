@@ -52,6 +52,8 @@ interface BaseDomainsTableProps {
 	isAllSitesView: boolean;
 	domainStatusPurchaseActions?: DomainStatusPurchaseActions;
 	onDomainAction?: OnDomainAction;
+	onPointToWpcom?: ( domain: string ) => void;
+	isPointingToWpcom?: boolean;
 	userCanSetPrimaryDomains?: boolean;
 	hideCheckbox?: boolean;
 	isLoadingDomains?: boolean;
@@ -68,8 +70,15 @@ interface BaseDomainsTableProps {
 	fetchBulkActionStatus?: () => Promise< BulkDomainUpdateStatusQueryFnData >;
 	deleteBulkActionStatus?: () => Promise< void >;
 	currentUserCanBulkUpdateContactInfo?: boolean;
+	sidebarMode?: boolean;
+	selectedDomainName?: string;
+	selectedFeature?: string;
+	isHostingOverview?: boolean;
+	hasConnectableSites?: boolean;
+	context?: DomainsTableContext;
 }
 
+export type DomainsTableContext = 'site' | 'domains' | string;
 export type DomainsTableProps =
 	| ( BaseDomainsTableProps & { isAllSitesView: true } )
 	| ( BaseDomainsTableProps & { isAllSitesView: false; siteSlug: string | null } );
@@ -109,6 +118,7 @@ type Value = {
 	onSortChange: ( selectedColumn: DomainsTableColumn, direction?: 'asc' | 'desc' ) => void;
 	handleSelectDomain: ( domain: PartialDomainData ) => void;
 	onDomainsRequiringAttentionChange: ( domainsRequiringAttention: number ) => void;
+	sidebarMode?: boolean;
 	selectedDomains: Set< string >;
 	hasSelectedDomains: boolean;
 	completedJobs: JobStatus[];
@@ -117,12 +127,19 @@ type Value = {
 	showBulkActions: boolean;
 	setShowBulkActions: ( showBulkActions: boolean ) => void;
 	onDomainAction( ...parameters: Parameters< OnDomainAction > ): void;
+	onPointToWpcom?: ( domain: string ) => void;
+	isPointingToWpcom?: boolean;
 	updatingDomain: DomainsTableUpdatingDomain | null;
 	userCanSetPrimaryDomains: BaseDomainsTableProps[ 'userCanSetPrimaryDomains' ];
 	domainsTableColumns: DomainsTableColumn[];
 	currentUsersOwnsAllSelectedDomains: boolean;
 	currentUserCanBulkUpdateContactInfo: boolean;
 	isCompact: boolean;
+	currentlySelectedDomainName?: string;
+	selectedFeature?: string;
+	isHostingOverview?: boolean;
+	hasConnectableSites: boolean;
+	context?: DomainsTableContext;
 };
 
 export const DomainsTableStateContext = createContext< Value | undefined >( undefined );
@@ -141,9 +158,17 @@ export const useGenerateDomainsTableState = ( props: DomainsTableProps ) => {
 		isAllSitesView,
 		domainStatusPurchaseActions,
 		onDomainAction,
+		onPointToWpcom,
+		isPointingToWpcom,
 		userCanSetPrimaryDomains,
 		isLoadingDomains,
 		currentUserCanBulkUpdateContactInfo = false,
+		sidebarMode = false,
+		selectedDomainName,
+		selectedFeature,
+		isHostingOverview = false,
+		hasConnectableSites = false,
+		context,
 	} = props;
 
 	const [ { sortKey, sortDirection }, setSort ] = useState< {
@@ -240,6 +265,19 @@ export const useGenerateDomainsTableState = ( props: DomainsTableProps ) => {
 		domainsTableColumns = removeColumns( domainsTableColumns, 'owner' );
 	}
 
+	if ( sidebarMode ) {
+		// Remove all columns except for domain and action.
+		domainsTableColumns = removeColumns(
+			domainsTableColumns,
+			'site',
+			'owner',
+			'ssl',
+			'expire_renew',
+			'status',
+			'status_action'
+		);
+	}
+
 	const sortedDomains = useMemo( () => {
 		if ( ! domains ) {
 			return;
@@ -305,7 +343,7 @@ export const useGenerateDomainsTableState = ( props: DomainsTableProps ) => {
 
 	const hasSelectedDomains = selectedDomains.size > 0;
 	const selectableDomains = ( domains ?? [] ).filter( canBulkUpdate );
-	const canSelectAnyDomains = selectableDomains.length > 1;
+	const canSelectAnyDomains = selectableDomains.length > 1 && ! sidebarMode;
 	const areAllDomainsSelected = selectableDomains.length === selectedDomains.size;
 
 	const getBulkSelectionStatus = () => {
@@ -397,6 +435,7 @@ export const useGenerateDomainsTableState = ( props: DomainsTableProps ) => {
 		handleSelectDomain,
 		onDomainsRequiringAttentionChange,
 		filteredData,
+		sidebarMode,
 		selectedDomains,
 		hasSelectedDomains,
 		currentUsersOwnsAllSelectedDomains,
@@ -425,12 +464,19 @@ export const useGenerateDomainsTableState = ( props: DomainsTableProps ) => {
 
 			setUpdatingDomain( null );
 		},
+		onPointToWpcom,
+		isPointingToWpcom,
 		updatingDomain,
 		userCanSetPrimaryDomains,
 		domainsTableColumns,
 		isLoadingDomains,
 		currentUserCanBulkUpdateContactInfo,
 		isCompact,
+		currentlySelectedDomainName: selectedDomainName,
+		selectedFeature,
+		isHostingOverview,
+		hasConnectableSites,
+		context,
 	};
 
 	return value;

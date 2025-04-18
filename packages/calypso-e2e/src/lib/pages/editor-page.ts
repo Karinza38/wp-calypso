@@ -13,10 +13,9 @@ import {
 	EditorInlineBlockInserterComponent,
 	EditorSidebarBlockInserterComponent,
 	EditorWelcomeTourComponent,
+	EditorWelcomeGuideComponent,
 	EditorBlockToolbarComponent,
-	EditorTemplateModalComponent,
 	EditorPopoverMenuComponent,
-	TemplateCategory,
 	BlockToolbarButtonIdentifier,
 	CookieBannerComponent,
 	EditorToolbarSettingsButton,
@@ -57,8 +56,8 @@ export class EditorPage {
 	private editorSidebarBlockInserterComponent: EditorSidebarBlockInserterComponent;
 	private editorInlineBlockInserterComponent: EditorInlineBlockInserterComponent;
 	private editorWelcomeTourComponent: EditorWelcomeTourComponent;
+	private editorWelcomeGuideComponent: EditorWelcomeGuideComponent;
 	private editorBlockToolbarComponent: EditorBlockToolbarComponent;
-	private editorTemplateModalComponent: EditorTemplateModalComponent;
 	private editorPopoverMenuComponent: EditorPopoverMenuComponent;
 	private cookieBannerComponent: CookieBannerComponent;
 
@@ -78,6 +77,7 @@ export class EditorPage {
 		this.editorPublishPanelComponent = new EditorPublishPanelComponent( page, this.editor );
 		this.editorBlockListViewComponent = new EditorBlockListViewComponent( page, this.editor );
 		this.editorWelcomeTourComponent = new EditorWelcomeTourComponent( page, this.editor );
+		this.editorWelcomeGuideComponent = new EditorWelcomeGuideComponent( page, this.editor );
 		this.editorBlockToolbarComponent = new EditorBlockToolbarComponent( page, this.editor );
 		this.editorSidebarBlockInserterComponent = new EditorSidebarBlockInserterComponent(
 			page,
@@ -87,7 +87,6 @@ export class EditorPage {
 			page,
 			this.editor
 		);
-		this.editorTemplateModalComponent = new EditorTemplateModalComponent( page, this.editor );
 		this.editorPopoverMenuComponent = new EditorPopoverMenuComponent( page, this.editor );
 		this.cookieBannerComponent = new CookieBannerComponent( page, this.editor );
 	}
@@ -153,7 +152,7 @@ export class EditorPage {
 		// Lacking a perfect cross-site type (Simple/Atomic) way to check the loading state,
 		// it is a fairly good stand-in.
 		await Promise.all( [
-			this.page.waitForURL( /(\/post\/.+|\/page\/+|\/post-new.php)/, { timeout } ),
+			this.page.waitForURL( /(\/post\/.+|\/page\/+|\/post-new.php|\/post.php+)/, { timeout } ),
 			this.page.waitForResponse( /.*posts.*/, { timeout } ),
 		] );
 	}
@@ -205,27 +204,6 @@ export class EditorPage {
 	//#region Basic Entry
 
 	/**
-	 * Selects blank template from the template modal.
-	 */
-	async selectBlankPageTemplate() {
-		return await this.editorTemplateModalComponent.selectBlankPage();
-	}
-
-	/**
-	 * Select a template category from the sidebar of options.
-	 *
-	 * @param {TemplateCategory} category Name of the category to select.
-	 * @param param1 Keyed object parameter.
-	 * @param {number} param1.timeout Timeout to apply.
-	 */
-	async selectTemplateCategory(
-		category: TemplateCategory,
-		{ timeout = envVariables.TIMEOUT }: { timeout?: number } = {}
-	) {
-		return await this.editorTemplateModalComponent.selectTemplateCategory( category, timeout );
-	}
-
-	/**
 	 * Select a template from the grid of options.
 	 *
 	 * @param {string} label Label for the template (the string underneath the preview).
@@ -236,7 +214,16 @@ export class EditorPage {
 		label: string,
 		{ timeout = envVariables.TIMEOUT }: { timeout?: number } = {}
 	) {
-		return await this.editorTemplateModalComponent.selectTemplate( label, timeout );
+		const editor = await this.getEditorParent();
+		const inserterSelector = await editor.getByRole( 'listbox', { name: 'All' } );
+		const modalSelector = await editor.getByRole( 'listbox', {
+			name: 'Block patterns',
+		} );
+		return await inserterSelector
+			.or( modalSelector )
+			.getByRole( 'option', { name: label, exact: true } )
+			.first()
+			.click( { timeout: timeout } );
 	}
 
 	/**
@@ -304,13 +291,22 @@ export class EditorPage {
 	async addBlockFromSidebar(
 		blockName: string,
 		blockEditorSelector: string,
-		{ noSearch, blockFallBackName }: { noSearch?: boolean; blockFallBackName?: string } = {}
+		{
+			noSearch,
+			blockFallBackName,
+			blockInsertedPopupConfirmButtonSelector,
+		}: {
+			noSearch?: boolean;
+			blockFallBackName?: string;
+			blockInsertedPopupConfirmButtonSelector?: string;
+		} = {}
 	): Promise< ElementHandle > {
 		await this.editorGutenbergComponent.resetSelectedBlock();
 		await this.editorToolbarComponent.openBlockInserter();
 		await this.addBlockFromInserter( blockName, this.editorSidebarBlockInserterComponent, {
 			noSearch: noSearch,
 			blockFallBackName: blockFallBackName,
+			blockInsertedPopupConfirmButtonSelector: blockInsertedPopupConfirmButtonSelector,
 		} );
 
 		const blockHandle =
@@ -379,12 +375,39 @@ export class EditorPage {
 	private async addBlockFromInserter(
 		blockName: string,
 		inserter: BlockInserter,
-		{ noSearch, blockFallBackName }: { noSearch?: boolean; blockFallBackName?: string } = {}
+		{
+			noSearch,
+			blockFallBackName,
+			blockInsertedPopupConfirmButtonSelector,
+		}: {
+			noSearch?: boolean;
+			blockFallBackName?: string;
+			blockInsertedPopupConfirmButtonSelector?: string;
+		} = {}
 	): Promise< void > {
 		if ( ! noSearch ) {
 			await inserter.searchBlockInserter( blockName );
 		}
 		await inserter.selectBlockInserterResult( blockName, { blockFallBackName } );
+
+		if ( blockInsertedPopupConfirmButtonSelector ) {
+			const editorParent = await this.editor.parent();
+			const blockInsertedPopupConfirmButtonLocator = editorParent.locator(
+				blockInsertedPopupConfirmButtonSelector
+			);
+
+			// Whether the popup confirm button is not deterministic.
+			// If it is not present, exit early.
+			try {
+				await blockInsertedPopupConfirmButtonLocator.waitFor( { timeout: 100 } );
+			} catch ( e ) {
+				// Probably doesn't exist. That's ok.
+			}
+
+			if ( ( await blockInsertedPopupConfirmButtonLocator.count() ) > 0 ) {
+				await blockInsertedPopupConfirmButtonLocator.click();
+			}
+		}
 	}
 
 	/**
@@ -515,6 +538,22 @@ export class EditorPage {
 	//#region Settings Sidebar
 
 	/**
+	 * Returns the locator for the root element of the settings sidebar.
+	 */
+	async getSettingsRoot() {
+		return await this.editorSettingsSidebarComponent.getRoot();
+	}
+
+	/**
+	 * Returns the locator of a section (panel body) settings sidebar.
+	 *
+	 * @param {string} name Name of the section.
+	 */
+	async getSettingsSection( name: string ) {
+		return await this.editorSettingsSidebarComponent.getSection( name );
+	}
+
+	/**
 	 * Opens the Settings sidebar.
 	 */
 	async openSettings( target: EditorToolbarSettingsButton = 'Settings' ): Promise< void > {
@@ -538,8 +577,8 @@ export class EditorPage {
 	 *
 	 * @param {string} name Name of the section to expand.
 	 */
-	async expandSection( name: string ): Promise< void > {
-		await this.editorSettingsSidebarComponent.expandSection( name );
+	async expandSection( name: string ) {
+		return await this.editorSettingsSidebarComponent.expandSection( name );
 	}
 
 	/**
@@ -681,6 +720,13 @@ export class EditorPage {
 	//#endregion
 
 	//#region Publish, Draft & Schedule
+
+	/**
+	 * Returns the locator for the root element of the publish toolbar.
+	 */
+	async getPublishPanelRoot() {
+		return await this.editorPublishPanelComponent.getRoot();
+	}
 
 	/**
 	 * Publishes the post or page and returns the resulting URL.
@@ -965,6 +1011,13 @@ export class EditorPage {
 	 */
 	async openEditorOptionsMenu(): Promise< void > {
 		return this.editorToolbarComponent.openMoreOptionsMenu();
+	}
+
+	/**
+	 * Close the
+	 */
+	async closeWelcomeGuideIfNeeded(): Promise< void > {
+		return this.editorWelcomeGuideComponent.closeWelcomeGuideIfNeeded();
 	}
 
 	//#endregion

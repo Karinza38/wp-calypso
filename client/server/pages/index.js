@@ -22,6 +22,7 @@ import superagent from 'superagent'; // Don't have Node.js fetch lib yet.
 import wooDnaConfig from 'calypso/jetpack-connect/woo-dna-config';
 import { STEPPER_SECTION_DEFINITION } from 'calypso/landing/stepper/section';
 import { SUBSCRIPTIONS_SECTION_DEFINITION } from 'calypso/landing/subscriptions/section';
+import { isInStepContainerV2FlowContext } from 'calypso/layout/utils';
 import isA8CForAgencies from 'calypso/lib/a8c-for-agencies/is-a8c-for-agencies';
 import { shouldSeeCookieBanner } from 'calypso/lib/analytics/utils';
 import isJetpackCloud from 'calypso/lib/jetpack/is-jetpack-cloud';
@@ -88,11 +89,13 @@ function getCurrentCommitShortChecksum() {
  */
 function setupLoggedInContext( req, res, next ) {
 	const isSupportSession = !! req.get( 'x-support-session' ) || !! req.cookies.support_session_id;
+	const disableHelpCenterAutoOpen = isSupportSession || !! req.cookies.ssp;
 	const isLoggedIn = !! req.cookies.wordpress_logged_in;
 
 	req.context = {
 		...req.context,
 		isSupportSession,
+		disableHelpCenterAutoOpen,
 		isLoggedIn,
 	};
 
@@ -163,8 +166,8 @@ function getDefaultContext( request, response, entrypoint = 'entry-main' ) {
 
 	const flags = ( request.query.flags || '' ).split( ',' );
 
-	performanceMark( request.context, 'getFilesForEntrypoint', true );
-	const entrypointFiles = request.getFilesForEntrypoint( entrypoint );
+	performanceMark( request.context, 'getFilesForChunkGroup', true );
+	const entrypointFiles = request.getFilesForChunkGroup( entrypoint );
 
 	performanceMark( request.context, 'getAssets', true );
 	const manifests = request.getAssets().manifests;
@@ -176,7 +179,6 @@ function getDefaultContext( request, response, entrypoint = 'entry-main' ) {
 		user: false,
 		env: calypsoEnv,
 		sanitize: sanitize,
-		requestFrom: request.query.from,
 		isWooDna: wooDnaConfig( request.query ).isWooDnaFlow(),
 		badge: false,
 		lang: config( 'i18n_default_locale_slug' ),
@@ -195,8 +197,8 @@ function getDefaultContext( request, response, entrypoint = 'entry-main' ) {
 			config.isEnabled( 'use-translation-chunks' ) ||
 			flags.includes( 'use-translation-chunks' ) ||
 			request.query.hasOwnProperty( 'useTranslationChunks' ),
-		useLoadingEllipsis: !! request.query.loading_ellipsis,
 		showGdprBanner,
+		showStepContainerV2Loader: isInStepContainerV2FlowContext( request.path, request.query ),
 	} );
 
 	context.app = {
@@ -407,7 +409,7 @@ function setUpLoggedInRoute( req, res, next ) {
 					const searchParam = req.query.s || req.query.q;
 					if ( searchParam ) {
 						res.redirect(
-							'https://wordpress.com/read/search?q=' + encodeURIComponent( searchParam )
+							'https://wordpress.com/reader/search?q=' + encodeURIComponent( searchParam )
 						);
 						return;
 					}
@@ -485,10 +487,7 @@ function setUpCSP( req, res, next ) {
 	// and calculating SHA256 hash on it, encoded in base64, example:
 	// `sha256-${ base64( sha256( 'window.AppBoot();' ) ) }` === sha256-3yiQswl88knA3EhjrG5tj5gmV6EUdLYFvn2dygc0xUQ
 	// you can also just run it in Chrome, chrome will give you the hash of the violating scripts
-	const inlineScripts = [
-		'sha256-3yiQswl88knA3EhjrG5tj5gmV6EUdLYFvn2dygc0xUQ=',
-		'sha256-ZKTuGaoyrLu2lwYpcyzib+xE4/2mCN8PKv31uXS3Eg4=',
-	];
+	const inlineScripts = [ 'sha256-ZKTuGaoyrLu2lwYpcyzib+xE4/2mCN8PKv31uXS3Eg4=' ];
 
 	req.context.inlineScriptNonce = crypto.randomBytes( 48 ).toString( 'hex' );
 
@@ -542,6 +541,7 @@ function setUpCSP( req, res, next ) {
 			'*.wp.com',
 			'https://fonts.gstatic.com',
 			'use.typekit.net',
+			'https://woocommerce.com',
 			'data:', // should remove 'data:' ASAP
 		],
 		'media-src': [ "'self'" ],
@@ -593,7 +593,7 @@ const setUpSectionContext = ( section, entrypoint ) => ( req, res, next ) => {
 	req.context.sectionName = section.name;
 
 	if ( ! entrypoint ) {
-		req.context.chunkFiles = req.getFilesForChunk( section.name );
+		req.context.chunkFiles = req.getFilesForChunkGroup( section.name );
 	} else {
 		req.context.chunkFiles = req.getEmptyAssets();
 	}
@@ -618,7 +618,7 @@ const render404 =
 	( entrypoint = 'entry-main' ) =>
 	( req, res ) => {
 		const ctx = {
-			entrypoint: req.getFilesForEntrypoint( entrypoint ),
+			entrypoint: req.getFilesForChunkGroup( entrypoint ),
 		};
 
 		res.status( 404 ).send( renderJsx( '404', ctx ) );
@@ -646,7 +646,7 @@ const renderServerError =
 		}
 
 		const ctx = {
-			entrypoint: req.getFilesForEntrypoint( entrypoint ),
+			entrypoint: req.getFilesForChunkGroup( entrypoint ),
 		};
 
 		res.status( err.status || 500 ).send( renderJsx( '500', ctx ) );
@@ -719,6 +719,7 @@ function wpcomPages( app ) {
 		if ( ! req.context.isLoggedIn ) {
 			const queryFor = req.query?.for;
 			const ref = req.query?.ref;
+			const coupon = req.query?.coupon;
 
 			if ( queryFor && 'jetpack' === queryFor ) {
 				res.redirect(
@@ -726,8 +727,11 @@ function wpcomPages( app ) {
 				);
 			} else {
 				const pricingPage = 'https://wordpress.com/pricing/';
-				const refQuery = ref ? `?ref=${ ref }` : '';
-				const pricingPageUrl = localizeUrl( `${ pricingPage }${ refQuery }`, locale );
+				const queryString = stringify( { ref, coupon } );
+				const pricingPageUrl = localizeUrl(
+					`${ pricingPage }${ queryString ? '?' + queryString : '' }`,
+					locale
+				);
 				res.redirect( pricingPageUrl );
 			}
 		} else {
@@ -786,7 +790,7 @@ function wpcomPages( app ) {
 		const { from } = req.query;
 		const redirectLocation = from && validateRedirect( req, from ) ? from : '/';
 
-		req.context.entrypoint = req.getFilesForEntrypoint( 'entry-browsehappy' );
+		req.context.entrypoint = req.getFilesForChunkGroup( 'entry-browsehappy' );
 		req.context.from = redirectLocation;
 
 		res.send( renderJsx( 'browsehappy', req.context ) );
@@ -856,29 +860,29 @@ function wpcomPages( app ) {
 			return res.redirect( 'https://wordpress.com/email-subscriptions' );
 		}
 
-		const basePath = 'https://wordpress.com/read/subscriptions';
+		const basePath = 'https://wordpress.com/reader/subscriptions';
 
 		// If user enters /subscriptions/sites(.*),
-		// redirect to /read/subscriptions.
+		// redirect to /reader/subscriptions.
 		if ( req.path.match( '/subscriptions/sites' ) ) {
 			return res.redirect( basePath );
 		}
 
 		// If user enters /site/*,
-		// redirect to /read/site/subscription/*.
+		// redirect to /reader/site/subscription/*.
 		const siteFragment = req.path.match( /site\/(.*)/i );
 		if ( siteFragment && siteFragment[ 1 ] ) {
-			return res.redirect( 'https://wordpress.com/read/site/subscription/' + siteFragment[ 1 ] );
+			return res.redirect( 'https://wordpress.com/reader/site/subscription/' + siteFragment[ 1 ] );
 		}
 
 		// If user enters /subscriptions/comments(.*),
-		// redirect to /read/subscriptions/comments.
+		// redirect to /reader/subscriptions/comments.
 		if ( req.path.match( '/subscriptions/comments' ) ) {
 			return res.redirect( basePath + '/comments' );
 		}
 
 		// If user enters /subscriptions/pending(.*),
-		// redirect to /read/subscriptions/pending.
+		// redirect to /reader/subscriptions/pending.
 		if ( req.path.match( '/subscriptions/pending' ) ) {
 			return res.redirect( basePath + '/pending' );
 		}

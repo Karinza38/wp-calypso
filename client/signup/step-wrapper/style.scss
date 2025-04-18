@@ -57,7 +57,7 @@
 	@mixin unstick {
 		position: absolute;
 		top: 9px;
-		left: 11px;
+		left: 56px;
 		right: 16px;
 		padding: 0;
 		border: none;
@@ -185,6 +185,23 @@
 
 		&.has-navigation {
 			padding-bottom: 60px;
+		}
+	}
+}
+
+.step-wrapper {
+	.help-center-step-button {
+		font-weight: 500;
+		margin-left: auto;
+
+		&__button {
+			font-size: rem(14px);
+			color: var( --studio-wordpress-blue );
+			text-decoration: underline;
+
+			&:hover {
+				text-decoration: none;
+			}
 		}
 	}
 }

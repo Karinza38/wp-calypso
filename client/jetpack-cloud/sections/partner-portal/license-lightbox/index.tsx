@@ -1,12 +1,14 @@
 import { Button, Gridicon } from '@automattic/components';
 import { useBreakpoint } from '@automattic/viewport-react';
 import clsx from 'clsx';
-import { FunctionComponent, useCallback } from 'react';
+import { FunctionComponent, ReactNode, useCallback } from 'react';
 import JetpackLightbox, {
 	JetpackLightboxAside,
+	JetpackLightboxFooter,
 	JetpackLightboxMain,
 } from 'calypso/components/jetpack/jetpack-lightbox';
 import useMobileSidebar from 'calypso/components/jetpack/jetpack-lightbox/hooks/use-mobile-sidebar';
+import { VendorInfo } from 'calypso/components/jetpack/jetpack-lightbox/types';
 import JetpackProductInfo from 'calypso/components/jetpack/jetpack-product-info';
 import { APIProductFamilyProduct } from 'calypso/state/partner-portal/types';
 import { useLicenseLightboxData } from './hooks/use-license-lightbox-data';
@@ -29,6 +31,9 @@ export type LicenseLightBoxProps = {
 	ctaHref?: string;
 	showPaymentPlan?: boolean;
 	fireCloseOnCTAClick?: boolean;
+	customDescription?: ReactNode;
+	customFooter?: ReactNode;
+	vendor?: VendorInfo | null;
 };
 
 const LicenseLightbox: FunctionComponent< LicenseLightBoxProps > = ( {
@@ -46,6 +51,9 @@ const LicenseLightbox: FunctionComponent< LicenseLightBoxProps > = ( {
 	quantity,
 	showPaymentPlan = true,
 	fireCloseOnCTAClick = true,
+	customDescription,
+	customFooter,
+	vendor,
 } ) => {
 	const isLargeScreen = useBreakpoint( '>782px' );
 	const { title, product: productInfo } = useLicenseLightboxData( product );
@@ -68,8 +76,16 @@ const LicenseLightbox: FunctionComponent< LicenseLightBoxProps > = ( {
 		>
 			<JetpackLightboxMain ref={ mainRef }>
 				{ productInfo && (
-					<JetpackProductInfo title={ title } product={ productInfo } full={ isLargeScreen } />
+					<JetpackProductInfo
+						vendor={ vendor }
+						title={ title }
+						product={ productInfo }
+						full={ isLargeScreen }
+						customDescription={ customDescription }
+					/>
 				) }
+
+				{ customFooter && <JetpackLightboxFooter>{ customFooter }</JetpackLightboxFooter> }
 			</JetpackLightboxMain>
 
 			<JetpackLightboxAside ref={ sidebarRef }>

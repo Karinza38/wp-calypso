@@ -1,12 +1,9 @@
-import page from '@automattic/calypso-router';
 import styled from '@emotion/styled';
 import { useTranslate } from 'i18n-calypso';
 import { useEffect, useState } from 'react';
 import { useQueryUserPurchases } from 'calypso/components/data/query-user-purchases';
-import { PanelHeading } from 'calypso/components/panel';
+import { PanelCardHeading } from 'calypso/components/panel';
 import { ResponseDomain } from 'calypso/lib/domains/types';
-import { getSettingsSource } from 'calypso/my-sites/site-settings/site-tools/utils';
-import { isHostingMenuUntangled } from 'calypso/sites/settings/utils';
 import { useDispatch, useSelector } from 'calypso/state';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
 import { getCurrentUserEmail } from 'calypso/state/current-user/selectors';
@@ -31,7 +28,6 @@ const SiteTransferComplete = () => {
 		return null;
 	}
 
-	const isUntangled = isHostingMenuUntangled();
 	const message = (
 		<p>
 			{ translate(
@@ -46,7 +42,7 @@ const SiteTransferComplete = () => {
 	);
 	return (
 		<>
-			{ isUntangled && <PanelHeading>{ translate( 'Confirmation email sent' ) }</PanelHeading> }
+			<PanelCardHeading>{ translate( 'Confirmation email sent' ) }</PanelCardHeading>
 			{ message }
 		</>
 	);
@@ -77,27 +73,16 @@ const SiteOwnerTransfer = () => {
 		return null;
 	}
 
-	const onBackClick = () => {
-		if ( ! pendingDomain && newSiteOwner && ! transferSiteSuccess ) {
-			setNewSiteOwner( null );
-		} else {
-			const source = isHostingMenuUntangled()
-				? '/sites/settings/administration'
-				: getSettingsSource();
-			page( `${ source }/${ selectedSite.slug }` );
-		}
-	};
-
 	if ( confirmationHash ) {
 		return (
-			<SiteTransferCard onClick={ onBackClick }>
+			<SiteTransferCard siteId={ selectedSite.ID }>
 				<ConfirmationTransfer siteId={ selectedSite.ID } confirmationHash={ confirmationHash } />
 			</SiteTransferCard>
 		);
 	}
 
 	return (
-		<SiteTransferCard onClick={ onBackClick }>
+		<SiteTransferCard siteId={ selectedSite.ID }>
 			{ pendingDomain && <PendingDomainTransfer domain={ pendingDomain } /> }
 			{ ! pendingDomain && ! newSiteOwner && (
 				<SiteOwnerTransferEligibility

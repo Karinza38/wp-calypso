@@ -26,6 +26,7 @@ export DEBUG='*'
 
 For a quicker and more efficient development experience, the application can be run in "development mode", which executes the application code directly (i.e. without building the app). This development mode can be ran against production WordPress.com webapp, or a local instance of Calypso.
 
+- First, create your config file with `yarn run build:config`
 - Use `yarn run dev` to run development mode and load production WordPress.com, _OR_
 - Boot Calpyso from the root of the Calypso repository with `yarn start`. Once Calypso is ready, the desktop app can be booted with `yarn run dev:localhost` to load the local instance of Calypso.
 
@@ -35,7 +36,7 @@ Refer to the [development guide](docs/development.md) for help with how the app 
 
 ## Running The End-To-End Test Suite
 
-1. Set the environment variables `E2EUSERNAME` and `E2EPASSWORD`.
+1. Set the environment variables `E2EGUTENBERGUSER` and `E2EPASSWORD`.
 2. Use `yarn run test:e2e` or `make e2e` to invoke the test suite.
 
 To manually start each platform's _pre-packaged_ executable used for end-to-end testing:

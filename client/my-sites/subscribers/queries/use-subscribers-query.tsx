@@ -1,8 +1,8 @@
+import config from '@automattic/calypso-config';
 import { useQuery } from '@tanstack/react-query';
 import wpcom from 'calypso/lib/wp';
 import { DEFAULT_PER_PAGE, SubscribersFilterBy, SubscribersSortBy } from '../constants';
 import { getSubscribersCacheKey } from '../helpers';
-import useManySubsSite from '../hooks/use-many-subs-site';
 import type { SubscriberEndpointResponse } from '../types';
 
 type SubscriberQueryParams = {
@@ -11,8 +11,12 @@ type SubscriberQueryParams = {
 	perPage?: number;
 	search?: string;
 	sortTerm?: SubscribersSortBy;
+	sortOrder?: 'asc' | 'desc';
 	filterOption?: SubscribersFilterBy;
-	timestamp: number;
+	filters?: SubscribersFilterBy[];
+	timestamp?: number;
+	limitData?: boolean;
+	use_new_helper?: boolean;
 };
 
 const useSubscribersQuery = ( {
@@ -20,45 +24,46 @@ const useSubscribersQuery = ( {
 	page = 1,
 	perPage = DEFAULT_PER_PAGE,
 	search,
-	timestamp,
 	sortTerm = SubscribersSortBy.DateSubscribed,
-	filterOption = SubscribersFilterBy.All,
+	sortOrder,
+	filters = [],
 }: SubscriberQueryParams ) => {
-	const { hasManySubscribers, isLoading } = useManySubsSite( siteId );
-	const shouldFetch = ! isLoading;
+	const use_new_helper = config.isEnabled( 'subscribers-helper-library' );
 
 	const query = useQuery< SubscriberEndpointResponse >( {
-		queryKey: getSubscribersCacheKey(
+		queryKey: getSubscribersCacheKey( {
 			siteId,
 			page,
 			perPage,
 			search,
 			sortTerm,
-			filterOption,
-			hasManySubscribers,
-			timestamp
-		),
+			filters,
+			sortOrder,
+			use_new_helper,
+		} ),
 		queryFn: () => {
-			// This is a temporary solution until we have a better way to handle this.
-			const pathRoute = hasManySubscribers ? 'subscribers_by_user_type' : 'subscribers';
-			const userTypeField = hasManySubscribers ? 'user_type' : 'filter';
+			const params = new URLSearchParams( {
+				per_page: perPage.toString(),
+				page: page.toString(),
+				use_new_helper: use_new_helper.toString(),
+				...( search && { search } ),
+				...( sortTerm && { sort: sortTerm } ),
+				...( sortOrder && { sort_order: sortOrder } ),
+			} );
 
-			const validatedFilterOption =
-				hasManySubscribers && filterOption === SubscribersFilterBy.All
-					? SubscribersFilterBy.WPCOM
-					: filterOption;
+			filters.forEach( ( filter ) => {
+				params.append( 'filters[]', filter );
+			} );
 
 			return wpcom.req.get( {
-				path: `/sites/${ siteId }/${ pathRoute }?per_page=${ perPage }&page=${ page }${
-					search ? `&search=${ encodeURIComponent( search ) }` : ''
-				}${ sortTerm ? `&sort=${ sortTerm }` : '' }&${ userTypeField }=${ validatedFilterOption }`,
+				path: `/sites/${ siteId }/subscribers?${ params.toString() }`,
 				apiNamespace: 'wpcom/v2',
 			} );
 		},
-		enabled: !! siteId && shouldFetch,
+		enabled: !! siteId,
 	} );
 
-	return { ...query, isLoading: query.isLoading || isLoading };
+	return { ...query, isLoading: query.isLoading };
 };
 
 export default useSubscribersQuery;

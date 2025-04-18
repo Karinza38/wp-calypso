@@ -13,11 +13,8 @@
 	}
 
 	.navigation-header {
-		margin: 0 auto;
-		padding: 0 0 16px 0;
-
-		@include breakpoint-deprecated( "<660px" ) {
-			padding: 0 16px 16px;
+		&::after {
+			top: 6px;
 		}
 	}
 }
@@ -39,11 +36,11 @@
 }
 
 .reader__content .tag-stream__header {
-	margin-bottom: 24px;
-}
+	margin-bottom: 20px;
 
-.reader__content .tag-stream__header.has-description {
-	padding-bottom: 16px;
+	&.has-description {
+		padding-bottom: 16px;
+	}
 }
 
 .tag-stream__header-title-group {
@@ -63,7 +60,8 @@
 .tag-stream__header-controls {
 	display: flex;
 	justify-content: space-between;
-	align-items: flex-start;
+	align-items: center;
+	padding-top: 3px;
 
 	@include breakpoint-deprecated( "<660px" ) {
 		margin: 0 16px;
@@ -101,12 +99,6 @@
 	}
 }
 
-.is-reader-page .reader-feed-header.has-back-button .card.header-cake {
-	@include breakpoint-deprecated( "<660px" ) {
-		margin: 32px 0;
-	}
-}
-
 .is-reader-page .main .tag-stream__empty-content {
 	margin-top: 15px;
 
@@ -117,19 +109,12 @@
 
 // Tag page only shows site titles in the sidebar, so spacing needs to be tighter
 .tag-stream__main {
-	.stream__two-column .reader__content::before {
-		content: "";
-		background-color: #e9e9ea;
-		position: absolute;
-		right: -56px;
-		top: 0;
-		height: calc(100% + 180px);
-		margin-top: -200px;
-		width: 1px;
-	}
 
 	.stream__two-column .stream__right-column {
 		margin-top: 0;
+		.reader-subscription-list-item .follow-button__label {
+			display: none;
+		}
 	}
 
 	.reader-sidebar-site_link {

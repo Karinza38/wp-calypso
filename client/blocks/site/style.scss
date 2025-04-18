@@ -13,14 +13,32 @@
 	justify-content: space-between;
 	padding: 0;
 	position: relative;
+	.site-icon {
+		position: relative;
+		height: 30px;
+		width: 30px;
+		overflow: hidden;
+		align-self: flex-start;
+		margin-right: 8px;
+		flex: 0 0 auto;
+		background-color: var(--color-neutral-10);
+		svg {
+			transform: scale(0.65);
+			fill: var(--color-neutral-0);
+		}
+	}
 
-	&.is-reskinned {
-		.site-icon {
-			background-color: var(--color-neutral-0);
-			svg {
-				transform: scale(0.65);
-				fill: var(--color-neutral-50);
-			}
+	.site__domain.is-loading {
+		animation: pulse-light 1.8s ease-in-out infinite;
+		background-color: var( --color-neutral-10 );
+		color: transparent;
+		width: 50%;
+		height: 12px;
+		margin-top: 3px;
+		display: block;
+
+		&::after {
+			display: none;
 		}
 	}
 
@@ -41,13 +59,6 @@
 
 			&::after {
 				display: none;
-			}
-		}
-
-		.notouch .sites-popover &:hover {
-			.site__title,
-			.site__domain {
-				color: transparent;
 			}
 		}
 	}
@@ -124,17 +135,6 @@
 	}
 }
 
-// Adjusts the SiteIcon component for use
-// within a Site item
-.site .site-icon {
-	position: relative;
-	height: 30px;
-	width: 30px;
-	overflow: hidden;
-	align-self: flex-start;
-	margin-right: 8px;
-	flex: 0 0 auto;
-}
 
 // The group of site title and domain
 .site__info {
@@ -231,6 +231,13 @@
 		background: var(--p2-color-link);
 		color: var(--p2-color-white);
 	}
+
+	&.site__badge-private,
+	&.site__badge-coming-soon {
+		background-color: transparent;
+		color: var(--color-neutral-60);
+		border: solid 1px color-mix( in srgb, currentColor 50%, transparent );
+	}
 }
 
 .current-site .site:hover .site__badge,
@@ -242,6 +249,13 @@
 	&.is-p2-workspace {
 		background: var(--p2-color-link-dark);
 		color: var(--p2-color-white);
+	}
+
+	&.site__badge-private,
+	&.site__badge-coming-soon {
+		background-color: transparent;
+		color: var(--color-sidebar-text);
+		border: solid 1px color-mix( in srgb, currentColor 50%, transparent );
 	}
 }
 
@@ -259,6 +273,13 @@
 		&.is-p2-workspace {
 			background: var(--p2-color-link);
 			color: var(--p2-color-white);
+		}
+
+		&.site__badge-private,
+		&.site__badge-coming-soon {
+			background-color: transparent;
+			color: var(--color-sidebar-text);
+			border: solid 1px color-mix( in srgb, currentColor 50%, transparent );
 		}
 	}
 }

@@ -1,6 +1,5 @@
 import { FormLabel } from '@automattic/components';
-import { englishLocales } from '@automattic/i18n-utils';
-import { hasTranslation } from '@wordpress/i18n';
+import { Spinner } from '@wordpress/components';
 import { localize } from 'i18n-calypso';
 import PropTypes from 'prop-types';
 import { createRef, Component } from 'react';
@@ -38,7 +37,7 @@ class RequestLoginEmailForm extends Component {
 		isFetching: PropTypes.bool,
 		isJetpackMagicLinkSignUpEnabled: PropTypes.bool,
 		redirectTo: PropTypes.string,
-		requestError: PropTypes.string,
+		requestError: PropTypes.object,
 		showCheckYourEmail: PropTypes.bool,
 		userEmail: PropTypes.string,
 		flow: PropTypes.string,
@@ -58,6 +57,7 @@ class RequestLoginEmailForm extends Component {
 		onSubmitEmail: PropTypes.func,
 		onSendEmailLogin: PropTypes.func,
 		createAccountForNewUser: PropTypes.bool,
+		shouldShowLoadingEllipsis: PropTypes.bool,
 		blogId: PropTypes.string,
 		errorMessage: PropTypes.string,
 		onErrorDismiss: PropTypes.func,
@@ -65,6 +65,7 @@ class RequestLoginEmailForm extends Component {
 		isEmailInputError: PropTypes.bool,
 		isSubmitButtonDisabled: PropTypes.bool,
 		isSubmitButtonBusy: PropTypes.bool,
+		onReady: PropTypes.func,
 	};
 
 	state = {
@@ -80,6 +81,10 @@ class RequestLoginEmailForm extends Component {
 			wpcom.req
 				.get( `/sites/${ this.props.blogId }` )
 				.then( ( result ) => this.setState( { site: result } ) );
+		}
+
+		if ( this.props.onReady ) {
+			this.props.onReady();
 		}
 	}
 
@@ -132,23 +137,16 @@ class RequestLoginEmailForm extends Component {
 	}
 
 	getSubHeaderText() {
-		const { translate, locale, subHeaderText } = this.props;
+		const { translate, subHeaderText } = this.props;
 		const siteName = this.state.site?.name;
 
 		if ( subHeaderText ) {
 			return subHeaderText;
 		}
 
-		// If we have a siteName and new translation is available
-		if (
-			siteName &&
-			( englishLocales.includes( locale ) ||
-				hasTranslation(
-					'We’ll send you an email with a login link that will log you in right away to {site name}.'
-				) )
-		) {
+		if ( siteName ) {
 			return translate(
-				'We’ll send you an email with a login link that will log you in right away to %(siteName)s.',
+				'We’ll send you an email with a link that will log you in right away to %(siteName)s.',
 				{
 					args: {
 						siteName,
@@ -157,20 +155,7 @@ class RequestLoginEmailForm extends Component {
 			);
 		}
 
-		// If no siteName but new translation is available
-		if (
-			englishLocales.includes( locale ) ||
-			hasTranslation( 'We’ll send you an email with a login link that will log you in right away.' )
-		) {
-			return translate(
-				'We’ll send you an email with a login link that will log you in right away.'
-			);
-		}
-
-		// Fallback is old text
-		return translate(
-			'Get a link sent to the email address associated with your account to log in instantly without your password.'
-		);
+		return translate( 'We’ll send you an email with a link that will log you in right away.' );
 	}
 
 	render() {
@@ -187,7 +172,6 @@ class RequestLoginEmailForm extends Component {
 			hideSubHeaderText,
 			inputPlaceholder,
 			submitButtonLabel,
-			locale,
 			customFormLabel,
 			onSubmitEmail,
 			errorMessage,
@@ -196,7 +180,13 @@ class RequestLoginEmailForm extends Component {
 			isEmailInputError,
 			isSubmitButtonDisabled,
 			isSubmitButtonBusy,
+			shouldShowLoadingEllipsis,
+			isFromJetpackOnboarding,
 		} = this.props;
+
+		if ( shouldShowLoadingEllipsis ) {
+			return <Spinner className="magic-login__loading-spinner--jetpack" />;
+		}
 
 		const usernameOrEmail = this.getUsernameOrEmailFromState();
 		const siteIcon = this.state.site?.icon?.img ?? this.state.site?.icon?.ico ?? null;
@@ -205,7 +195,11 @@ class RequestLoginEmailForm extends Component {
 			const emailAddress = usernameOrEmail.indexOf( '@' ) > 0 ? usernameOrEmail : null;
 
 			return isJetpackMagicLinkSignUpEnabled ? (
-				<EmailedLoginLinkSuccessfullyJetpackConnect emailAddress={ emailAddress } />
+				<EmailedLoginLinkSuccessfullyJetpackConnect
+					emailAddress={ emailAddress }
+					shouldRedirect={ ! isFromJetpackOnboarding }
+					onResendEmail={ this.onSubmit }
+				/>
 			) : (
 				<EmailedLoginLinkSuccessfully emailAddress={ emailAddress } />
 			);
@@ -219,20 +213,15 @@ class RequestLoginEmailForm extends Component {
 			! isSubmitButtonDisabled;
 
 		const errorText =
-			typeof requestError === 'string' && requestError.length
-				? requestError
+			typeof requestError?.message === 'string' && requestError?.message.length
+				? requestError?.message
 				: translate( 'Unable to complete request' );
 
-		const buttonLabel =
-			englishLocales.includes( locale ) || hasTranslation( 'Send Link' )
-				? translate( 'Send link' )
-				: translate( 'Get Link' );
+		const buttonLabel = translate( 'Send link' );
 
-		const formLabel =
-			customFormLabel ||
-			( hasTranslation( 'Email address or username' )
-				? this.props.translate( 'Email address or username' )
-				: this.props.translate( 'Email Address or Username' ) );
+		const formLabel = customFormLabel
+			? this.props.translate( 'Email address or username' )
+			: this.props.translate( 'Email Address or Username' );
 
 		const onSubmit = onSubmitEmail
 			? ( e ) => onSubmitEmail( this.getUsernameOrEmailFromState(), e )
@@ -253,16 +242,20 @@ class RequestLoginEmailForm extends Component {
 				<h1 className="magic-login__form-header">
 					{ headerText || translate( 'Email me a login link' ) }
 				</h1>
-				{ currentUser && currentUser.username && (
-					<p>
-						{ translate( 'NOTE: You are already logged in as user: %(user)s', {
-							args: {
-								user: currentUser.username,
-							},
-						} ) }
-					</p>
-				) }
 				<LoggedOutForm onSubmit={ onSubmit }>
+					{ currentUser && currentUser.username && (
+						<Notice
+							showDismiss={ false }
+							className="magic-login__form-header-notice"
+							status="is-info"
+							theme="light"
+							text={ translate( 'You are already logged in as user: %(user)s', {
+								args: {
+									user: currentUser.username,
+								},
+							} ) }
+						></Notice>
+					) }
 					{ ! hideSubHeaderText && (
 						<p className="magic-login__form-sub-header">{ this.getSubHeaderText() }</p>
 					) }

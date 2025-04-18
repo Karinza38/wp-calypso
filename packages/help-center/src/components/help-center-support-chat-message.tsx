@@ -1,9 +1,8 @@
+/* eslint-disable no-restricted-imports */
 import { recordTracksEvent } from '@automattic/calypso-analytics';
-import { Gravatar } from '@automattic/components';
-import { getRelativeTimeString, useLocale } from '@automattic/i18n-utils';
-import { type ZendeskMessage } from '@automattic/odie-client';
+import { Gravatar, TimeSince } from '@automattic/components';
+import { getNumericDateTimeString, useLocale } from '@automattic/i18n-utils';
 import { HumanAvatar } from '@automattic/odie-client/src/assets';
-import { useGetSupportInteractionById } from '@automattic/odie-client/src/data/use-get-support-interaction-by-id';
 import { useDispatch as useDataStoreDispatch } from '@wordpress/data';
 import { chevronRight, Icon } from '@wordpress/icons';
 import { useI18n } from '@wordpress/react-i18n';
@@ -11,9 +10,9 @@ import clsx from 'clsx';
 import { Link } from 'react-router-dom';
 import { useHelpCenterContext } from '../contexts/HelpCenterContext';
 import { HELP_CENTER_STORE } from '../stores';
+import type { SupportInteraction, ZendeskMessage } from '@automattic/odie-client';
 
 import './help-center-support-chat-message.scss';
-
 const trackContactButtonClicked = ( sectionName: string ) => {
 	recordTracksEvent( 'calypso_inlinehelp_support_chat_message_click', {
 		force_site_id: true,
@@ -27,8 +26,9 @@ export const HelpCenterSupportChatMessage = ( {
 	badgeCount = 0,
 	isUnread = false,
 	navigateTo = '',
-	supportInteractionId,
+	supportInteraction,
 	sectionName,
+	conversationStatus,
 }: {
 	message: ZendeskMessage;
 	badgeCount?: number;
@@ -36,8 +36,9 @@ export const HelpCenterSupportChatMessage = ( {
 	isUnread: boolean;
 	navigateTo: string;
 	altText?: string;
-	supportInteractionId: string | null;
+	supportInteraction: SupportInteraction | undefined;
 	sectionName?: string;
+	conversationStatus?: string;
 } ) => {
 	const { __ } = useI18n();
 	const locale = useLocale();
@@ -45,8 +46,9 @@ export const HelpCenterSupportChatMessage = ( {
 	const { displayName, received, text, altText } = message;
 	const helpCenterContext = useHelpCenterContext();
 	const helpCenterContextSectionName = helpCenterContext.sectionName;
-	const { data: supportInteraction } = useGetSupportInteractionById( supportInteractionId );
 	const { setCurrentSupportInteraction } = useDataStoreDispatch( HELP_CENTER_STORE );
+	const messageDisplayName =
+		message.role === 'business' ? __( 'Happiness Engineer', __i18n_text_domain__ ) : displayName;
 
 	const renderAvatar = () => {
 		if ( message.role === 'business' ) {
@@ -72,6 +74,7 @@ export const HelpCenterSupportChatMessage = ( {
 			} }
 			className={ clsx( 'help-center-support-chat__conversation-container', {
 				'is-unread-message': isUnread,
+				[ `is-${ conversationStatus }` ]: conversationStatus,
 			} ) }
 		>
 			<div
@@ -91,7 +94,7 @@ export const HelpCenterSupportChatMessage = ( {
 				</div>
 				<div className="help-center-support-chat__conversation-sub-information">
 					<span className="help-center-support-chat__conversation-information-name">
-						{ displayName }
+						{ messageDisplayName }
 					</span>
 					<Icon
 						size={ 2 }
@@ -108,11 +111,7 @@ export const HelpCenterSupportChatMessage = ( {
 						}
 					/>
 					<span>
-						{ getRelativeTimeString( {
-							timestamp: received * 1000,
-							locale,
-							style: 'long',
-						} ) }
+						<TimeSince date={ getNumericDateTimeString( received * 1000, locale ) } />
 					</span>
 				</div>
 			</div>

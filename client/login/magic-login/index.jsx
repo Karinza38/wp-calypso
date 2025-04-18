@@ -14,7 +14,6 @@ import FormButton from 'calypso/components/forms/form-button';
 import FormTextInput from 'calypso/components/forms/form-text-input';
 import GlobalNotices from 'calypso/components/global-notices';
 import GravatarLoginLogo from 'calypso/components/gravatar-login-logo';
-import JetpackHeader from 'calypso/components/jetpack-header';
 import LocaleSuggestions from 'calypso/components/locale-suggestions';
 import Main from 'calypso/components/main';
 import Notice from 'calypso/components/notice';
@@ -24,11 +23,11 @@ import {
 	isGravatarOAuth2Client,
 	isWPJobManagerOAuth2Client,
 	isGravPoweredOAuth2Client,
-	isWooOAuth2Client,
 	isStudioAppOAuth2Client,
 } from 'calypso/lib/oauth2-clients';
 import { login } from 'calypso/lib/paths';
 import getToSAcceptancePayload from 'calypso/lib/tos-acceptance-tracking';
+import userAgent from 'calypso/lib/user-agent';
 import wpcom from 'calypso/lib/wp';
 import {
 	recordTracksEventWithClientId as recordTracksEvent,
@@ -60,20 +59,24 @@ import getCurrentLocaleSlug from 'calypso/state/selectors/get-current-locale-slu
 import getCurrentQueryArguments from 'calypso/state/selectors/get-current-query-arguments';
 import { getCurrentRoute } from 'calypso/state/selectors/get-current-route';
 import getInitialQueryArguments from 'calypso/state/selectors/get-initial-query-arguments';
+import getIsWCCOM from 'calypso/state/selectors/get-is-wccom';
 import getLocaleSuggestions from 'calypso/state/selectors/get-locale-suggestions';
 import getMagicLoginCurrentView from 'calypso/state/selectors/get-magic-login-current-view';
 import getMagicLoginRequestAuthError from 'calypso/state/selectors/get-magic-login-request-auth-error';
+import getMagicLoginRequestEmailError from 'calypso/state/selectors/get-magic-login-request-email-error';
 import getMagicLoginRequestedAuthSuccessfully from 'calypso/state/selectors/get-magic-login-requested-auth-successfully';
 import isFetchingMagicLoginAuth from 'calypso/state/selectors/is-fetching-magic-login-auth';
 import isFetchingMagicLoginEmail from 'calypso/state/selectors/is-fetching-magic-login-email';
 import isMagicLoginEmailRequested from 'calypso/state/selectors/is-magic-login-email-requested';
-import isWooPasswordlessJPCFlow from 'calypso/state/selectors/is-woo-passwordless-jpc-flow';
+import isWooJPCFlow from 'calypso/state/selectors/is-woo-jpc-flow';
 import { withEnhancers } from 'calypso/state/utils';
 import MainContentWooCoreProfiler from './main-content-woo-core-profiler';
 import RequestLoginEmailForm from './request-login-email-form';
 import './style.scss';
 
 const RESEND_EMAIL_COUNTDOWN_TIME = 90; // In seconds
+const GRAVATAR_FROM_3RD_PARTY = '3rd-party';
+const GRAVATAR_FROM_QUICK_EDITOR = 'quick-editor';
 
 class MagicLogin extends Component {
 	static propTypes = {
@@ -107,7 +110,7 @@ class MagicLogin extends Component {
 
 		// From `localize`
 		translate: PropTypes.func.isRequired,
-		isWooPasswordlessJPC: PropTypes.bool,
+		isWooJPC: PropTypes.bool,
 	};
 
 	state = {
@@ -123,16 +126,45 @@ class MagicLogin extends Component {
 		showEmailCodeVerification: false,
 		maskedEmailAddress: '',
 		hashedEmail: null,
+		isFormReady: false,
+	};
+
+	handleFormReady = () => {
+		this.setState( { isFormReady: true } );
 	};
 
 	componentDidMount() {
+		const { userEmail, oauth2Client, query } = this.props;
+
 		this.props.recordPageView( '/log-in/link', 'Login > Link' );
 
-		if ( isGravPoweredOAuth2Client( this.props.oauth2Client ) ) {
+		if ( isGravPoweredOAuth2Client( oauth2Client ) ) {
+			const isGravatarFlow = isGravatarFlowOAuth2Client( oauth2Client );
+
 			this.props.recordTracksEvent( 'calypso_gravatar_powered_magic_login_email_form', {
-				client_id: this.props.oauth2Client.id,
-				client_name: this.props.oauth2Client.title,
+				client_id: oauth2Client.id,
+				client_name: oauth2Client.title,
+				from: query?.gravatar_from,
+				is_gravatar_flow: isGravatarFlow,
+				is_gravatar_flow_with_email: !! ( isGravatarFlow && query?.email_address ),
+				is_initial_view: true,
 			} );
+		}
+
+		// If the auto_trigger query parameter is set to true, automatically trigger the email send.
+		if ( query?.auto_trigger !== undefined ) {
+			if ( userEmail && emailValidator.validate( userEmail ) ) {
+				if ( isGravPoweredOAuth2Client( oauth2Client ) ) {
+					this.handleGravPoweredEmailSubmit( userEmail );
+				} else {
+					this.props.sendEmailLogin( userEmail, {
+						redirectTo: query?.redirect_to,
+						requestLoginEmailFormFlow: true,
+						createAccount: true,
+						flow: 'jetpack', // Auto trigger is Jetpack flow
+					} );
+				}
+			}
 		}
 	}
 
@@ -140,6 +172,7 @@ class MagicLogin extends Component {
 		const {
 			oauth2Client,
 			emailRequested,
+			emailRequestError,
 			localeSuggestions,
 			path,
 			showCheckYourEmail,
@@ -147,8 +180,21 @@ class MagicLogin extends Component {
 			twoFactorEnabled,
 			twoFactorNotificationSent,
 			redirectToSanitized,
+			query,
 		} = this.props;
 		const { showSecondaryEmailOptions, showEmailCodeVerification } = this.state;
+
+		/**
+		 * If the user is not allowed to use magic links and we have auto trigger enabled,
+		 * we simply show the password login form.
+		 *
+		 * If we don't check for auto trigger here, the normal wp.com login flow will confuse the users
+		 * when they land here without the auto trigger, i.e. when they click on "Email me a login link"
+		 * at wp.com/log-in
+		 */
+		if ( 'login_link_not_allowed' === emailRequestError?.code && query?.auto_trigger ) {
+			this.onClickEnterPasswordInstead();
+		}
 
 		if ( isGravPoweredOAuth2Client( oauth2Client ) ) {
 			if ( prevProps.isSendingEmail && emailRequested ) {
@@ -169,12 +215,18 @@ class MagicLogin extends Component {
 
 			if (
 				( prevProps.showCheckYourEmail && ! showCheckYourEmail ) ||
+				( prevState.showEmailCodeVerification && ! showEmailCodeVerification ) ||
 				( prevState.showSecondaryEmailOptions && ! showSecondaryEmailOptions )
 			) {
-				this.props.recordTracksEvent(
-					'calypso_gravatar_powered_magic_login_email_form',
-					eventOptions
-				);
+				const isGravatarFlow = isGravatarFlowOAuth2Client( oauth2Client );
+
+				this.props.recordTracksEvent( 'calypso_gravatar_powered_magic_login_email_form', {
+					...eventOptions,
+					from: query?.gravatar_from,
+					is_gravatar_flow: isGravatarFlow,
+					is_gravatar_flow_with_email: !! ( isGravatarFlow && query?.email_address ),
+					is_initial_view: false,
+				} );
 			}
 
 			if ( ! prevState.showSecondaryEmailOptions && showSecondaryEmailOptions ) {
@@ -223,14 +275,14 @@ class MagicLogin extends Component {
 	}
 
 	onClickEnterPasswordInstead = ( event ) => {
-		event.preventDefault();
+		event?.preventDefault();
 
 		this.props.recordTracksEvent( 'calypso_login_email_link_page_click_back' );
 
 		const loginParameters = {
 			isJetpack: this.props.isJetpackLogin,
 			locale: this.props.locale,
-			emailAddress: this.props.query?.email_address,
+			emailAddress: this.props.userEmail,
 			signupUrl: this.props.query?.signup_url,
 			usernameOnly: true,
 		};
@@ -239,16 +291,20 @@ class MagicLogin extends Component {
 	};
 
 	renderLinks() {
-		const { isJetpackLogin, locale, showCheckYourEmail, translate, isWoo, query } = this.props;
+		const { isJetpackLogin, locale, showCheckYourEmail, translate, isWCCOM, query } = this.props;
 
 		const isA4A = query?.redirect_to?.includes( 'agencies.automattic.com/client' ) ?? false;
+		const { isiPad, isiPod, isiPhone, isAndroid } = userAgent;
+		const isMobile = isiPad || isiPod || isiPhone || isAndroid;
 
-		if ( isWoo ) {
+		const hideAppPromo = isA4A || ! isMobile;
+
+		if ( isWCCOM ) {
 			return null;
 		}
 
 		if ( showCheckYourEmail ) {
-			if ( isA4A ) {
+			if ( hideAppPromo ) {
 				return null;
 			}
 			return (
@@ -288,7 +344,7 @@ class MagicLogin extends Component {
 						{ linkBack }
 					</a>
 				</div>
-				{ ! isA4A && (
+				{ ! hideAppPromo && (
 					<AppPromo
 						title={ translate( 'Stay logged in with the Jetpack Mobile App' ) }
 						campaign="calypso-login-link"
@@ -313,8 +369,27 @@ class MagicLogin extends Component {
 	}
 
 	renderGutenboardingLogo() {
-		if ( this.props.isWoo ) {
+		if ( this.props.isWCCOM ) {
 			return null;
+		}
+
+		if ( this.props.isJetpackLogin && ! this.props.isFromAutomatticForAgenciesPlugin ) {
+			return (
+				<div className="magic-login__gutenboarding-wordpress-logo">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+					>
+						<path
+							d="M12 0C9.62663 0 7.30655 0.703788 5.33316 2.02236C3.35977 3.34094 1.8217 5.21508 0.913451 7.4078C0.00519938 9.60051 -0.232441 12.0133 0.230582 14.3411C0.693605 16.6689 1.83649 18.807 3.51472 20.4853C5.19295 22.1635 7.33115 23.3064 9.65892 23.7694C11.9867 24.2324 14.3995 23.9948 16.5922 23.0865C18.7849 22.1783 20.6591 20.6402 21.9776 18.6668C23.2962 16.6934 24 14.3734 24 12C24 8.8174 22.7357 5.76515 20.4853 3.51472C18.2348 1.26428 15.1826 0 12 0ZM11.3684 13.9895H5.40632L11.3684 2.35579V13.9895ZM12.5811 21.6189V9.98526H18.5621L12.5811 21.6189Z"
+							fill="#069E08"
+						/>
+					</svg>
+				</div>
+			);
 		}
 
 		return (
@@ -615,10 +690,14 @@ class MagicLogin extends Component {
 		} = this.state;
 		const eventOptions = { client_id: oauth2Client.id, client_name: oauth2Client.title };
 		const isFromGravatar3rdPartyApp =
-			isGravatarOAuth2Client( oauth2Client ) && query?.gravatar_from === '3rd-party';
+			isGravatarOAuth2Client( oauth2Client ) && query?.gravatar_from === GRAVATAR_FROM_3RD_PARTY;
+		const isFromGravatarQuickEditor =
+			isGravatarOAuth2Client( oauth2Client ) && query?.gravatar_from === GRAVATAR_FROM_QUICK_EDITOR;
 		const isGravatarFlowWithEmail = !! (
 			isGravatarFlowOAuth2Client( oauth2Client ) && query?.email_address
 		);
+		const shouldShowSwitchEmail =
+			! isFromGravatar3rdPartyApp && ! isFromGravatarQuickEditor && ! isGravatarFlowWithEmail;
 
 		this.emailToSha256( usernameOrEmail ).then( ( email ) =>
 			this.setState( { hashedEmail: email } )
@@ -720,7 +799,7 @@ class MagicLogin extends Component {
 					{ translate( 'Continue' ) }
 				</FormButton>
 				<footer className="grav-powered-magic-login__footer">
-					{ ! isFromGravatar3rdPartyApp && ! isGravatarFlowWithEmail && (
+					{ shouldShowSwitchEmail && (
 						<button onClick={ this.handleGravPoweredEmailSwitch }>
 							{ translate( 'Switch email' ) }
 						</button>
@@ -752,16 +831,24 @@ class MagicLogin extends Component {
 			resendEmailCountdown,
 		} = this.state;
 		const isFromGravatar3rdPartyApp =
-			isGravatarOAuth2Client( oauth2Client ) && query?.gravatar_from === '3rd-party';
+			isGravatarOAuth2Client( oauth2Client ) && query?.gravatar_from === GRAVATAR_FROM_3RD_PARTY;
+		const isFromGravatarQuickEditor =
+			isGravatarOAuth2Client( oauth2Client ) && query?.gravatar_from === GRAVATAR_FROM_QUICK_EDITOR;
 		const isGravatarFlowWithEmail = !! (
 			isGravatarFlowOAuth2Client( oauth2Client ) && query?.email_address
 		);
+		const shouldShowSwitchEmail =
+			! isFromGravatar3rdPartyApp && ! isFromGravatarQuickEditor && ! isGravatarFlowWithEmail;
 		const isProcessingCode = isValidatingCode || isCodeValidated;
 		let errorText = translate( 'Something went wrong. Please try again.' );
 
 		if ( codeValidationError?.type === 'sms_code_throttled' ) {
 			errorText = translate(
 				'Your two-factor code via SMS can only be requested once per minute. Please wait, then request a new code via email to proceed.'
+			);
+		} else if ( codeValidationError?.type === 'user_email' ) {
+			errorText = translate(
+				"We're sorry, you can't create a new account at this time. Please try a different email address or disable any VPN before trying again."
 			);
 		} else if ( codeValidationError?.code === 403 ) {
 			errorText = translate(
@@ -854,7 +941,7 @@ class MagicLogin extends Component {
 									args: { countdown: resendEmailCountdown },
 							  } ) }
 					</button>
-					{ ! isFromGravatar3rdPartyApp && ! isGravatarFlowWithEmail && (
+					{ shouldShowSwitchEmail && (
 						<button
 							onClick={ () => {
 								this.resetResendEmailCountdown();
@@ -961,9 +1048,15 @@ class MagicLogin extends Component {
 		const isGravatar = isGravatarOAuth2Client( oauth2Client );
 		const isWPJobManager = isWPJobManagerOAuth2Client( oauth2Client );
 		const isFromGravatarSignup = isGravatar && query?.gravatar_from === 'signup';
-		const isFromGravatar3rdPartyApp = isGravatar && query?.gravatar_from === '3rd-party';
+		const isFromGravatar3rdPartyApp =
+			isGravatar && query?.gravatar_from === GRAVATAR_FROM_3RD_PARTY;
+		const isFromGravatarQuickEditor =
+			isGravatar && query?.gravatar_from === GRAVATAR_FROM_QUICK_EDITOR;
 		const isEmailInputDisabled =
-			isFromGravatar3rdPartyApp || isRequestingEmail || isGravatarFlowWithEmail;
+			isFromGravatar3rdPartyApp ||
+			isFromGravatarQuickEditor ||
+			isRequestingEmail ||
+			isGravatarFlowWithEmail;
 		const submitButtonLabel = isGravatar
 			? translate( 'Continue' )
 			: translate( 'Send me sign in link' );
@@ -976,8 +1069,8 @@ class MagicLogin extends Component {
 			emailAddress: query?.email_address,
 		} );
 		let headerText = isFromGravatarSignup
-			? translate( 'Create your Profile' )
-			: translate( 'Edit your Profile' );
+			? translate( 'Create your Gravatar' )
+			: translate( 'Edit your Gravatar' );
 		headerText = isWPJobManager ? translate( 'Sign in with your email' ) : headerText;
 		let subHeader = '';
 
@@ -985,7 +1078,7 @@ class MagicLogin extends Component {
 			subHeader = translate( '%(clientTitle)s profiles are powered by Gravatar.', {
 				args: { clientTitle: oauth2Client.title },
 			} );
-		} else if ( isFromGravatar3rdPartyApp ) {
+		} else if ( isFromGravatar3rdPartyApp || isFromGravatarQuickEditor ) {
 			subHeader = translate( 'Profiles and avatars are powered by Gravatar.' );
 		}
 
@@ -1214,11 +1307,12 @@ class MagicLogin extends Component {
 			query,
 			translate,
 			showCheckYourEmail: showEmailLinkVerification,
-			isWooPasswordlessJPC,
+			isWooJPC,
+			isSendingEmail,
+			isFromJetpackOnboarding,
 		} = this.props;
 		const { showSecondaryEmailOptions, showEmailCodeVerification, usernameOrEmail } = this.state;
-
-		if ( isWooPasswordlessJPC ) {
+		if ( isWooJPC ) {
 			return (
 				<Main className="magic-login magic-login__request-link is-white-login">
 					{ this.renderLocaleSuggestions() }
@@ -1235,7 +1329,9 @@ class MagicLogin extends Component {
 			let renderContent = this.renderGravPoweredMagicLogin();
 			const hasSubHeader =
 				isGravatarFlowOAuth2Client( oauth2Client ) ||
-				( isGravatarOAuth2Client( oauth2Client ) && query?.gravatar_from === '3rd-party' );
+				( isGravatarOAuth2Client( oauth2Client ) &&
+					( query?.gravatar_from === GRAVATAR_FROM_3RD_PARTY ||
+						query?.gravatar_from === GRAVATAR_FROM_QUICK_EDITOR ) );
 
 			if ( showSecondaryEmailOptions ) {
 				renderContent = this.renderGravPoweredSecondaryEmailOptions();
@@ -1281,21 +1377,26 @@ class MagicLogin extends Component {
 			);
 		}
 
+		const isJetpackMagicLinkSignUpEnabled =
+			config.isEnabled( 'jetpack/magic-link-signup' ) && this.props.isJetpackLogin;
+		const shouldShowLoadingEllipsis =
+			isFromJetpackOnboarding &&
+			isJetpackMagicLinkSignUpEnabled &&
+			( isSendingEmail || ! this.state.isFormReady );
+
 		// If this is part of the Jetpack login flow and the `jetpack/magic-link-signup` feature
 		// flag is enabled, some steps will display a different UI
 		const requestLoginEmailFormProps = {
 			...( this.props.isJetpackLogin ? { flow: 'jetpack' } : {} ),
-			...( this.props.isJetpackLogin && config.isEnabled( 'jetpack/magic-link-signup' )
-				? { isJetpackMagicLinkSignUpEnabled: true }
-				: {} ),
+			...( isJetpackMagicLinkSignUpEnabled ? { isJetpackMagicLinkSignUpEnabled: true } : {} ),
 			createAccountForNewUser: true,
+			shouldShowLoadingEllipsis,
+			onReady: this.handleFormReady,
+			isFromJetpackOnboarding,
 		};
 
 		return (
 			<Main className="magic-login magic-login__request-link is-white-login">
-				{ this.props.isJetpackLogin && ! this.props.isFromAutomatticForAgenciesPlugin && (
-					<JetpackHeader />
-				) }
 				{ this.renderGutenboardingLogo() }
 				{ this.props.isFromAutomatticForAgenciesPlugin && (
 					<A4ALogo fullA4A size={ 58 } className="magic-login__a4a-logo" />
@@ -1307,7 +1408,7 @@ class MagicLogin extends Component {
 
 				<RequestLoginEmailForm { ...requestLoginEmailFormProps } />
 
-				{ this.renderLinks() }
+				{ ! shouldShowLoadingEllipsis && this.renderLinks() }
 			</Main>
 		);
 	}
@@ -1319,6 +1420,7 @@ const mapState = ( state ) => ( {
 	showCheckYourEmail: getMagicLoginCurrentView( state ) === CHECK_YOUR_EMAIL_PAGE,
 	isSendingEmail: isFetchingMagicLoginEmail( state ),
 	emailRequested: isMagicLoginEmailRequested( state ),
+	emailRequestError: getMagicLoginRequestEmailError( state ),
 	isJetpackLogin: getCurrentRoute( state ) === '/log-in/jetpack/link',
 	oauth2Client: getCurrentOAuth2Client( state ),
 	userEmail:
@@ -1326,7 +1428,7 @@ const mapState = ( state ) => ( {
 		getCurrentQueryArguments( state ).email_address ||
 		getInitialQueryArguments( state ).email_address,
 	localeSuggestions: getLocaleSuggestions( state ),
-	isWoo: isWooOAuth2Client( getCurrentOAuth2Client( state ) ),
+	isWCCOM: getIsWCCOM( state ),
 	isValidatingCode: isFetchingMagicLoginAuth( state ),
 	isCodeValidated: getMagicLoginRequestedAuthSuccessfully( state ),
 	codeValidationError: getMagicLoginRequestAuthError( state ),
@@ -1336,7 +1438,10 @@ const mapState = ( state ) => ( {
 	isFromAutomatticForAgenciesPlugin:
 		'automattic-for-agencies-client' ===
 		new URLSearchParams( getRedirectToOriginal( state )?.split( '?' )[ 1 ] ).get( 'from' ),
-	isWooPasswordlessJPC: isWooPasswordlessJPCFlow( state ),
+	isFromJetpackOnboarding:
+		new URLSearchParams( getRedirectToOriginal( state )?.split( '?' )[ 1 ] ).get( 'from' ) ===
+		'jetpack-onboarding',
+	isWooJPC: isWooJPCFlow( state ),
 } );
 
 const mapDispatch = {

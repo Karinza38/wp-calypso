@@ -1,7 +1,11 @@
+import { LoadingPlaceholder } from '@automattic/components';
+import { TooltipContent } from '@automattic/components/src/highlight-cards/count-card';
+import { TrendComparison } from '@automattic/components/src/highlight-cards/count-comparison-card';
+import Popover from '@automattic/components/src/popover';
 import clsx from 'clsx';
-import { localize } from 'i18n-calypso';
+import { localize, numberFormatCompact } from 'i18n-calypso';
 import PropTypes from 'prop-types';
-import { Component } from 'react';
+import { Component, createRef } from 'react';
 
 class StatsTabsTab extends Component {
 	static displayName = 'StatsTabsTab';
@@ -15,9 +19,16 @@ class StatsTabsTab extends Component {
 		selected: PropTypes.bool,
 		tabClick: PropTypes.func,
 		compact: PropTypes.bool,
+		previousValue: PropTypes.number,
 		value: PropTypes.oneOfType( [ PropTypes.number, PropTypes.string ] ),
 		format: PropTypes.func,
 	};
+
+	state = {
+		isTooltipVisible: false,
+	};
+
+	tooltipRef = createRef();
 
 	clickHandler = ( event ) => {
 		if ( this.props.tabClick ) {
@@ -27,7 +38,7 @@ class StatsTabsTab extends Component {
 	};
 
 	ensureValue = ( value ) => {
-		const { loading, numberFormat, format } = this.props;
+		const { loading, format, numberFormat } = this.props;
 
 		if ( ! loading && ( value || value === 0 ) ) {
 			return format ? format( value ) : numberFormat( value );
@@ -36,9 +47,27 @@ class StatsTabsTab extends Component {
 		return String.fromCharCode( 8211 );
 	};
 
+	toggleTooltip = ( isShown ) => {
+		this.setState( {
+			isTooltipVisible: isShown,
+		} );
+	};
+
 	render() {
-		const { className, compact, children, icon, href, label, loading, selected, tabClick, value } =
-			this.props;
+		const {
+			className,
+			compact,
+			children,
+			icon,
+			href,
+			label,
+			loading,
+			selected,
+			tabClick,
+			previousValue,
+			value,
+			hasPreviousData,
+		} = this.props;
 
 		const tabClass = clsx( 'stats-tab', className, {
 			'is-selected': selected,
@@ -59,11 +88,51 @@ class StatsTabsTab extends Component {
 				className={ clsx( tabClass, { 'tab-disabled': ! hasClickAction } ) }
 				onClick={ this.clickHandler }
 			>
-				<a href={ href }>
+				{ /* Invisible element for tooltip positioning */ }
+				<div
+					ref={ this.tooltipRef }
+					style={ {
+						display: 'inline-block',
+						width: 50,
+						height: '100%',
+						position: 'absolute',
+						left: 0,
+						opacity: 0,
+					} }
+				/>
+				<a
+					href={ href }
+					onMouseEnter={ () => this.toggleTooltip( true ) }
+					onMouseLeave={ () => this.toggleTooltip( false ) }
+				>
 					{ tabIcon }
 					{ tabLabel }
 					{ tabValue }
 					{ children }
+					{ hasPreviousData && (
+						<div className="stats-tabs__highlight">
+							<span
+								className={ clsx( 'stats-tabs__highlight-value', {
+									'stats-tabs__highlight-loading': loading,
+								} ) }
+							>
+								{ loading ? <LoadingPlaceholder height="30px" /> : numberFormatCompact( value ) }
+							</span>
+							<TrendComparison count={ value } previousCount={ previousValue } />
+							<Popover
+								className="tooltip tooltip--darker highlight-card-tooltip"
+								isVisible={ this.state.isTooltipVisible }
+								position="bottom right"
+								context={ this.tooltipRef.current }
+							>
+								<TooltipContent
+									value={ value }
+									label={ label.toLocaleLowerCase() }
+									previousValue={ previousValue }
+								/>
+							</Popover>
+						</div>
+					) }
 				</a>
 			</li>
 		);

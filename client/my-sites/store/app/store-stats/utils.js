@@ -1,5 +1,4 @@
-import formatCurrency from '@automattic/format-currency';
-import { translate, numberFormat } from 'i18n-calypso';
+import { formatCurrency, translate, numberFormat } from 'i18n-calypso';
 import { find } from 'lodash';
 import moment from 'moment'; // No localization needed in this file.
 import qs from 'qs';
@@ -70,7 +69,7 @@ export function formatValue( value, format, code, decimals ) {
 		case 'currency':
 			return formatCurrency( value, code );
 		case 'number':
-			return numberFormat( value, decimals );
+			return numberFormat( value, { ...( typeof decimals === 'number' && { decimals } ) } );
 		case 'percent':
 			return translate( '%(percentage)s%% ', { args: { percentage: value }, context: 'percent' } );
 		case 'text':

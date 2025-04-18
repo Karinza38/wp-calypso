@@ -1,87 +1,77 @@
 @import "@wordpress/base-styles/breakpoints";
 @import "@wordpress/base-styles/mixins";
-@import "../mixins";
+@import "../variables";
+@import "../shared";
 
-.products-overview__select-license {
-	// :active introduces a 1px border but :focus introduces a 1.5px border which causes the button to move around.
-	border-width: 1.5px !important;
-	border-color: transparent;
-	text-wrap: nowrap;
+$header-compact-height: 114px;
+$header-compact-height-mobile: 128px;
 
-	@include breakpoint-deprecated("<660px") {
-		width: auto;
-		flex-grow: 1;
-	}
-}
-
-.products-overview .assign-license-step-progress {
-	margin-block-start: 16px;
-	margin-block-end: 32px;
-
-	.step-current .assign-license-step-progress__step-circle {
-		background-color: var(--color-primary-50);
-		border: 2px solid var(--color-primary-50);
-		color: var(--color-text-inverted);
-	}
-}
-
-.products-overview.without-bundle {
-	.a4a-layout__header-subtitle {
-		padding-block-end: 16px;
-	}
-}
-
-.a4a-marketplace__header-actions {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	justify-content: flex-end;
-	& > * {
-		flex-grow: 0;
+.products-overview.main.hosting-dashboard-layout {
+	.hosting-dashboard-layout__container {
+		height: auto;
+		overflow-y: scroll;
+		display: block;
 	}
 
-	@include breakpoint-deprecated( "<660px" ) {
-		.current-section button {
-			border: none;
-		}
-		justify-content: space-between;
-	}
-}
+	.products-overview__top {
+		max-height: auto;
+		background: url( calypso/assets/images/a8c-for-agencies/marketplace-hosting-page-bg.svg ) no-repeat top right $header-background-color;
+        border-block-end: none;
+		position: sticky;
+		top: 0;
+		z-index: 100;
+		overflow: hidden;
+		box-sizing: border-box;
+    }
 
-.products-overview__controls {
-	@include licensing-portal-bottom-action-bar;
-	padding: 14px;
-}
-
-
-.products-overview .a4a-layout__header {
-
-	@include breakpoint-deprecated( "<1280px" ) {
-		flex-wrap: nowrap;
-		justify-content: space-between;
-
-	}
-}
-
-.products-overview .a4a-layout__body {
-	overflow-y: scroll; // We need to show the scrollbar so we avoid UI from shifting when filtering items.
-}
-
-.products-overview {
-	.a4a-layout__top-wrapper {
+	.hosting-dashboard-layout__header > * {
 		z-index: 10;
 	}
 
-	.select-dropdown__item-text {
-		.content svg {
-			position: relative;
-			top: 5px;
-			margin-inline-end: 4px;
+	.hosting-dashboard-layout__header-breadcrumb {
+		color: var(--color-neutral-40);
+		fill: var(--color-neutral-40);
+
+		a {
+			color: var(--color-primary-5);
 		}
 	}
 
-	.section-nav.a4a-layout__navigation .select-dropdown__header .count {
-		top: 8.5px;
-		margin-inline-end: 8px;
+	.hosting-dashboard-layout__header-actions {
+		background-color: var(--color-surface);
+		border-radius: 8px; /* stylelint-disable-line */
+		padding: 8px 24px 8px 20px;
+
+		.shopping-cart {
+			margin: 0;
+		}
+	}
+
+	.components-button:is(.is-primary, .is-secondary) {
+		min-height: 40px;
+	}
+
+	.product-category-menu {
+		transition: height .25s ease-out;
+		opacity: 1;
+		height: 156px;
+	}
+
+	.products-overview__action-panel-wrapper {
+		position: sticky;
+		z-index: 2;
+	}
+}
+
+.products-overview.main.hosting-dashboard-layout.is-compact {
+	.product-category-menu {
+		overflow: hidden;
+		height: 0;
+		opacity: 0;
+		margin: 0;
+	}
+
+	.products-overview__action-panel-wrapper {
+		box-shadow: 0 2px 4px 0 rgba(0, 0, 0, .10);
 	}
 }

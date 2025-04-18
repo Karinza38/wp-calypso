@@ -1,6 +1,7 @@
 import config from '@automattic/calypso-config';
 import { getUrlParts } from '@automattic/calypso-url';
-import { Gridicon } from '@automattic/components';
+import { Gridicon, TimeSince } from '@automattic/components';
+import { isURL, getProtocol, getAuthority } from '@wordpress/url';
 import clsx from 'clsx';
 import { translate } from 'i18n-calypso';
 import { get, some, flatMap } from 'lodash';
@@ -9,7 +10,6 @@ import { PureComponent } from 'react';
 import { connect } from 'react-redux';
 import ConversationCaterpillar from 'calypso/blocks/conversation-caterpillar';
 import Gravatar from 'calypso/components/gravatar';
-import TimeSince from 'calypso/components/time-since';
 import { decodeEntities } from 'calypso/lib/formatting';
 import { navigate } from 'calypso/lib/navigate';
 import { createAccountUrl } from 'calypso/lib/paths';
@@ -17,6 +17,7 @@ import isReaderTagEmbedPage from 'calypso/lib/reader/is-reader-tag-embed-page';
 import withDimensions from 'calypso/lib/with-dimensions';
 import { getStreamUrl } from 'calypso/reader/route';
 import { recordAction, recordGaEvent, recordPermalinkClick } from 'calypso/reader/stats';
+import { getUserProfileUrl } from 'calypso/reader/user-profile/user-profile.utils';
 import { expandComments } from 'calypso/state/comments/actions';
 import { PLACEHOLDER_STATE, POST_COMMENT_DISPLAY_TYPES } from 'calypso/state/comments/constants';
 import { getCurrentUser, isUserLoggedIn } from 'calypso/state/current-user/selectors';
@@ -311,9 +312,24 @@ class PostComment extends PureComponent {
 		const comment = get( this.props.commentsTree, [ commentId, 'data' ], {} );
 		const commentAuthor = get( comment, 'author', {} );
 		const commentAuthorName = decodeEntities( commentAuthor.name );
-		const commentAuthorUrl = commentAuthor.site_ID
-			? getStreamUrl( null, commentAuthor.site_ID )
-			: commentAuthor && commentAuthor.URL;
+
+		let commentAuthorUrl;
+		if ( commentAuthor.wpcom_login ) {
+			commentAuthorUrl = getUserProfileUrl( commentAuthor.wpcom_login );
+		} else if ( commentAuthor.site_ID ) {
+			commentAuthorUrl = getStreamUrl( null, commentAuthor.site_ID );
+		} else {
+			const urlToCheck = commentAuthor?.URL;
+			if ( urlToCheck && isURL( urlToCheck ) ) {
+				const protocol = getProtocol( urlToCheck );
+				const domain = getAuthority( urlToCheck );
+				// isURL uses URL() which allows '%20' in Chromium but not Firefox, so we check ourselves.
+				if ( protocol === 'https:' && ! domain.includes( '%' ) ) {
+					commentAuthorUrl = urlToCheck;
+				}
+			}
+		}
+
 		return { comment, commentAuthor, commentAuthorUrl, commentAuthorName };
 	};
 

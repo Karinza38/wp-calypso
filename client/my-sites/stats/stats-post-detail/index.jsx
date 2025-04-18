@@ -1,5 +1,7 @@
+import config from '@automattic/calypso-config';
 import { Button } from '@automattic/components';
 import { localizeUrl } from '@automattic/i18n-utils';
+import clsx from 'clsx';
 import { localize } from 'i18n-calypso';
 import { flowRight } from 'lodash';
 import PropTypes from 'prop-types';
@@ -11,10 +13,10 @@ import QueryPostStats from 'calypso/components/data/query-post-stats';
 import QueryPosts from 'calypso/components/data/query-posts';
 import EmptyContent from 'calypso/components/empty-content';
 import JetpackColophon from 'calypso/components/jetpack-colophon';
-import Main from 'calypso/components/main';
 import NavigationHeader from 'calypso/components/navigation-header';
 import WebPreview from 'calypso/components/web-preview';
 import { decodeEntities, stripHTML } from 'calypso/lib/formatting';
+import Main from 'calypso/my-sites/stats/components/stats-main';
 import { getSitePost, getPostPreviewUrl } from 'calypso/state/posts/selectors';
 import { countPostLikes } from 'calypso/state/posts/selectors/count-post-likes';
 import { getSiteSlug, isJetpackSite, isSitePreviewable } from 'calypso/state/sites/selectors';
@@ -68,6 +70,11 @@ class StatsPostDetail extends Component {
 		if ( domain?.length > 0 ) {
 			backLink += domain;
 		}
+
+		if ( ! title ) {
+			title = <em>{ this.props.translate( 'Untitled' ) }</em>;
+		}
+
 		// Wrap it up!
 		return [ { label: backLabel, href: backLink }, { label: title } ];
 	};
@@ -106,6 +113,10 @@ class StatsPostDetail extends Component {
 		return null;
 	}
 
+	hasDontSendEmailPostToSubs( metadata ) {
+		return metadata?.some( ( { key } ) => key === '_jetpack_dont_email_post_to_subs' );
+	}
+
 	getPost() {
 		const { isPostHomepage, post, postFallback, countLikes } = this.props;
 
@@ -120,6 +131,7 @@ class StatsPostDetail extends Component {
 			return {
 				...postBase,
 				date: post?.date,
+				dont_email_post_to_subs: this.hasDontSendEmailPostToSubs( post?.metadata ),
 				post_thumbnail: post?.post_thumbnail,
 				comment_count: post?.discussion?.comment_count,
 				type: post?.type,
@@ -131,6 +143,7 @@ class StatsPostDetail extends Component {
 			return {
 				...postBase,
 				date: postFallback?.post_date_gmt,
+				dont_email_post_to_subs: this.hasDontSendEmailPostToSubs( post?.metadata ),
 				post_thumbnail: null,
 				comment_count: parseInt( postFallback?.comment_count, 10 ),
 				type: postFallback?.post_type,
@@ -158,6 +171,7 @@ class StatsPostDetail extends Component {
 
 		// Prepare post details to PostStatsCard from post or postFallback.
 		const passedPost = this.getPost();
+		passedPost.url = previewUrl;
 
 		const postType = passedPost && passedPost.type !== null ? passedPost.type : 'post';
 		let actionLabel;
@@ -171,6 +185,11 @@ class StatsPostDetail extends Component {
 			noViewsLabel = translate( 'Your post has not received any views yet!' );
 		}
 
+		const isWPAdmin = config.isEnabled( 'is_odyssey' );
+		const postDetailPageClasses = clsx( 'stats has-fixed-nav', {
+			'is-odyssey-stats': isWPAdmin,
+		} );
+
 		return (
 			<Main fullWidthLayout>
 				<PageViewTracker
@@ -180,7 +199,7 @@ class StatsPostDetail extends Component {
 				{ siteId && ! isPostHomepage && <QueryPosts siteId={ siteId } postId={ postId } /> }
 				{ siteId && <QueryPostStats siteId={ siteId } postId={ postId } /> }
 
-				<div className="stats has-fixed-nav">
+				<div className={ postDetailPageClasses }>
 					<NavigationHeader navigationItems={ this.getNavigationItemsWithTitle( this.getTitle() ) }>
 						{ showViewLink && (
 							<Button onClick={ this.openPreview }>

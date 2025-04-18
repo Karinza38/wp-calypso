@@ -1,20 +1,22 @@
-import { SubscriptionManager } from '@automattic/data-stores';
 import { WIDE_BREAKPOINT } from '@automattic/viewport';
 import { useBreakpoint } from '@automattic/viewport-react';
 import { DataViews, filterSortAndPaginate, View } from '@wordpress/dataviews';
 import { translate } from 'i18n-calypso';
-import { useState, useEffect, useCallback, useMemo, useLayoutEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useLayoutEffect, useRef } from 'react';
 import { useSelector, shallowEqual, useDispatch } from 'react-redux';
 import { UnknownAction } from 'redux';
 import { ThunkDispatch } from 'redux-thunk';
 import ReaderAvatar from 'calypso/blocks/reader-avatar';
 import AsyncLoad from 'calypso/components/async-load';
-import EmptyContent from 'calypso/components/empty-content';
 import NavigationHeader from 'calypso/components/navigation-header';
+import { getPostIcon } from 'calypso/reader/get-helpers';
+import FollowingEmptyContent from 'calypso/reader/stream/empty';
+import { getReaderFollowForFeed } from 'calypso/state/reader/follows/selectors';
 import { getPostByKey } from 'calypso/state/reader/posts/selectors';
 import { requestPaginatedStream } from 'calypso/state/reader/streams/actions';
 import { viewStream } from 'calypso/state/reader-ui/actions';
-import ReaderOnboarding from '../onboarding';
+import { getSelectedRecentFeedId } from 'calypso/state/reader-ui/sidebar/selectors';
+import Skeleton from '../components/skeleton';
 import EngagementBar from './engagement-bar';
 import RecentPostField from './recent-post-field';
 import RecentPostSkeleton from './recent-post-skeleton';
@@ -27,26 +29,41 @@ interface RecentProps {
 	viewToggle?: React.ReactNode;
 }
 
+interface PaddingItem {
+	isPadding: true;
+	postId: string;
+}
+
+function isPaddingItem( item: ReaderPost | PaddingItem ): item is PaddingItem {
+	return 'isPadding' in item;
+}
+
 const Recent = ( { viewToggle }: RecentProps ) => {
 	const dispatch = useDispatch< ThunkDispatch< AppState, void, UnknownAction > >();
 	const [ selectedItem, setSelectedItem ] = useState< ReaderPost | null >( null );
 	const isWide = useBreakpoint( WIDE_BREAKPOINT );
 	const [ isLoading, setIsLoading ] = useState( false );
+	const postColumnRef = useRef< HTMLDivElement | null >( null );
+	const itemRefs = useRef< { [ key: string ]: HTMLDivElement | null } >( {} );
+	const focusedIndexRef = useRef< string | null >( null ); // Keep track of the currently focused row index
+
+	const handleItemFocus = useCallback( ( itemIndex: string ) => {
+		focusedIndexRef.current = itemIndex;
+	}, [] );
 
 	const [ view, setView ] = useState< View >( {
 		type: 'list',
 		search: '',
-		fields: [ 'icon', 'post' ],
+		fields: [],
 		perPage: 10,
 		page: 1,
-		layout: {
-			primaryField: 'post',
-			mediaField: 'icon',
-		},
+		titleField: 'post',
+		mediaField: 'icon',
+		showMedia: true,
 	} );
 
 	const selectedRecentSidebarFeedId = useSelector< AppState, number | null >(
-		( state ) => state.readerUi.sidebar.selectedRecentSite
+		getSelectedRecentFeedId
 	);
 
 	const streamKey =
@@ -60,14 +77,27 @@ const Recent = ( { viewToggle }: RecentProps ) => {
 			return {};
 		}
 
-		return items.reduce( ( acc: Record< string, PostItem >, item: ReaderPost ) => {
+		return items.reduce( ( acc: Record< string, PostItem >, item: ReaderPost | PaddingItem ) => {
+			if ( isPaddingItem( item ) ) {
+				return acc;
+			}
+
 			const post = getPostByKey( state, {
 				feedId: item.feedId,
 				postId: item.postId,
 			} );
-			if ( post ) {
-				acc[ `${ item?.feedId }-${ item?.postId }` ] = post;
+			if ( ! post ) {
+				return acc;
 			}
+
+			// Add site icon to feed object so have icon for external feeds
+			if ( ! post.site_icon ) {
+				const feedSubscription = getReaderFollowForFeed( state, item.feedId );
+				post.site_icon = feedSubscription?.site_icon;
+			}
+
+			acc[ `${ item?.feedId }-${ item?.postId }` ] = post;
+
 			return acc;
 		}, {} );
 	}, shallowEqual );
@@ -85,9 +115,12 @@ const Recent = ( { viewToggle }: RecentProps ) => {
 			{
 				id: 'icon',
 				label: translate( 'Icon' ),
-				render: ( { item }: { item: ReaderPost } ) => {
+				render: ( { item }: { item: ReaderPost | PaddingItem } ) => {
+					if ( isPaddingItem( item ) ) {
+						return <Skeleton height="24px" width="24px" shape="circle" />;
+					}
 					const post = getPostFromItem( item );
-					const iconUrl = post?.site_icon?.img || post?.author?.avatar_URL || '';
+					const iconUrl = getPostIcon( post );
 					return iconUrl ? <ReaderAvatar siteIcon={ iconUrl } iconSize={ 24 } /> : null;
 				},
 				enableHiding: false,
@@ -96,17 +129,36 @@ const Recent = ( { viewToggle }: RecentProps ) => {
 			{
 				id: 'post',
 				label: translate( 'Post' ),
-				getValue: ( { item }: { item: ReaderPost } ) =>
-					`${ getPostFromItem( item )?.title ?? '' } - ${ item?.site_name ?? '' }`,
-				render: ( { item }: { item: ReaderPost } ) => {
-					return <RecentPostField post={ getPostFromItem( item ) } />;
+				getValue: ( { item }: { item: ReaderPost | PaddingItem } ) =>
+					isPaddingItem( item )
+						? ''
+						: `${ getPostFromItem( item )?.title ?? '' } - ${ item?.site_name ?? '' }`,
+				render: ( { item }: { item: ReaderPost | PaddingItem } ) => {
+					if ( isPaddingItem( item ) ) {
+						return (
+							<>
+								<Skeleton height="10px" width="100%" style={ { marginBottom: '8px' } } />
+								<Skeleton height="8px" width="50%" />
+							</>
+						);
+					}
+					return (
+						<div onFocus={ () => handleItemFocus( item.postId?.toString() ) }>
+							<RecentPostField
+								ref={ ( el ) => {
+									itemRefs.current[ item.postId?.toString() ?? '' ] = el;
+								} }
+								post={ getPostFromItem( item ) }
+							/>
+						</div>
+					);
 				},
 				enableHiding: false,
 				enableSorting: false,
 				enableGlobalSearch: true,
 			},
 		],
-		[ getPostFromItem ]
+		[ getPostFromItem, handleItemFocus ]
 	);
 
 	const fetchData = useCallback( () => {
@@ -120,14 +172,14 @@ const Recent = ( { viewToggle }: RecentProps ) => {
 		);
 	}, [ dispatch, view, streamKey ] );
 
-	const paginationInfo = useMemo( () => {
+	const defaultPaginationInfo = useMemo( () => {
 		return {
 			totalItems: data?.pagination?.totalItems ?? 0,
 			totalPages: data?.pagination?.totalPages ?? 0,
 		};
 	}, [ data?.pagination ] );
 
-	const { data: shownData } = useMemo( () => {
+	const { data: shownData, paginationInfo } = useMemo( () => {
 		return filterSortAndPaginate( data?.items ?? [], view, fields );
 	}, [ data?.items, view, fields ] );
 
@@ -136,12 +188,15 @@ const Recent = ( { viewToggle }: RecentProps ) => {
 		fetchData();
 	}, [ fetchData ] );
 
-	// Set the first item as selected if no item is selected and screen is wide.
+	// Set the first item as selected on the current page.
 	useEffect( () => {
-		if ( isWide && data?.items?.length > 0 && ! selectedItem ) {
-			setSelectedItem( data.items[ 0 ] );
+		if ( isWide && data?.items?.length > 0 ) {
+			if ( view.page && view.perPage ) {
+				const selectedPost = data?.items?.[ ( view.page - 1 ) * view.perPage ];
+				setSelectedItem( selectedPost || null );
+			}
 		}
-	}, [ isWide, data?.items, selectedItem ] );
+	}, [ isWide, data?.items, view ] );
 
 	// When the selected feed changes, clear the selected item and reset the page to 1.
 	useEffect( () => {
@@ -156,93 +211,93 @@ const Recent = ( { viewToggle }: RecentProps ) => {
 		setIsLoading( data?.isRequesting );
 	}, [ data?.isRequesting ] );
 
-	const { data: subscriptionsCount } = SubscriptionManager.useSubscriptionsCountQuery();
-	const hasSubscriptions = subscriptionsCount?.blogs && subscriptionsCount.blogs > 0;
-
+	// Handle key events
+	const handleKeyDown = useCallback(
+		( event: React.KeyboardEvent< HTMLDivElement > ) => {
+			if ( event.key === 'Enter' && focusedIndexRef.current !== null ) {
+				// Use the focused index to determine the selected item
+				const focusedItem = shownData.find(
+					( item ) => item.postId?.toString() === focusedIndexRef.current
+				);
+				if ( focusedItem && ! isPaddingItem( focusedItem ) ) {
+					setSelectedItem( focusedItem );
+					setTimeout( () => {
+						postColumnRef.current?.focus();
+					}, 0 );
+				}
+			}
+		},
+		[ shownData ]
+	);
 	return (
-		<div className="recent-feed">
-			<div
-				className={ `recent-feed__list-column ${
-					selectedItem && hasSubscriptions ? 'has-overlay' : ''
-				} ${ ! hasSubscriptions ? 'recent-feed--no-subscriptions' : '' }` }
-			>
+		/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */
+		<div className="recent-feed" onKeyDown={ handleKeyDown }>
+			<div className={ `recent-feed__list-column ${ selectedItem ? 'has-overlay' : '' }` }>
 				<div className="recent-feed__list-column-header">
 					<NavigationHeader title={ translate( 'Recent' ) }>{ viewToggle }</NavigationHeader>
 				</div>
-				<div className="recent-feed__list-column-content">
-					{ ! hasSubscriptions ? (
-						<>
-							<p>
-								{ translate(
-									'{{strong}}Welcome!{{/strong}} Follow your favorite sites and their latest posts will appear here. Read, like, and comment in a distraction-free environment. Get started by selecting your interests below:',
-									{
-										components: {
-											strong: <strong />,
-										},
-									}
-								) }
-							</p>
-							<ReaderOnboarding forceShow />
-						</>
-					) : (
-						<DataViews
-							getItemId={ ( item: ReaderPost, index = 0 ) =>
-								item.postId?.toString() ?? `item-${ index }`
-							}
-							view={ view as View }
-							fields={ fields }
-							data={ shownData }
-							onChangeView={ ( newView: View ) =>
-								setView( {
-									type: newView.type,
-									fields: newView.fields ?? [],
-									layout: view.layout,
-									perPage: newView.perPage,
-									page: newView.page,
-									search: newView.search,
-								} )
-							}
-							paginationInfo={ paginationInfo }
-							defaultLayouts={ { list: {} } }
-							isLoading={ isLoading }
-							selection={ selectedItem ? [ selectedItem.postId?.toString() ] : [] }
-							onChangeSelection={ ( newSelection: string[] ) => {
-								const selectedPost = data?.items?.find(
-									( item: ReaderPost ) => item.postId?.toString() === newSelection[ 0 ]
-								);
-								setSelectedItem( selectedPost || null );
-							} }
-						/>
-					) }
-				</div>
+				<aside className="recent-feed__list-column-content">
+					<DataViews< ReaderPost | PaddingItem >
+						getItemId={ ( item: ReaderPost | PaddingItem, index = 0 ) =>
+							item.postId?.toString() ?? `item-${ index }`
+						}
+						view={ view }
+						fields={ fields }
+						data={ shownData }
+						onChangeView={ ( newView ) =>
+							setView( {
+								...newView,
+							} )
+						}
+						paginationInfo={ view.search === '' ? defaultPaginationInfo : paginationInfo }
+						defaultLayouts={ { list: {} } }
+						isLoading={ isLoading }
+						selection={ selectedItem ? [ selectedItem.postId?.toString() ] : [] }
+						onChangeSelection={ ( newSelection: string[] ) => {
+							const selectedPost = data?.items?.find(
+								( item: ReaderPost ) => item.postId?.toString() === newSelection[ 0 ]
+							);
+							setSelectedItem( selectedPost || null );
+							// Focus the post column after a short delay to ensure DOM updates.
+							setTimeout( () => {
+								postColumnRef.current?.focus();
+							}, 0 );
+						} }
+					/>
+				</aside>
 			</div>
-			{ hasSubscriptions && (
-				<div className={ `recent-feed__post-column ${ selectedItem ? 'overlay' : '' }` }>
-					{ ! ( selectedItem && getPostFromItem( selectedItem ) ) && isLoading && (
-						<RecentPostSkeleton />
-					) }
-					{ ! isLoading && data?.items.length === 0 && (
-						<EmptyContent
-							title={ translate( 'Nothing Posted Yet' ) }
-							line={ translate( 'This feed is currently empty.' ) }
-							illustration="/calypso/images/illustrations/illustration-empty-results.svg"
-							illustrationWidth={ 400 }
+			<section
+				aria-labelledby={ selectedItem ? `post-${ selectedItem.postId }` : undefined }
+				ref={ postColumnRef }
+				className={ `recent-feed__post-column ${ selectedItem ? 'overlay' : '' }` }
+				tabIndex={ -1 }
+			>
+				{ ! ( selectedItem && getPostFromItem( selectedItem ) ) && isLoading && (
+					<RecentPostSkeleton />
+				) }
+				{ ! isLoading && data?.items.length === 0 && <FollowingEmptyContent view="recent" /> }
+				{ data?.items.length > 0 && selectedItem && getPostFromItem( selectedItem ) && (
+					<>
+						<AsyncLoad
+							require="calypso/blocks/reader-full-post"
+							feedId={ selectedItem.feedId }
+							postId={ selectedItem.postId }
+							onClose={ () => {
+								const focusItem = itemRefs.current[ selectedItem?.postId?.toString() ?? '' ];
+								if ( ! isWide ) {
+									setSelectedItem( null );
+								}
+								requestAnimationFrame( () => {
+									focusItem?.focus();
+								} );
+							} }
+							setSelectedItem={ setSelectedItem }
+							layout="recent"
 						/>
-					) }
-					{ data?.items.length > 0 && selectedItem && getPostFromItem( selectedItem ) && (
-						<>
-							<AsyncLoad
-								require="calypso/blocks/reader-full-post"
-								feedId={ selectedItem.feedId }
-								postId={ selectedItem.postId }
-								onClose={ () => setSelectedItem( null ) }
-								layout="recent"
-							/>
-							<EngagementBar feedId={ selectedItem?.feedId } postId={ selectedItem?.postId } />
-						</>
-					) }
-				</div>
-			) }
+						<EngagementBar feedId={ selectedItem?.feedId } postId={ selectedItem?.postId } />
+					</>
+				) }
+			</section>
 		</div>
 	);
 };

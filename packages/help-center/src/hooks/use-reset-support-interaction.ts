@@ -2,7 +2,7 @@ import { HelpCenterSelect } from '@automattic/data-stores';
 import { HELP_CENTER_STORE } from '@automattic/help-center/src/stores';
 import { useManageSupportInteraction } from '@automattic/odie-client/src/data';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSelect, useDispatch } from '@wordpress/data';
+import { useSelect } from '@wordpress/data';
 
 export const useResetSupportInteraction = () => {
 	const { currentSupportInteraction } = useSelect( ( select ) => {
@@ -11,19 +11,21 @@ export const useResetSupportInteraction = () => {
 			currentSupportInteraction: store.getCurrentSupportInteraction(),
 		};
 	}, [] );
-	const { setCurrentSupportInteraction } = useDispatch( HELP_CENTER_STORE );
-	const { resolveInteraction } = useManageSupportInteraction();
+	const { startNewInteraction, resolveInteraction } = useManageSupportInteraction();
 	const queryClient = useQueryClient();
 
-	const reset = async () => {
+	return async () => {
 		if ( currentSupportInteraction ) {
 			resolveInteraction( { interactionId: currentSupportInteraction.uuid } );
+
 			await queryClient.invalidateQueries( {
 				queryKey: [ 'support-interactions', 'get-interactions', 'help-center' ],
 			} );
-			setCurrentSupportInteraction( null );
+
+			return await startNewInteraction( {
+				event_source: 'help-center',
+				event_external_id: crypto.randomUUID(),
+			} );
 		}
 	};
-
-	return reset;
 };

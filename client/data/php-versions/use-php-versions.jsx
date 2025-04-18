@@ -5,12 +5,12 @@ import { getSelectedSiteId } from 'calypso/state/ui/selectors';
 export const usePhpVersions = () => {
 	const translate = useTranslate();
 	const siteId = useSelector( getSelectedSiteId );
-	// 10% of sites will have a recommended PHP version of 8.2.
-	// 237292101 is the first site of the list.
-	const is10Percent = siteId % 10 === 0 && siteId >= 237292101;
-	const recommendedValue = is10Percent ? '8.2' : '8.1';
-	const label = translate( '%s (recommended)', {
-		args: recommendedValue,
+	// 50% of sites will have a recommended PHP version of 8.3. These sites are transferring to 8.3 by default.
+	// 243386763 is the first site of the list.
+	const isPhp83Default = siteId >= 243386763 && siteId % 2 === 0;
+	const recommendedValue = isPhp83Default ? '8.3' : '8.2';
+	const recommendedLabel = translate( '%s (recommended)', {
+		args: isPhp83Default ? '8.3' : '8.2',
 		comment: 'PHP Version for a version switcher',
 	} );
 
@@ -38,20 +38,14 @@ export const usePhpVersions = () => {
 			value: '8.1',
 		},
 		{
-			label: '8.2',
+			label: isPhp83Default ? '8.2' : recommendedLabel,
 			value: '8.2',
 		},
 		{
-			label: '8.3',
+			label: isPhp83Default ? recommendedLabel : '8.3',
 			value: '8.3',
 		},
 	];
-
-	if ( is10Percent ) {
-		phpVersions[ 4 ].label = label;
-	} else {
-		phpVersions[ 3 ].label = label;
-	}
 
 	return { recommendedValue, phpVersions };
 };

@@ -7,7 +7,7 @@ import {
 	isLockedStyleVariation,
 } from '@automattic/design-picker';
 import { localize } from 'i18n-calypso';
-import { isEmpty, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 import photon from 'photon';
 import PropTypes from 'prop-types';
 import { Component, createRef } from 'react';
@@ -204,6 +204,7 @@ export class Theme extends Component {
 
 		return (
 			<img
+				loading="lazy"
 				alt={ isScreenshotLoaded ? decodeEntities( description ) : '' }
 				className="theme__img"
 				src={ themeImgSrc }
@@ -295,18 +296,11 @@ export class Theme extends Component {
 	renderMoreButton = () => {
 		const { active, buttonContents, index, theme, siteId } = this.props;
 
-		let moreOptions;
-		if ( active && buttonContents.info ) {
-			moreOptions = { info: buttonContents.info };
-		} else if ( buttonContents.deleteTheme ) {
-			moreOptions = { deleteTheme: buttonContents.deleteTheme };
-		} else {
-			moreOptions = {};
-		}
-
-		if ( isEmpty( moreOptions ) ) {
+		if ( ! buttonContents.deleteTheme ) {
 			return null;
 		}
+
+		const moreOptions = { deleteTheme: buttonContents.deleteTheme };
 
 		return (
 			<ThemeMoreButton
@@ -324,7 +318,7 @@ export class Theme extends Component {
 	};
 
 	renderBadge = () => {
-		const { selectedStyleVariation, shouldLimitGlobalStyles, theme } = this.props;
+		const { selectedStyleVariation, shouldLimitGlobalStyles, theme, siteId, siteSlug } = this.props;
 
 		const isPremiumTheme = theme.theme_tier?.slug === PREMIUM_THEME;
 
@@ -334,13 +328,20 @@ export class Theme extends Component {
 			shouldLimitGlobalStyles,
 		} );
 
-		return <ThemeTierBadge themeId={ theme.id } isLockedStyleVariation={ isLocked } />;
+		return (
+			<ThemeTierBadge
+				siteId={ siteId }
+				siteSlug={ siteSlug }
+				themeId={ theme.id }
+				isLockedStyleVariation={ isLocked }
+				isThemeList
+			/>
+		);
 	};
 
 	render() {
 		const { selectedStyleVariation, theme } = this.props;
-		const { name, description, style_variations = [], isCustomGeneratedTheme } = theme;
-		const themeDescription = decodeEntities( description );
+		const { name, style_variations = [] } = theme;
 
 		if ( this.props.isPlaceholder ) {
 			return this.renderPlaceholder();
@@ -350,7 +351,6 @@ export class Theme extends Component {
 			<ThemeCard
 				ref={ this.props.bookmarkRef }
 				name={ name }
-				description={ themeDescription }
 				image={ this.renderScreenshot() }
 				imageClickUrl={ this.props.screenshotClickUrl }
 				imageActionLabel={ this.props.actionLabel }
@@ -362,7 +362,6 @@ export class Theme extends Component {
 				isActive={ this.props.active }
 				isLoading={ this.props.loading }
 				isSoftLaunched={ this.props.softLaunched }
-				isShowDescriptionOnImageHover={ ! isCustomGeneratedTheme }
 				onClick={ this.setBookmark }
 				onImageClick={ this.onScreenshotClick }
 				onStyleVariationClick={ this.onStyleVariationClick }

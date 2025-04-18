@@ -4,18 +4,27 @@ import { useMemo, ReactNode, useState } from 'react';
 import { initialDataViewsState } from 'calypso/a8c-for-agencies/components/items-dashboard/constants';
 import ItemsDataViews from 'calypso/a8c-for-agencies/components/items-dashboard/items-dataviews';
 import { DataViewsState } from 'calypso/a8c-for-agencies/components/items-dashboard/items-dataviews/interfaces';
+import { getSiteReviewStatus } from '../lib/utils';
 import { MigratedOnColumn, ReviewStatusColumn, SiteColumn } from './commission-columns';
+import CommissionListActions from './commission-list-actions';
 import MigrationsCommissionsListMobileView from './mobile-view';
 import type { TaggedSite } from '../types';
 import type { Field } from '@wordpress/dataviews';
 
-export default function MigrationsCommissionsList( { items }: { items: TaggedSite[] } ) {
+export default function MigrationsCommissionsList( {
+	items,
+	fetchMigratedSites,
+}: {
+	items: TaggedSite[];
+	fetchMigratedSites: () => void;
+} ) {
 	const translate = useTranslate();
 
 	const isDesktop = useDesktopBreakpoint();
 
 	const [ dataViewsState, setDataViewsState ] = useState< DataViewsState >( {
 		...initialDataViewsState,
+		fields: [ 'site', 'migratedOn', 'reviewStatus', 'remove' ],
 	} );
 
 	const pagination = {
@@ -47,12 +56,25 @@ export default function MigrationsCommissionsList( { items }: { items: TaggedSit
 				id: 'reviewStatus',
 				label: translate( 'Review status' ).toUpperCase(),
 				getValue: () => '-',
-				render: ( { item } ): ReactNode => <ReviewStatusColumn reviewStatus={ item.state } />,
+				render: ( { item }: { item: TaggedSite } ): ReactNode => {
+					const tags = item.tags.map( ( tag ) => tag.name );
+					const status = getSiteReviewStatus( tags );
+					return <ReviewStatusColumn reviewStatus={ status } />;
+				},
 				enableHiding: false,
 				enableSorting: false,
 			},
+			{
+				id: 'remove',
+				label: translate( 'Actions' ).toUpperCase(),
+				getValue: () => '-',
+				render: ( { item }: { item: TaggedSite } ) => (
+					<CommissionListActions fetchMigratedSites={ fetchMigratedSites } site={ item } />
+				),
+				enableSorting: false,
+			},
 		],
-		[ translate ]
+		[ translate, fetchMigratedSites ]
 	);
 
 	if ( ! isDesktop ) {

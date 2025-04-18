@@ -1,12 +1,14 @@
+import { TimeSince } from '@automattic/components';
 import { SiteExcerptData } from '@automattic/sites';
 import { DataViews, Field } from '@wordpress/dataviews';
 import { useI18n } from '@wordpress/react-i18n';
 import { useCallback, useMemo } from 'react';
+import { useQueryReaderTeams } from 'calypso/components/data/query-reader-teams';
 import JetpackLogo from 'calypso/components/jetpack-logo';
-import TimeSince from 'calypso/components/time-since';
 import { SitePlan } from 'calypso/sites-dashboard/components/sites-site-plan';
 import { useSelector } from 'calypso/state';
 import { getCurrentUserId } from 'calypso/state/current-user/selectors';
+import { isA8cTeamMember } from 'calypso/state/teams/selectors';
 import { useActions } from './actions';
 import SiteField from './dataviews-fields/site-field';
 import SiteIcon from './site-icon';
@@ -19,16 +21,13 @@ import './dataview-style.scss';
 
 type Props = {
 	sites: SiteExcerptData[];
+	siteType: 'p2' | 'non-p2';
 	isLoading: boolean;
 	paginationInfo: { totalItems: number; totalPages: number };
 	dataViewsState: View;
 	setDataViewsState: ( callback: ( prevState: View ) => View ) => void;
 	selectedItem: SiteExcerptData | null | undefined;
-	openSitePreviewPane: (
-		site: SiteExcerptData,
-		source: 'site_field' | 'action' | 'list_row_click' | 'environment_switcher'
-	) => void;
-};
+} & Pick< React.ComponentProps< typeof SiteField >, 'sitePreviewPane' >;
 
 export function useSiteStatusGroups() {
 	const { __ } = useI18n();
@@ -48,12 +47,13 @@ export function useSiteStatusGroups() {
 
 const DotcomSitesDataViews = ( {
 	sites,
+	siteType,
 	isLoading,
 	paginationInfo,
 	dataViewsState,
 	setDataViewsState,
 	selectedItem,
-	openSitePreviewPane,
+	sitePreviewPane,
 }: Props ) => {
 	const { __ } = useI18n();
 	const userId = useSelector( getCurrentUserId );
@@ -75,10 +75,10 @@ const DotcomSitesDataViews = ( {
 			}
 			const site = sites.find( ( s ) => s.ID === Number( selectedSiteIds[ 0 ] ) );
 			if ( site && ! site.is_deleted ) {
-				openSitePreviewPane( site, 'list_row_click' );
+				sitePreviewPane.open( site, 'list_row_click' );
 			}
 		},
-		[ dataViewsState.type, openSitePreviewPane, sites ]
+		[ dataViewsState.type, sitePreviewPane, sites ]
 	);
 	const getSelection = useCallback(
 		() => ( selectedItem ? [ selectedItem.ID.toString() ] : undefined ),
@@ -87,16 +87,20 @@ const DotcomSitesDataViews = ( {
 
 	const siteStatusGroups = useSiteStatusGroups();
 
+	useQueryReaderTeams();
+	const isAutomattician = useSelector( isA8cTeamMember );
+
 	// Generate DataViews table field-columns
-	const fields = useMemo< Field< SiteExcerptData >[] >(
-		() => [
+	const fields = useMemo( () => {
+		const dataViewFields: Field< SiteExcerptData >[] = [
 			{
 				id: 'icon',
+				label: __( 'Site Icon' ),
 				render: ( { item }: { item: SiteExcerptData } ) => {
 					return (
 						<SiteIcon
 							site={ item }
-							openSitePreviewPane={ openSitePreviewPane }
+							openSitePreviewPane={ sitePreviewPane.open }
 							viewType={ dataViewsState.type }
 						/>
 					);
@@ -107,10 +111,10 @@ const DotcomSitesDataViews = ( {
 			},
 			{
 				id: 'site-title',
-				label: __( 'Site Title' ),
+				label: __( 'Site' ),
 				getValue: ( { item }: { item: SiteExcerptData } ) => item.title,
 				render: ( { item }: { item: SiteExcerptData } ) => {
-					return <SiteField site={ item } openSitePreviewPane={ openSitePreviewPane } />;
+					return <SiteField site={ item } sitePreviewPane={ sitePreviewPane } />;
 				},
 				enableHiding: false,
 				enableSorting: true,
@@ -164,12 +168,42 @@ const DotcomSitesDataViews = ( {
 				enableSorting: true,
 				getValue: () => null,
 			},
-		],
-		[ __, siteStatusGroups, openSitePreviewPane, dataViewsState.type, userId ]
-	);
+		];
+
+		if ( isAutomattician && siteType === 'non-p2' ) {
+			dataViewFields.push( {
+				id: 'a8c_owned',
+				label: __( 'Include A8C sites' ),
+				enableHiding: false,
+				elements: [
+					{
+						value: true,
+						label: __( 'Yes' ),
+					},
+					{
+						value: false,
+						label: __( 'No' ),
+					},
+				],
+				filterBy: {
+					operators: [ 'is' ],
+				},
+			} );
+		}
+
+		return dataViewFields;
+	}, [
+		__,
+		siteStatusGroups,
+		sitePreviewPane,
+		dataViewsState.type,
+		userId,
+		isAutomattician,
+		siteType,
+	] );
 
 	const actions = useActions( {
-		openSitePreviewPane,
+		openSitePreviewPane: sitePreviewPane.open,
 		viewType: dataViewsState.type,
 	} );
 

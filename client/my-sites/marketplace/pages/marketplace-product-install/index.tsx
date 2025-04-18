@@ -170,14 +170,22 @@ const MarketplaceProductInstall = ( {
 		}
 	} );
 
+	const { primaryDomain } = useSelector( getPurchaseFlowState );
+
+	const shouldShowNoDirectAccessError =
+		// 1. This is a plugin upload flow (via zip file) and we don't have a primary domain set
+		( isPluginUploadFlow && ! primaryDomain ) ||
+		// 2. This is a marketplace plugin installation but the installation process hasn't started
+		( ! isPluginUploadFlow && ! marketplaceInstallationInProgress );
+
 	// Check that the site URL and the plugin slug are the same which were selected on the plugin page
 	useEffect( () => {
-		if ( ! marketplaceInstallationInProgress ) {
+		if ( shouldShowNoDirectAccessError ) {
 			waitFor( 2 ).then( () => {
-				! marketplaceInstallationInProgress && setNoDirectAccessError( true );
+				shouldShowNoDirectAccessError && setNoDirectAccessError( true );
 			} );
 		}
-	}, [ marketplaceInstallationInProgress ] );
+	}, [ shouldShowNoDirectAccessError ] );
 
 	// Upload flow startup
 	useEffect( () => {
@@ -195,15 +203,14 @@ const MarketplaceProductInstall = ( {
 			( marketplaceInstallationInProgress || directInstallationAllowed ) &&
 			! isPluginUploadFlow &&
 			! initializeInstallFlow &&
-			( wporgPlugin || wpOrgTheme ) &&
-			selectedSite
+			( wporgPlugin || wpOrgTheme )
 		) {
 			const triggerInstallFlow = () => {
 				setInitializeInstallFlow( true );
 				waitFor( 1 ).then( () => setCurrentStep( 1 ) );
 			};
 
-			if ( selectedSite.jetpack ) {
+			if ( isJetpack || isAtomic ) {
 				if ( wpOrgTheme ) {
 					// initilize theme activating
 					dispatch( installAndActivateTheme( wpOrgTheme.id, siteId ) );
@@ -230,7 +237,6 @@ const MarketplaceProductInstall = ( {
 		directInstallationAllowed,
 		isPluginUploadFlow,
 		initializeInstallFlow,
-		selectedSite,
 		siteId,
 		wporgPlugin,
 		wpOrgTheme,
@@ -238,6 +244,8 @@ const MarketplaceProductInstall = ( {
 		themeSlug,
 		dispatch,
 		hasAtomicFeature,
+		isAtomic,
+		isJetpack,
 	] );
 
 	// Validate completion of atomic transfer flow
@@ -274,7 +282,10 @@ const MarketplaceProductInstall = ( {
 	// Check completition of all flows and redirect to thank you page
 	useEffect( () => {
 		if (
-			// Default process
+			// Happens in 3 cases:
+			// - Click on "Install and activate" button for any plugin on /plugins/<site_name>
+			// - Install with the help of uploading archive of a plugins
+			// - If it's simple site which doesn't support plugins, then installing and activation happens at the same time with upgrading to Business plan
 			( installedPlugin && pluginActive ) ||
 			// Transfer to atomic using a marketplace plugin
 			( atomicFlow && transferStates.COMPLETE === automatedTransferStatus && canManagePlugins ) ||
@@ -335,36 +346,6 @@ const MarketplaceProductInstall = ( {
 	}, [ themeSlug, isPluginUploadFlow, translate ] );
 	const additionalSteps = useMarketplaceAdditionalSteps();
 
-	const installPluginQuestionText = translate( 'Do you want to install the plugin %(plugin)s?', {
-		args: { plugin: wporgPlugin?.name || wpComPluginData?.name },
-	} );
-	const activateThemeQuestionText = translate( 'Do you want to activate the theme %(theme)s?', {
-		args: { theme: wpOrgTheme?.name },
-	} );
-	const questionText = themeSlug ? activateThemeQuestionText : installPluginQuestionText;
-
-	const illustration = themeSlug
-		? wpOrgTheme?.screenshot
-		: wporgPlugin?.icon || wpComPluginData?.icon;
-	const pluginIllustrationWidth = 128;
-	const themeIllustrationWidth = 720;
-	const illustrationWidth = themeSlug ? themeIllustrationWidth : pluginIllustrationWidth;
-
-	const productName = themeSlug
-		? wpOrgTheme?.name || themeSlug
-		: wporgPlugin?.name || wpComPluginData?.name || pluginSlug;
-
-	const productPage = themeSlug
-		? `/themes/${ themeSlug }/${ selectedSite?.slug }`
-		: `/plugins/${ pluginSlug }/${ selectedSite?.slug }`;
-	const goToPluginPageText = translate( 'Go to the plugin page' );
-	const goToThemePageText = translate( 'Go to the theme page' );
-	const goToText = themeSlug ? goToThemePageText : goToPluginPageText;
-
-	const installPluginText = translate( 'Install and activate plugin' );
-	const activateThemeText = translate( 'Activate theme' );
-	const CTAText = themeSlug ? activateThemeText : installPluginText;
-
 	const renderError = () => {
 		// Evaluate error causes in priority order
 		if ( nonInstallablePlanError ) {
@@ -398,31 +379,33 @@ const MarketplaceProductInstall = ( {
 				/>
 			);
 		}
-		if ( noDirectAccessError && ! directInstallationAllowed ) {
+
+		if ( themeSlug && noDirectAccessError && ! directInstallationAllowed ) {
 			const variationPeriod = 'monthly';
 			const variation = wpComPluginData?.variations?.[ variationPeriod ];
 			const marketplaceProductSlug = getProductSlugByPeriodVariation( variation, productsList );
+			const productPage = `/themes/${ themeSlug }/${ selectedSite?.slug }`;
+			const productName = wpOrgTheme?.name || themeSlug;
 
 			return (
 				<>
 					<QueryProductsList />
 					<EmptyContent
 						className="marketplace-plugin-install__direct-install-container"
-						illustration={ illustration || '/calypso/images/illustrations/error.svg' }
-						illustrationWidth={
-							( wporgPlugin?.icon || wpComPluginData?.icon || wpOrgTheme?.screenshot ) &&
-							illustrationWidth
-						}
+						illustration={ wpOrgTheme?.screenshot || '/calypso/images/illustrations/error.svg' }
+						illustrationWidth={ wpOrgTheme?.screenshot && 720 }
 						title={ productName }
-						line={ questionText }
+						line={ translate( 'Do you want to activate the theme %(theme)s?', {
+							args: { theme: wpOrgTheme?.name },
+						} ) }
 					>
 						{ isProductListFetched && (
 							<div className="marketplace-plugin-install__direct-install-actions">
-								<Button href={ productPage }>{ goToText }</Button>
+								<Button href={ productPage }>{ translate( 'Go to the theme page' ) }</Button>
 
 								{ ! isMarketplaceProduct ? (
 									<Button primary onClick={ () => setDirectInstallationAllowed( true ) }>
-										{ CTAText }
+										{ translate( 'Activate theme' ) }
 									</Button>
 								) : (
 									<Button

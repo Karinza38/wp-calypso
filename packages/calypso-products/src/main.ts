@@ -195,6 +195,10 @@ export function getPlanClass( planKey: string ): string {
 		return 'is-complete-plan';
 	}
 
+	if ( isJetpackGrowthPlan( planKey ) ) {
+		return 'is-jetpack-growth-plan';
+	}
+
 	if ( isFreeHostingTrial( planKey ) ) {
 		return 'is-free-hosting-trial';
 	}
@@ -705,7 +709,6 @@ export type FilteredPlan = Plan &
 		| 'getAnnualPlansOnlyFeatures'
 		| 'getPlanTagline'
 		| 'getNewsletterTagLine'
-		| 'getLinkInBioTagLine'
 		| 'getBlogOnboardingTagLine'
 	>;
 
@@ -835,13 +838,6 @@ export const getPopularPlanSpec = ( {
 		};
 	}
 
-	if ( flowName === 'link-in-bio' || flowName === 'link-in-bio-tld' ) {
-		return {
-			type: TYPE_PERSONAL,
-			group,
-		};
-	}
-
 	if ( customerType === 'personal' ) {
 		if ( availablePlans.findIndex( isPremiumPlan ) !== -1 ) {
 			return {
@@ -951,4 +947,35 @@ export function isValidFeatureKey( feature: string ) {
 
 export function getFeatureByKey( feature: string ) {
 	return FEATURES_LIST[ feature ];
+}
+
+export function getFeatureDifference(
+	smallerPlan: string,
+	biggerPlan: string,
+	featureBundleSelector: keyof WPComPlan
+) {
+	let biggerPlanObject = ( getPlan( biggerPlan ) as WPComPlan )?.[ featureBundleSelector ] as
+		| Array< string >
+		| ( () => Array< string > );
+	let smallerPlanObject = ( getPlan( smallerPlan ) as WPComPlan )?.[ featureBundleSelector ] as
+		| Array< string >
+		| ( () => Array< string > );
+
+	if ( typeof biggerPlanObject === 'function' ) {
+		biggerPlanObject = biggerPlanObject();
+	} else if ( ! Array.isArray( biggerPlanObject ) ) {
+		biggerPlanObject = [];
+	}
+
+	if ( typeof smallerPlanObject === 'function' ) {
+		smallerPlanObject = smallerPlanObject();
+	} else if ( ! Array.isArray( smallerPlanObject ) ) {
+		smallerPlanObject = [];
+	}
+
+	const difference = biggerPlanObject.filter(
+		( feature ) => ! smallerPlanObject.includes( feature )
+	);
+
+	return difference;
 }

@@ -14,13 +14,20 @@ export const Sources = ( { message }: { message: Message } ) => {
 		if ( messageLength > 0 ) {
 			// Record TrainTracks render events
 			message.context?.sources?.forEach( ( source: Source, index: number ) => {
-				trackEvent( 'sources_traintracks_render', {
-					fetch_algo: source?.railcar?.fetch_algo,
-					ui_algo: 'default',
-					railcar: source?.railcar?.railcar,
-					fetch_position: source?.railcar?.fetch_position,
-					ui_position: index,
-				} );
+				if ( source.railcar ) {
+					trackEvent( 'sources_traintracks_render', {
+						fetch_algo: source?.railcar?.fetch_algo,
+						ui_algo: 'default',
+						message_id: message?.message_id,
+						railcar: source?.railcar?.railcar,
+						fetch_position: source?.railcar?.fetch_position,
+						fetch_query: source?.railcar?.fetch_query,
+						fetch_lang: source?.railcar?.fetch_lang,
+						ui_position: index,
+						rec_blog_id: source?.railcar?.rec_blog_id,
+						rec_post_id: source?.railcar?.rec_post_id,
+					} );
+				}
 			} );
 			return [
 				...new Map(
@@ -29,7 +36,7 @@ export const Sources = ( { message }: { message: Message } ) => {
 			];
 		}
 		return [];
-	}, [ message?.context?.sources, trackEvent ] );
+	}, [ message?.context?.sources, message?.message_id, trackEvent ] );
 
 	const hasSources = message?.context?.sources && message.context?.sources.length > 0;
 	if ( ! hasSources ) {
@@ -54,6 +61,7 @@ export const Sources = ( { message }: { message: Message } ) => {
 				} )
 			}
 			screenReaderText="More"
+			iconSize={ 16 }
 		>
 			<div className="odie-chatbox-message-sources">
 				{ sources.length > 0 &&

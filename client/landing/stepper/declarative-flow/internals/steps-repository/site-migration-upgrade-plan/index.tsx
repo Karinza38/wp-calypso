@@ -1,13 +1,12 @@
 import {
 	PLAN_BUSINESS,
 	PLAN_MIGRATION_TRIAL_MONTHLY,
+	PlanSlug,
 	getPlan,
 	getPlanByPathSlug,
 } from '@automattic/calypso-products';
-import { useHasEnTranslation } from '@automattic/i18n-utils';
 import { StepContainer } from '@automattic/onboarding';
 import { useTranslate } from 'i18n-calypso';
-import { type FC } from 'react';
 import { UpgradePlan } from 'calypso/blocks/importer/wordpress/upgrade-plan';
 import DocumentHead from 'calypso/components/data/document-head';
 import FormattedHeader from 'calypso/components/formatted-header';
@@ -16,30 +15,29 @@ import { useQuery } from 'calypso/landing/stepper/hooks/use-query';
 import { useSite } from 'calypso/landing/stepper/hooks/use-site';
 import { useSiteSlug } from 'calypso/landing/stepper/hooks/use-site-slug';
 import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
-import { MigrationAssistanceModal } from '../../components/migration-assistance-modal';
-import type { StepProps } from '../../types';
+import type { Step } from '../../types';
 
-type StepContainerProps = React.ComponentProps< typeof StepContainer >;
+import './style.scss';
 
-interface Props extends StepProps {
-	skipLabelText?: StepContainerProps[ 'skipLabelText' ];
-	onSkip?: StepContainerProps[ 'goNext' ];
-	skipPosition?: StepContainerProps[ 'skipButtonAlign' ];
-	headerText?: string;
-	customizedActionButtons?: StepContainerProps[ 'customizedActionButtons' ];
-}
-
-const SiteMigrationUpgradePlan: FC< Props > = ( {
-	navigation,
-	data,
-	customizedActionButtons,
-	...props
-} ) => {
+const SiteMigrationUpgradePlan: Step< {
+	accepts: {
+		skipLabelText?: string;
+		onSkip?: () => void;
+		skipPosition?: 'top' | 'bottom';
+		headerText?: string;
+		customizedActionButtons?: React.ReactElement;
+	};
+	submits: {
+		goToCheckout?: boolean;
+		plan?: string;
+		sendIntentWhenCreatingTrial?: boolean;
+		verifyEmail?: boolean;
+	};
+} > = ( { navigation, data, customizedActionButtons, flow, ...props } ) => {
 	const { onSkip, skipLabelText, skipPosition } = props;
 	const siteItem = useSite();
 	const siteSlug = useSiteSlug();
 	const translate = useTranslate();
-	const hasEnTranslation = useHasEnTranslation();
 	const queryParams = useQuery();
 	const hideFreeMigrationTrialForNonVerifiedEmail =
 		( data?.hideFreeMigrationTrialForNonVerifiedEmail as boolean | undefined ) ?? true;
@@ -55,13 +53,12 @@ const SiteMigrationUpgradePlan: FC< Props > = ( {
 		return;
 	}
 	const migrateFrom = queryParams.get( 'from' );
-	const showMigrationModal = queryParams.get( 'showModal' );
 
-	const goToMigrationAssistanceCheckout = ( userAcceptedDeal = false ) => {
+	const goToCheckout = ( planSlug: PlanSlug ) => {
+		const plan = getPlan( planSlug );
 		navigation?.submit?.( {
 			goToCheckout: true,
-			plan: plan.getPathSlug ? plan.getPathSlug() : '',
-			userAcceptedDeal,
+			plan: plan?.getPathSlug ? plan.getPathSlug() : '',
 		} );
 	};
 
@@ -71,49 +68,41 @@ const SiteMigrationUpgradePlan: FC< Props > = ( {
 	};
 
 	const stepContent = (
-		<>
-			{ showMigrationModal && (
-				<MigrationAssistanceModal
-					onConfirm={ () => {
-						const userAcceptedDeal = true;
-						goToMigrationAssistanceCheckout( userAcceptedDeal );
-					} }
-					migrateFrom={ migrateFrom }
-					navigateBack={ navigation.goBack }
-				/>
-			) }
-			<UpgradePlan
-				site={ siteItem }
-				ctaText={ translate( 'Upgrade and migrate' ) }
-				subTitleText=""
-				isBusy={ false }
-				hideTitleAndSubTitle
-				onCtaClick={ () => {
-					const userAcceptedDeal = false;
-					goToMigrationAssistanceCheckout( userAcceptedDeal );
-				} }
-				onFreeTrialClick={ () => {
-					navigation.submit?.( {
-						goToCheckout: true,
-						plan: PLAN_MIGRATION_TRIAL_MONTHLY,
-						sendIntentWhenCreatingTrial: true,
-					} );
-				} }
-				navigateToVerifyEmailStep={ () => {
-					navigation.submit?.( { verifyEmail: true } );
-				} }
-				hideFreeMigrationTrialForNonVerifiedEmail={ hideFreeMigrationTrialForNonVerifiedEmail }
-				trackingEventsProps={ customTracksEventProps }
-				visiblePlan={ plan.getStoreSlug() }
-			/>
-		</>
+		<UpgradePlan
+			site={ siteItem }
+			ctaText={ translate( 'Upgrade and migrate' ) }
+			subTitleText=""
+			isBusy={ false }
+			hideTitleAndSubTitle
+			onCtaClick={ goToCheckout }
+			onFreeTrialClick={ () => {
+				navigation.submit?.( {
+					goToCheckout: true,
+					plan: PLAN_MIGRATION_TRIAL_MONTHLY,
+					sendIntentWhenCreatingTrial: true,
+				} );
+			} }
+			navigateToVerifyEmailStep={ () => {
+				navigation.submit?.( { verifyEmail: true } );
+			} }
+			hideFreeMigrationTrialForNonVerifiedEmail={ hideFreeMigrationTrialForNonVerifiedEmail }
+			trackingEventsProps={ customTracksEventProps }
+			visiblePlan={ plan.getStoreSlug() }
+			showVariants
+		/>
 	);
 
-	const headerText =
-		props.headerText ??
-		( hasEnTranslation( 'Upgrade your plan' )
-			? translate( 'Upgrade your plan' )
-			: translate( 'Upgrade your plan to migrate your site' ) );
+	const headerText = translate( 'There is a plan for you' );
+	const planName = getPlan( PLAN_BUSINESS )?.getTitle() ?? '';
+
+	const subHeaderText = translate(
+		'A %(planName)s plan is needed for Migrations. Choose an option below to access our lightning-fast infrastructure for a faster, more reliable site.',
+		{
+			args: {
+				planName,
+			},
+		}
+	);
 
 	return (
 		<>
@@ -127,24 +116,14 @@ const SiteMigrationUpgradePlan: FC< Props > = ( {
 				skipButtonAlign={ skipPosition }
 				goNext={ onSkip }
 				hideSkip={ ! onSkip }
+				isWideLayout
 				customizedActionButtons={ customizedActionButtons }
 				formattedHeader={
 					<FormattedHeader
 						id="site-migration-instructions-header"
 						headerText={ headerText }
-						subHeaderText={
-							hasEnTranslation( 'Migrations are exclusive to the %(planName)s plan.' )
-								? translate( 'Migrations are exclusive to the %(planName)s plan.', {
-										args: {
-											planName: getPlan( PLAN_BUSINESS )?.getTitle() ?? '',
-										},
-								  } )
-								: translate(
-										'Migrations are exclusive to the Creator plan. Check out all its benefits, and upgrade to get started.'
-								  )
-						}
+						subHeaderText={ subHeaderText }
 						align="center"
-						subHeaderAlign="center"
 					/>
 				}
 				stepContent={ stepContent }

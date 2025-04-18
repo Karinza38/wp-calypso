@@ -43,7 +43,7 @@ const PodcastingPrivateSiteMessage: React.FC< Props > = function PodcastingPriva
 				) }
 			</p>
 			<p>
-				<a href={ '/settings/general/' + siteSlug + '#site-privacy-settings' }>
+				<a href={ `/sites/settings/site/${ siteSlug }#site-privacy-settings` }>
 					{ translate( 'Go to Privacy settings' ) }
 				</a>
 			</p>

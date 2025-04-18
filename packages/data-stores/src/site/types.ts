@@ -73,6 +73,7 @@ export interface CreateSiteParams {
 		is_blank_canvas?: boolean;
 		is_videopress_initial_purchase?: boolean;
 		wpcom_admin_interface?: string;
+		wpcom_hide_action_bar?: boolean;
 	};
 }
 
@@ -104,6 +105,7 @@ export interface SiteDetailsPlan {
 	billing_period: string;
 	user_is_owner: boolean;
 	is_free: boolean;
+	license_key?: string;
 	features: {
 		active: string[];
 		available: Record< string, string[] >;
@@ -157,10 +159,10 @@ export interface SiteDetails {
 	user_interactions?: string[];
 
 	// Jetpack computed properties
-	canAutoupdateFiles?: boolean;
-	canUpdateFiles?: boolean;
-	isMainNetworkSite?: boolean;
-	isSecondaryNetworkSite?: boolean;
+	canAutoupdateFiles?: boolean | null;
+	canUpdateFiles?: boolean | null;
+	isMainNetworkSite?: boolean | null;
+	isSecondaryNetworkSite?: boolean | null;
 
 	// Migration
 	site_migration?: SourceSiteMigrationBase;
@@ -278,6 +280,7 @@ export interface SiteDetailsOptions {
 	site_goals?: SiteGoal[];
 	site_segment?: string | null;
 	site_vertical_id?: string | null;
+	site_creation_flow?: string;
 	software_version?: string;
 	theme_slug?: string;
 	timezone?: string;
@@ -290,8 +293,9 @@ export interface SiteDetailsOptions {
 	was_created_with_blank_canvas_design?: boolean;
 	woocommerce_is_active?: boolean;
 	wordads?: boolean;
-	launchpad_screen?: false | 'off' | 'full' | 'minimized';
+	launchpad_screen?: false | 'off' | 'full' | 'minimized' | 'skipped';
 	launchpad_checklist_tasks_statuses?: LaunchPadCheckListTasksStatuses;
+	migration_source_site_domain?: string;
 	wpcom_production_blog_id?: number;
 	wpcom_staging_blog_ids?: number[];
 	can_blaze?: boolean;
@@ -299,6 +303,7 @@ export interface SiteDetailsOptions {
 	is_commercial?: boolean | null;
 	is_commercial_reasons?: string[];
 	wpcom_admin_interface?: string;
+	wpcom_hide_action_bar?: boolean;
 }
 
 export type SiteOption = keyof NonNullable< SiteDetails[ 'options' ] >;
@@ -349,7 +354,6 @@ export interface Domain {
 	expired: boolean;
 	auto_renewing: boolean;
 	pending_registration: boolean;
-	pending_registration_time: string;
 	has_registration: boolean;
 	points_to_wpcom: boolean;
 	privacy_available: boolean;
@@ -385,6 +389,7 @@ export interface Domain {
 	product_slug?: any;
 	owner: string;
 	is_pending_icann_verification?: boolean;
+	is_root_domain_registered_with_automattic: boolean;
 	is_mapped_to_atomic_site: boolean;
 }
 
@@ -502,14 +507,14 @@ interface PaletteColor {
 	slug: string;
 	color: string;
 	name: string;
-	default: string;
+	default?: string;
 }
 
 export interface GlobalStyles {
 	slug?: string;
 	title?: string;
 	settings: {
-		color: {
+		color?: {
 			palette: {
 				default: PaletteColor[];
 				theme: PaletteColor[];
@@ -534,6 +539,7 @@ export interface LaunchPadCheckListTasksStatuses {
 }
 
 export interface ActiveTheme {
+	id: string;
 	stylesheet: string;
 	_links: {
 		'wp:user-global-styles': { href: string }[];
@@ -623,39 +629,6 @@ export interface SourceSiteMigrationBase {
 	migration_status?: string;
 }
 
-export interface SourceSiteMigrationDetails extends SourceSiteMigrationBase {
-	target_blog_id?: number;
-	site_migration_id: number;
-	percent: number;
-	created: string;
-	is_atomic: boolean;
-	// Statistics
-	backup_percent?: number;
-	backup_size?: number;
-	backup_started?: string;
-	site_size?: number;
-	restore_percent?: number;
-	restore_message?: string;
-	restore_failure?: string;
-	restore_started?: number;
-	comments_count?: number;
-	plugins_count?: number;
-	posts_count?: number;
-	tables_count?: number;
-	themes_count?: number;
-	uploads_count?: number;
-	real_percent?: number;
-	wp_version?: string;
-	// Source site details
-	is_target_blog_admin?: boolean;
-	is_target_blog_upgraded?: boolean;
-	target_blog_slug?: string;
-	// Steps details
-	step?: number;
-	step_name?: string;
-	total_steps?: number;
-}
-
 export interface Page {
 	title: string;
 	content: string;
@@ -675,6 +648,7 @@ export interface AssembleSiteOptions {
  * Site media storage from `/sites/[ siteIdOrSlug ]/media-storage` endpoint
  */
 export interface RawSiteMediaStorage {
+	max_storage_bytes_from_add_ons: number;
 	max_storage_bytes: number;
 	storage_used_bytes: number;
 }
@@ -683,6 +657,7 @@ export interface RawSiteMediaStorage {
  * Site media storage transformed for frontend use
  */
 export interface SiteMediaStorage {
+	maxStorageBytesFromAddOns: number;
 	maxStorageBytes: number;
 	storageUsedBytes: number;
 }

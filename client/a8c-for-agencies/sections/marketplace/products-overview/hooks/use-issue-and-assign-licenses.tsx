@@ -2,11 +2,14 @@ import { isEnabled } from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
 import { addQueryArgs, getQueryArg } from '@wordpress/url';
 import { useTranslate } from 'i18n-calypso';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import useShowFeedback from 'calypso/a8c-for-agencies/components/a4a-feedback/hooks/use-show-a4a-feedback';
+import { FeedbackType } from 'calypso/a8c-for-agencies/components/a4a-feedback/types';
 import {
 	A4A_LICENSES_LINK,
 	A4A_SITES_LINK,
 	A4A_SITES_LINK_NEEDS_SETUP,
+	A4A_FEEDBACK_LINK,
 } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
 import { AGENCY_FIRST_PURCHASE_SESSION_STORAGE_KEY } from 'calypso/a8c-for-agencies/constants';
 import useProductsQuery from 'calypso/a8c-for-agencies/data/marketplace/use-products-query';
@@ -15,7 +18,7 @@ import { fetchAgencies } from 'calypso/state/a8c-for-agencies/agency/actions';
 import { getActiveAgency } from 'calypso/state/a8c-for-agencies/agency/selectors';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
 import { setPurchasedLicense, resetSite } from 'calypso/state/jetpack-agency-dashboard/actions';
-import { successNotice } from 'calypso/state/notices/actions';
+import { successNotice, errorNotice } from 'calypso/state/notices/actions';
 import { type APIError } from 'calypso/state/partner-portal/types';
 import useAssignLicensesToSite from './use-assign-licenses-to-site';
 import useIssueLicenses, {
@@ -84,6 +87,7 @@ type UseIssueAndAssignLicensesOptions = {
 	onSuccess?: () => void;
 	onIssueError?: ( ( error: APIError ) => void ) | ( () => void );
 	onAssignError?: ( ( error: Error ) => void ) | ( () => void );
+	redirectTo?: string;
 };
 function useIssueAndAssignLicenses(
 	selectedSite?: { ID: number; domain: string } | null,
@@ -91,20 +95,42 @@ function useIssueAndAssignLicenses(
 ) {
 	const dispatch = useDispatch();
 	const translate = useTranslate();
+	const [ redirectWithFeedbackUrl, setRedirectWithFeedbackUrl ] = useState< string | null >( null );
 
 	const agency = useSelector( getActiveAgency );
 
 	const products = useProductsQuery();
 
-	const { isReady: isIssueReady, issueLicenses } = useIssueLicenses( {
+	const { isFeedbackShown } = useShowFeedback( FeedbackType.PurchaseCompleted );
+
+	const {
+		isReady: isIssueReady,
+		issueLicenses,
+		isPending: isIssueLoading,
+	} = useIssueLicenses( {
 		onError: options.onIssueError ?? NO_OP,
 	} );
 
-	const { isReady: isAssignReady, assignLicensesToSite } = useAssignLicensesToSite( selectedSite, {
+	const {
+		isReady: isAssignReady,
+		assignLicensesToSite,
+		isPending: isAssignLoading,
+	} = useAssignLicensesToSite( selectedSite, {
 		onError: options.onAssignError ?? NO_OP,
 	} );
 
 	const getLicenseIssuedMessage = useGetLicenseIssuedMessage();
+
+	useEffect( () => {
+		if ( redirectWithFeedbackUrl ) {
+			page.redirect(
+				addQueryArgs( A4A_FEEDBACK_LINK, {
+					type: FeedbackType.PurchaseCompleted,
+					redirectUrl: redirectWithFeedbackUrl,
+				} )
+			);
+		}
+	}, [ redirectWithFeedbackUrl ] );
 
 	return useMemo( () => {
 		const isReady = isIssueReady && isAssignReady;
@@ -186,32 +212,60 @@ function useIssueAndAssignLicenses(
 			if ( fromDashboard ) {
 				const licenseItem =
 					products?.data?.find?.( ( p ) => p.slug === issuedLicenses[ 0 ].slug )?.name ?? '';
-				const message =
-					selectedSite?.domain && licenseItem
-						? translate(
-								'{{strong}}%(licenseItem)s{{/strong}} was successfully assigned to ' +
-									'{{em}}%(selectedSite)s{{/em}}. Please allow a few minutes ' +
-									'for your features to activate.',
-								{
-									args: { selectedSite: selectedSite.domain, licenseItem },
-									components: {
-										strong: <strong />,
-										em: <em />,
-									},
-								}
-						  )
-						: translate( 'Your license has been successfully issued and assigned to your site.' );
-				dispatch( successNotice( message, { displayOnNextPage: true } ) );
+				if ( isFeedbackShown ) {
+					const message =
+						selectedSite?.domain && licenseItem
+							? translate(
+									'{{strong}}%(licenseItem)s{{/strong}} was successfully assigned to ' +
+										'{{em}}%(selectedSite)s{{/em}}. Please allow a few minutes ' +
+										'for your features to activate.',
+									{
+										args: { selectedSite: selectedSite.domain, licenseItem },
+										components: {
+											strong: <strong />,
+											em: <em />,
+										},
+									}
+							  )
+							: translate( 'Your license has been successfully issued and assigned to your site.' );
+					dispatch( successNotice( message, { displayOnNextPage: true } ) );
+				}
 
-				page.redirect( A4A_SITES_LINK );
+				if ( isFeedbackShown ) {
+					page.redirect( A4A_SITES_LINK );
+				} else {
+					setRedirectWithFeedbackUrl( A4A_SITES_LINK );
+				}
+				return;
+			}
+
+			if ( options.redirectTo ) {
+				const rejectedProduct = assignLicensesStatus.selectedProducts.find(
+					( product ) => product.status === 'rejected'
+				);
+
+				if ( rejectedProduct ) {
+					dispatch(
+						errorNotice(
+							rejectedProduct.error?.message ?? translate( 'Error assigning license to site.' )
+						)
+					);
+					return;
+				}
+
+				page.redirect( options.redirectTo );
 				return;
 			}
 
 			// Otherwise, send them to the overview of all licenses
-			page.redirect( A4A_LICENSES_LINK );
+			if ( isFeedbackShown ) {
+				page.redirect( A4A_LICENSES_LINK );
+			} else {
+				setRedirectWithFeedbackUrl( A4A_LICENSES_LINK );
+			}
 		};
 
-		return { issueAndAssignLicenses, isReady };
+		return { issueAndAssignLicenses, isReady, isLoading: isIssueLoading || isAssignLoading };
 	}, [
 		assignLicensesToSite,
 		dispatch,
@@ -225,6 +279,9 @@ function useIssueAndAssignLicenses(
 		products?.data,
 		translate,
 		agency?.tier,
+		isIssueLoading,
+		isAssignLoading,
+		isFeedbackShown,
 	] );
 }
 

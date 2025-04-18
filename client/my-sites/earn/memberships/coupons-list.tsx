@@ -4,8 +4,7 @@ import {
 	FEATURE_RECURRING_PAYMENTS,
 } from '@automattic/calypso-products';
 import { CompactCard, Button, Badge, Gridicon } from '@automattic/components';
-import { formatCurrency } from '@automattic/format-currency';
-import { useTranslate } from 'i18n-calypso';
+import { formatCurrency, useTranslate } from 'i18n-calypso';
 import { useEffect, useState } from 'react';
 import QueryMembershipsCoupons from 'calypso/components/data/query-memberships-coupons';
 import QueryMembershipsSettings from 'calypso/components/data/query-memberships-settings';
@@ -177,7 +176,7 @@ function CouponsList() {
 									) }
 									{ currentCoupon?.discount_type === COUPON_DISCOUNT_TYPE_PERCENTAGE && (
 										<div className="memberships__coupons-coupon-badge">
-											<Badge type="warning-clear">
+											<Badge type="info">
 												{ getDiscountBadge(
 													currentCoupon?.duration || '',
 													currentCoupon?.discount_type,
@@ -188,7 +187,7 @@ function CouponsList() {
 									) }
 									{ currentCoupon?.discount_type === COUPON_DISCOUNT_TYPE_AMOUNT && (
 										<div className="memberships__coupons-coupon-badge">
-											<Badge type="warning-clear">
+											<Badge type="info">
 												{ getDiscountBadge(
 													currentCoupon?.duration || '',
 													currentCoupon?.discount_type,
@@ -200,28 +199,24 @@ function CouponsList() {
 									) }
 									{ currentCoupon?.cannot_be_combined && (
 										<div className="memberships__coupons-coupon-badge">
-											<Badge type="info-blue">
+											<Badge type="info">
 												{ translate( 'Cannot be combined with other coupons' ) }
 											</Badge>
 										</div>
 									) }
 									{ currentCoupon?.first_time_purchase_only && (
 										<div className="memberships__coupons-coupon-badge">
-											<Badge type="info-green">{ translate( 'First-time order only' ) }</Badge>
+											<Badge type="info">{ translate( 'First-time order only' ) }</Badge>
 										</div>
 									) }
 									{ ( currentCoupon?.email_allow_list?.length ?? 0 ) > 0 && (
 										<div className="memberships__coupons-coupon-badge">
-											<Badge type="info-purple">
-												{ translate( 'Limited to specific emails' ) }
-											</Badge>
+											<Badge type="info">{ translate( 'Limited to specific emails' ) }</Badge>
 										</div>
 									) }
 									{ ( currentCoupon?.plan_ids_allow_list?.length ?? 0 ) > 0 && (
 										<div className="memberships__coupons-coupon-badge">
-											<Badge type="info-purple">
-												{ translate( 'Limited to specific products' ) }
-											</Badge>
+											<Badge type="info">{ translate( 'Limited to specific products' ) }</Badge>
 										</div>
 									) }
 								</div>

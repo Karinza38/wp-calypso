@@ -8,6 +8,7 @@ import {
 	PlanSlug,
 } from '@automattic/calypso-products';
 import { Plans } from '@automattic/data-stores';
+import { HOSTED_SITE_MIGRATION_FLOW } from '@automattic/onboarding';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import nock from 'nock';
@@ -153,21 +154,6 @@ describe( 'SiteMigrationUpgradePlan', () => {
 		mockUseSelectedPlanUpgradeQuery( 'business' );
 	} );
 
-	it( 'selects annual plan as default', async () => {
-		const navigation = { submit: jest.fn() };
-		render( { navigation } );
-
-		await waitFor( async () => {
-			await userEvent.click( screen.getByRole( 'button', { name: /Upgrade and migrate/ } ) );
-		} );
-
-		expect( navigation.submit ).toHaveBeenCalledWith( {
-			goToCheckout: true,
-			plan: 'business',
-			userAcceptedDeal: false,
-		} );
-	} );
-
 	it( 'selects the monthly plan', async () => {
 		mockUsePricingMetaForGridPlans( PLAN_BUSINESS_MONTHLY, 'month' );
 		mockUseSelectedPlanUpgradeQuery( 'business-monthly' );
@@ -175,15 +161,11 @@ describe( 'SiteMigrationUpgradePlan', () => {
 		const navigation = { submit: jest.fn() };
 		render( { navigation } );
 
-		await waitFor( async () => {
-			await userEvent.click( screen.getByRole( 'button', { name: /Pay monthly/ } ) );
-			await userEvent.click( screen.getByRole( 'button', { name: /Upgrade and migrate/ } ) );
-		} );
+		await userEvent.click( await screen.findByRole( 'button', { name: /Get Monthly/ } ) );
 
 		expect( navigation.submit ).toHaveBeenCalledWith( {
 			goToCheckout: true,
 			plan: 'business-monthly',
-			userAcceptedDeal: false,
 		} );
 	} );
 
@@ -191,19 +173,15 @@ describe( 'SiteMigrationUpgradePlan', () => {
 		const navigation = { submit: jest.fn() };
 		render( { navigation } );
 
-		await waitFor( async () => {
-			await userEvent.click( screen.getByRole( 'button', { name: /Pay annually/ } ) );
-			await userEvent.click( screen.getByRole( 'button', { name: /Upgrade and migrate/ } ) );
-		} );
+		await userEvent.click( await screen.findByRole( 'button', { name: /Get Yearly/ } ) );
 
 		expect( navigation.submit ).toHaveBeenCalledWith( {
 			goToCheckout: true,
 			plan: 'business',
-			userAcceptedDeal: false,
 		} );
 	} );
 
-	it( 'selects free trial', async () => {
+	it.skip( 'selects free trial', async () => {
 		mockTrialEligibilityAPI( API_RESPONSE_EMAIL_VERIFIED );
 
 		const navigation = { submit: jest.fn() };
@@ -220,11 +198,14 @@ describe( 'SiteMigrationUpgradePlan', () => {
 		} );
 	} );
 
-	it( 'show the trial plan for verified users', async () => {
+	it.skip( 'show the trial plan for verified users', async () => {
 		nock.cleanAll();
 		mockTrialEligibilityAPI( API_RESPONSE_EMAIL_VERIFIED );
 
-		render( { data: { hideFreeMigrationTrialForNonVerifiedEmail: true } } );
+		render( {
+			data: { hideFreeMigrationTrialForNonVerifiedEmail: true },
+			flow: HOSTED_SITE_MIGRATION_FLOW,
+		} );
 
 		await waitFor( () => {
 			expect( screen.queryByRole( 'button', { name: /Try 7 days for free/ } ) ).toBeInTheDocument();

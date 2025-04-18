@@ -17,8 +17,9 @@ import Intervals from 'calypso/blocks/stats-navigation/intervals';
 import DocumentHead from 'calypso/components/data/document-head';
 import EmptyContent from 'calypso/components/empty-content';
 import JetpackColophon from 'calypso/components/jetpack-colophon';
-import Main from 'calypso/components/main';
 import NavigationHeader from 'calypso/components/navigation-header';
+import Main from 'calypso/my-sites/stats/components/stats-main';
+import { STATS_PRODUCT_NAME } from 'calypso/my-sites/stats/constants';
 import { recordGoogleEvent } from 'calypso/state/analytics/actions';
 import { canCurrentUser } from 'calypso/state/selectors/can-current-user';
 import { canAccessWordAds } from 'calypso/state/sites/selectors';
@@ -40,7 +41,7 @@ import './style.scss';
 import 'calypso/my-sites/earn/ads/style.scss';
 
 const formatCurrency = ( value ) => {
-	return '$' + numberFormat( value, 2 );
+	return '$' + numberFormat( value, { decimals: 2 } );
 };
 
 const CHARTS = [
@@ -158,6 +159,9 @@ class WordAds extends Component {
 		const slugPath = slug ? `/${ slug }` : '';
 		const pathTemplate = `${ wordads.path }/{{ interval }}${ slugPath }`;
 
+		const isWPAdmin = config.isEnabled( 'is_odyssey' );
+		const wordAdsPageClasses = clsx( 'stats', { 'is-odyssey-stats': isWPAdmin } );
+
 		const statsWrapperClass = clsx( 'wordads stats-content', {
 			'is-period-year': period === 'year',
 		} );
@@ -171,10 +175,10 @@ class WordAds extends Component {
 					title={ `WordAds > ${ titlecase( period ) }` }
 				/>
 
-				<div className="stats">
+				<div className={ wordAdsPageClasses }>
 					<NavigationHeader
 						className="stats__section-header modernized-header"
-						title={ translate( 'Jetpack Stats' ) }
+						title={ STATS_PRODUCT_NAME }
 						subtitle={ translate( 'See how ads are performing on your site.' ) }
 						screenReader={ navItems.wordads?.label }
 					></NavigationHeader>

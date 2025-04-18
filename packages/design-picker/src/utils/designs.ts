@@ -1,11 +1,5 @@
-import { isEnabled } from '@automattic/calypso-config';
-import { isWithinBreakpoint } from '@automattic/viewport';
 import { addQueryArgs } from '@wordpress/url';
-import {
-	ASSEMBLER_V2_DESIGN,
-	DEFAULT_ASSEMBLER_DESIGN,
-	DEFAULT_VIEWPORT_HEIGHT,
-} from '../constants';
+import { ASSEMBLER_V2_DESIGN, DEFAULT_VIEWPORT_HEIGHT } from '../constants';
 import type { Design, DesignPreviewOptions } from '../types';
 
 function encodeParenthesesInText( text: string ) {
@@ -70,14 +64,26 @@ export const getDesignPreviewUrl = (
 };
 
 export const getAssemblerDesign = () => {
-	if ( isEnabled( 'pattern-assembler/v2' ) ) {
-		return ASSEMBLER_V2_DESIGN;
-	}
-	return DEFAULT_ASSEMBLER_DESIGN;
+	return ASSEMBLER_V2_DESIGN;
 };
 
-export const isAssemblerDesign = ( design?: Design ) => design?.design_type === 'assembler';
+export const getThemeIdFromDesign = ( design: Design ) => {
+	const stylesheet = design?.recipe?.stylesheet;
+	if ( stylesheet ) {
+		// Transform stylesheet "premium/skivers" into themeId "skivers"
+		const slashIndex = stylesheet.lastIndexOf( '/' );
+		const themeId = stylesheet.substring( slashIndex + 1 );
+		return themeId;
+	}
+	return null;
+};
 
-// Go to the assembler only when the viewport width >= 960px as the it doesn't support small
-// screen for now.
-export const isAssemblerSupported = () => isWithinBreakpoint( '>=960px' );
+export const shuffleDesigns = ( designs: Design[], seed: number ) => {
+	const shuffled = [ ...designs ];
+	for ( let i = shuffled.length - 1; i > 0; i-- ) {
+		const j = ( i + seed + shuffled.length ) % ( i + 1 );
+		[ shuffled[ i ], shuffled[ j ] ] = [ shuffled[ j ], shuffled[ i ] ];
+	}
+
+	return shuffled;
+};

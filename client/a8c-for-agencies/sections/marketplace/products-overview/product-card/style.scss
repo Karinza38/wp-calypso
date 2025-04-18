@@ -1,9 +1,15 @@
 @import "@wordpress/base-styles/breakpoints";
 @import "@wordpress/base-styles/mixins";
+@import "@wordpress/base-styles/variables";
+
+$woocommerce-purple-50: #720EEC;
 
 .product-card {
 	display: flex;
 	justify-content: stretch;
+	min-height: 270px;
+	height: 100%;
+
 	&.disabled {
 		opacity: 0.5;
 
@@ -111,12 +117,11 @@
 	display: block;
 	justify-content: center;
 	text-align: center;
-	font-size: 1rem;
+	@include body-large;
 
 	@include breakpoint-deprecated( ">660px" ) {
 		padding: 7px 12px;
-		font-size: 0.75rem;
-		font-weight: 600;
+		@include heading-medium;
 		height: 2rem;
 	}
 }
@@ -137,7 +142,7 @@
 }
 
 .product-card__title {
-	@include a4a-font-heading-xl;
+	@include heading-x-large;
 	color: var(--color-neutral-80);
 
 	@include product-card-block__title;
@@ -160,7 +165,7 @@
 }
 
 .product-card__description {
-	@include a4a-font-body-lg;
+	@include body-large;
 	color: var(--color-neutral-60);
 	margin: 8px 0;
 }
@@ -220,8 +225,7 @@
 	}
 
 	.form-label {
-		font-size: 1rem;
-		line-height: 1.2;
+		@include body-large;
 		margin: 0;
 	}
 
@@ -230,3 +234,103 @@
 	}
 }
 
+.products-overview {
+	.product-card__heading {
+		gap: 12px;
+	}
+
+	.product-card__inner {
+		border-radius: 8px; /* stylelint-disable-line scales/radii */
+		border-color: #ddd;
+		padding: 16px;
+	}
+
+	.product-card__title {
+		@include heading-large;
+	}
+
+	.product-price-with-discount__price {
+		@include heading-x-large;
+	}
+
+	.product-price-with-discount__price-interval {
+		@include body-medium;
+	}
+
+	.product-card__pricing {
+		margin: 0;
+	}
+
+	.product-card__description {
+		@include body-large;
+
+		color: var(--color-neutral-80);
+		margin: 0;
+	}
+
+	// TODO: Create a new component for
+	// this on A4A when we remove the feature flag
+	.license-lightbox-link {
+		@include body-medium;
+
+		text-decoration: none;
+		color: var(--color-primary);
+	}
+}
+
+.product-card__types {
+	display: flex;
+	gap: 0.5rem;
+	margin-block-start: 4px;
+}
+
+.product-card.is-woopayments,
+.product-card.is-woopayments:hover,
+.product-card.is-woopayments:focus,
+.product-card.is-woopayments:active {
+	.product-card__inner {
+		background: $woocommerce-purple-50 url( calypso/assets/images/a8c-for-agencies/woo-product-card-bg.svg ) no-repeat bottom right;
+		border-color: $woocommerce-purple-50;
+	}
+
+	.product-card__title,
+	.product-card__description,
+	.license-lightbox-link {
+		color: var(--color-text-inverted);
+	}
+
+
+	.product-card__title {
+		@include heading-x-large;
+	}
+
+	.product-card__description {
+		@include body-large;
+
+		@include break-large {
+			margin-block-end: 32px;
+		}
+	}
+
+	.product-card__select-button.is-primary:not(:disabled) {
+		&,
+		&:focus,
+		&:focus-visible {
+			color: $woocommerce-purple-50;
+			background-color: var(--color-surface);
+			border: none;
+			outline: none;
+			box-shadow: none;
+		}
+
+		&.is-selected {
+			background-color: $woocommerce-purple-50;
+			color: var(--color-text-inverted);
+			border: 1px solid var(--color-surface);
+		}
+	}
+
+	.license-lightbox-link {
+		padding-inline: 8px;
+	}
+}

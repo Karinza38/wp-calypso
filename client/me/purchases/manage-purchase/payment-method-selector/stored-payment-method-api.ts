@@ -9,6 +9,7 @@ export async function saveCreditCard( {
 	token,
 	stripeConfiguration,
 	useForAllSubscriptions,
+	useForBusiness,
 	eventSource,
 	postalCode,
 	countryCode,
@@ -16,10 +17,12 @@ export async function saveCreditCard( {
 	city,
 	organization,
 	address,
+	setupKey,
 }: {
 	token: string;
 	stripeConfiguration: StripeConfiguration;
 	useForAllSubscriptions: boolean;
+	useForBusiness?: boolean | undefined;
 	eventSource?: string;
 	postalCode?: string;
 	countryCode: string;
@@ -27,11 +30,13 @@ export async function saveCreditCard( {
 	city?: string;
 	organization?: string;
 	address?: string;
+	setupKey?: string;
 } ): Promise< StoredCardEndpointResponse > {
 	const additionalData = getParamsForApi( {
 		cardToken: token,
 		stripeConfiguration,
 		useForAllSubscriptions,
+		useForBusiness,
 		eventSource,
 		postalCode,
 		countryCode,
@@ -39,6 +44,7 @@ export async function saveCreditCard( {
 		city,
 		organization,
 		address,
+		setupKey,
 	} );
 	const response = await wp.req.post(
 		{
@@ -71,6 +77,7 @@ export async function updateCreditCard( {
 	organization,
 	address,
 	countryCode,
+	setupKey,
 }: {
 	purchase: Purchase;
 	token: string;
@@ -83,6 +90,7 @@ export async function updateCreditCard( {
 	organization?: string;
 	address?: string;
 	countryCode: string;
+	setupKey?: string;
 } ): Promise< StoredCardEndpointResponse > {
 	const {
 		purchaseId,
@@ -96,6 +104,7 @@ export async function updateCreditCard( {
 		tax_city,
 		tax_organization,
 		tax_address,
+		setup_key,
 	} = getParamsForApi( {
 		cardToken: token,
 		stripeConfiguration,
@@ -108,6 +117,7 @@ export async function updateCreditCard( {
 		city,
 		organization,
 		address,
+		setupKey,
 	} );
 	const response = await wp.req.post(
 		{
@@ -125,6 +135,7 @@ export async function updateCreditCard( {
 			tax_city,
 			tax_organization,
 			tax_address,
+			setup_key,
 		}
 	);
 	if ( response.error ) {
@@ -140,6 +151,7 @@ function getParamsForApi( {
 	stripeConfiguration,
 	purchase,
 	useForAllSubscriptions,
+	useForBusiness,
 	eventSource,
 	postalCode,
 	countryCode,
@@ -147,11 +159,13 @@ function getParamsForApi( {
 	city,
 	organization,
 	address,
+	setupKey,
 }: {
 	cardToken: string;
 	stripeConfiguration: StripeConfiguration;
 	purchase?: Purchase | undefined;
 	useForAllSubscriptions?: boolean;
+	useForBusiness?: boolean;
 	eventSource?: string;
 	postalCode: string | undefined;
 	countryCode: string;
@@ -159,6 +173,7 @@ function getParamsForApi( {
 	city?: string;
 	organization?: string;
 	address?: string;
+	setupKey?: string;
 } ) {
 	return {
 		payment_partner: stripeConfiguration ? stripeConfiguration.processor_id : '',
@@ -173,5 +188,7 @@ function getParamsForApi( {
 		tax_city: city,
 		tax_organization: organization,
 		tax_address: address,
+		tax_is_for_business: useForBusiness ?? '',
+		...( setupKey ? { setup_key: setupKey } : {} ),
 	};
 }

@@ -11,21 +11,20 @@ import { localize } from 'i18n-calypso';
 import { connect } from 'react-redux';
 import FormSettingExplanation from 'calypso/components/forms/form-setting-explanation';
 import FormTextInput from 'calypso/components/forms/form-text-input';
-import HeaderCakeBack from 'calypso/components/header-cake/back';
 import InlineSupportLink from 'calypso/components/inline-support-link';
 import { LoadingBar } from 'calypso/components/loading-bar';
 import NavigationHeader from 'calypso/components/navigation-header';
-import { Panel, PanelHeading, PanelSection } from 'calypso/components/panel';
+import { Panel, PanelCard, PanelCardHeading } from 'calypso/components/panel';
 import PageViewTracker from 'calypso/lib/analytics/page-view-tracker';
 import { EVERY_FIVE_SECONDS, Interval } from 'calypso/lib/interval';
-import { getSettingsSource } from 'calypso/my-sites/site-settings/site-tools/utils';
 import { useDispatch, useSelector } from 'calypso/state';
 import { errorNotice, successNotice } from 'calypso/state/notices/actions';
 import isUnlaunchedSite from 'calypso/state/selectors/is-unlaunched-site';
 import { getSite, getSiteDomain, isJetpackSite } from 'calypso/state/sites/selectors';
 import { getSelectedSiteId, getSelectedSiteSlug } from 'calypso/state/ui/selectors';
+import { useSetFeatureBreadcrumb } from '../../../../hooks/breadcrumbs/use-set-feature-breadcrumb';
 import { DIFMUpsell } from '../../../components/difm-upsell-banner';
-import { isHostingMenuUntangled } from '../../../utils';
+import ExportNotice from '../export-notice';
 
 import './style.scss';
 
@@ -45,11 +44,9 @@ function SiteResetCard( {
 	const { data: status, refetch: refetchResetStatus } = useSiteResetStatusQuery( siteId );
 	const [ isDomainConfirmed, setDomainConfirmed ] = useState( false );
 	const [ resetComplete, setResetComplete ] = useState( false );
+	const title = translate( 'Reset site' );
 
-	const isUntangled = isHostingMenuUntangled();
-
-	const title = isUntangled ? translate( 'Reset site' ) : translate( 'Site Reset' );
-	const source = isUntangled ? '/sites/settings/administration' : getSettingsSource();
+	useSetFeatureBreadcrumb( { siteId, title } );
 
 	const checkStatus = async () => {
 		if ( status?.status !== 'completed' && isAtomic ) {
@@ -173,24 +170,6 @@ function SiteResetCard( {
 		}
 	);
 
-	const backupHint = isAtomic
-		? createInterpolateElement(
-				translate(
-					"Having second thoughts? Don't fret, you'll be able to restore your site using the most recent backup in the <a>Activity Log</a>."
-				),
-				{
-					a: <a href={ `/activity-log/${ selectedSiteSlug }` } />,
-				}
-		  )
-		: createInterpolateElement(
-				translate(
-					'To keep a copy of your current site, head to the <a>Export page</a> before starting the reset.'
-				),
-				{
-					a: <a href={ `/settings/export/${ selectedSiteSlug }` } />,
-				}
-		  );
-
 	const isResetInProgress = status?.status === 'in-progress' && isAtomic;
 
 	const ctaText =
@@ -214,28 +193,28 @@ function SiteResetCard( {
 				}
 			);
 			return (
-				<PanelSection>
-					{ isUntangled && <PanelHeading>{ translate( 'Site reset successful' ) }</PanelHeading> }
+				<PanelCard>
+					<PanelCardHeading>{ translate( 'Site reset successful' ) }</PanelCardHeading>
 					<p>{ message }</p>
-				</PanelSection>
+				</PanelCard>
 			);
 		} else if ( isResetInProgress ) {
 			return (
-				<PanelSection>
+				<PanelCard>
 					<>
-						{ isUntangled && <PanelHeading>{ translate( 'Resetting site' ) }</PanelHeading> }
+						<PanelCardHeading>{ translate( 'Resetting site' ) }</PanelCardHeading>
 						<LoadingBar progress={ status?.progress } />
 						<p className="reset-site__in-progress-message">
 							{ translate( "We're resetting your site. We'll email you once it's ready." ) }
 						</p>
 					</>
-				</PanelSection>
+				</PanelCard>
 			);
 		}
 		return (
 			<>
-				<PanelSection>
-					{ isUntangled && <PanelHeading>{ translate( 'Confirm site reset' ) }</PanelHeading> }
+				<PanelCard>
+					<PanelCardHeading>{ translate( 'Confirm site reset' ) }</PanelCardHeading>
 					<p>{ instructions }</p>
 					{ content.length > 0 && (
 						<>
@@ -255,6 +234,15 @@ function SiteResetCard( {
 						</>
 					) }
 					<hr />
+					{ ! isAtomic && (
+						<ExportNotice
+							siteSlug={ selectedSiteSlug }
+							siteId={ siteId }
+							warningText={ translate(
+								'Before resetting your site, consider exporting your content as a backup.'
+							) }
+						/>
+					) }
 					<FormLabel htmlFor="confirmResetInput" className="reset-site__confirm-label">
 						{ createInterpolateElement(
 							sprintf(
@@ -289,8 +277,19 @@ function SiteResetCard( {
 							{ ctaText }
 						</Button>
 					</div>
-					{ backupHint && <FormSettingExplanation>{ backupHint }</FormSettingExplanation> }
-				</PanelSection>
+					{ isAtomic && (
+						<FormSettingExplanation>
+							{ createInterpolateElement(
+								translate(
+									"Having second thoughts? Don't fret, you'll be able to restore your site using the most recent backup in the <a>Activity Log</a>."
+								),
+								{
+									a: <a href={ `/activity-log/${ selectedSiteSlug }` } />,
+								}
+							) }
+						</FormSettingExplanation>
+					) }
+				</PanelCard>
 			</>
 		);
 	};
@@ -310,7 +309,6 @@ function SiteResetCard( {
 				) }
 			/>
 			<PageViewTracker path="/settings/start-reset/:site" title="Settings > Site Reset" />
-			<HeaderCakeBack icon="chevron-left" href={ `${ source }/${ selectedSiteSlug }` } />
 			{ renderBody() }
 			<DIFMUpsell
 				site={ site }

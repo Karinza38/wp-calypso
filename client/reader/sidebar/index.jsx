@@ -1,6 +1,5 @@
-import { isEnabled } from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
-import { hasTranslation } from '@wordpress/i18n';
+import { Button } from '@wordpress/components';
 import closest from 'component-closest';
 import i18n, { localize } from 'i18n-calypso';
 import { defer, startsWith } from 'lodash';
@@ -20,10 +19,8 @@ import SidebarSeparator from 'calypso/layout/sidebar/separator';
 import ReaderA8cConversationsIcon from 'calypso/reader/components/icons/a8c-conversations-icon';
 import ReaderConversationsIcon from 'calypso/reader/components/icons/conversations-icon';
 import ReaderDiscoverIcon from 'calypso/reader/components/icons/discover-icon';
-import ReaderFollowingIcon from 'calypso/reader/components/icons/following-icon';
 import ReaderLikesIcon from 'calypso/reader/components/icons/likes-icon';
 import ReaderManageSubscriptionsIcon from 'calypso/reader/components/icons/manage-subscriptions-icon';
-import ReaderNotificationsIcon from 'calypso/reader/components/icons/notifications-icon';
 import ReaderSearchIcon from 'calypso/reader/components/icons/search-icon';
 import { isAutomatticTeamMember } from 'calypso/reader/lib/teams';
 import { getTagStreamUrl } from 'calypso/reader/route';
@@ -93,7 +90,7 @@ export class ReaderSidebar extends Component {
 			}
 		}
 
-		if ( startsWith( this.props.path, '/read/list/' ) ) {
+		if ( startsWith( this.props.path, '/reader/list/' ) ) {
 			const listOwner = pathParts[ 3 ];
 			const listSlug = pathParts[ 4 ];
 			if ( listOwner && listSlug ) {
@@ -117,24 +114,10 @@ export class ReaderSidebar extends Component {
 		} );
 	};
 
-	handleReaderSidebarFollowedSitesClicked = ( event, path ) => {
-		recordAction( 'clicked_reader_sidebar_followed_sites' );
-		recordGaEvent( 'Clicked Reader Sidebar Followed Sites' );
-		this.props.recordReaderTracksEvent( 'calypso_reader_sidebar_followed_sites_clicked' );
-		this.handleGlobalSidebarMenuItemClick( path );
-	};
-
 	handleReaderSidebarConversationsClicked = ( event, path ) => {
 		recordAction( 'clicked_reader_sidebar_conversations' );
 		recordGaEvent( 'Clicked Reader Sidebar Conversations' );
 		this.props.recordReaderTracksEvent( 'calypso_reader_sidebar_conversations_clicked' );
-		this.handleGlobalSidebarMenuItemClick( path );
-	};
-
-	handleReaderSidebarNotificationsClicked = ( event, path ) => {
-		recordAction( 'clicked_reader_sidebar_notifications' );
-		recordGaEvent( 'Clicked Reader Sidebar Notifications' );
-		this.props.recordReaderTracksEvent( 'calypso_reader_sidebar_notifications_clicked' );
 		this.handleGlobalSidebarMenuItemClick( path );
 	};
 
@@ -174,45 +157,38 @@ export class ReaderSidebar extends Component {
 	};
 
 	renderSidebarMenu() {
-		const { path, translate, teams, locale } = this.props;
-		const recentLabelTranslationReady = hasTranslation( 'Recent' ) || locale.startsWith( 'en' );
+		const { path, translate, teams } = this.props;
+
 		return (
 			<SidebarMenu>
 				<QueryReaderLists />
 				<QueryReaderTeams />
 				<QueryReaderOrganizations />
 
-				<SidebarItem
-					label={ translate( 'Search' ) }
-					onNavigate={ this.handleReaderSidebarSearchClicked }
-					customIcon={ <ReaderSearchIcon viewBox="-3 0 24 24" /> }
-					link="/read/search"
-					className={ ReaderSidebarHelper.itemLinkClass( '/read/search', path, {
-						'sidebar-streams__search': true,
-					} ) }
-				/>
+				<li className="sidebar-header">
+					<div>
+						<h3>{ translate( 'Reader' ) }</h3>
+						<p>{ translate( 'Keep up with your interests.' ) }</p>
+					</div>
 
-				<SidebarSeparator />
+					<Button
+						className="reader-search-icon"
+						variant="tertiary"
+						href="/reader/search"
+						onClick={ this.handleReaderSidebarSearchClicked }
+						aria-label={ translate( 'Search' ) }
+					>
+						<ReaderSearchIcon viewBox="0 0 24 24" />
+					</Button>
+				</li>
 
-				{ isEnabled( 'reader/recent-feed-overhaul' ) ? (
-					<li className="sidebar-streams__following">
-						<ReaderSidebarRecent
-							onClick={ this.props.toggleFollowingVisibility }
-							isOpen={ this.props.isFollowingOpen }
-							path={ path }
-						/>
-					</li>
-				) : (
-					<SidebarItem
-						className={ ReaderSidebarHelper.itemLinkClass( '/read', path, {
-							'sidebar-streams__following': true,
-						} ) }
-						label={ recentLabelTranslationReady ? translate( 'Recent' ) : translate( 'Following' ) }
-						onNavigate={ this.handleReaderSidebarFollowedSitesClicked }
-						customIcon={ <ReaderFollowingIcon viewBox="-3 0 24 24" /> }
-						link="/read"
+				<li className="sidebar-streams__following">
+					<ReaderSidebarRecent
+						onClick={ this.props.toggleFollowingVisibility }
+						isOpen={ this.props.isFollowingOpen }
+						path={ path }
 					/>
-				) }
+				</li>
 
 				<SidebarItem
 					className={ ReaderSidebarHelper.itemLinkClass( '/discover', path, {
@@ -220,14 +196,14 @@ export class ReaderSidebar extends Component {
 					} ) }
 					label={ translate( 'Discover' ) }
 					onNavigate={ this.handleReaderSidebarDiscoverClicked }
-					customIcon={ <ReaderDiscoverIcon viewBox="-3 0 24 24" /> }
+					customIcon={ <ReaderDiscoverIcon viewBox="0 0 24 24" /> }
 					link="/discover"
 				/>
 
 				<SidebarItem
 					label={ translate( 'Likes' ) }
 					onNavigate={ this.handleReaderSidebarLikeActivityClicked }
-					customIcon={ <ReaderLikesIcon viewBox="-3 0 24 24" /> }
+					customIcon={ <ReaderLikesIcon viewBox="0 0 24 24" /> }
 					link="/activities/likes"
 					className={ ReaderSidebarHelper.itemLinkClass( '/activities/likes', path, {
 						'sidebar-activity__likes': true,
@@ -235,25 +211,23 @@ export class ReaderSidebar extends Component {
 				/>
 
 				<SidebarItem
-					className={ ReaderSidebarHelper.itemLinkClass( '/read/conversations', path, {
+					className={ ReaderSidebarHelper.itemLinkClass( '/reader/conversations', path, {
 						'sidebar-streams__conversations': true,
 					} ) }
 					label={ translate( 'Conversations' ) }
 					onNavigate={ this.handleReaderSidebarConversationsClicked }
-					customIcon={ <ReaderConversationsIcon iconSize={ 24 } viewBox="-3 0 24 24" /> }
-					link="/read/conversations"
+					customIcon={ <ReaderConversationsIcon iconSize={ 24 } viewBox="0 0 24 24" /> }
+					link="/reader/conversations"
 				/>
 
-				{ ( this.props.subscribedLists?.length > 0 || isEnabled( 'reader/list-management' ) ) && (
-					<ReaderSidebarLists
-						lists={ this.props.subscribedLists }
-						path={ path }
-						isOpen={ this.props.isListsOpen }
-						onClick={ this.props.toggleListsVisibility }
-						currentListOwner={ this.state.currentListOwner }
-						currentListSlug={ this.state.currentListSlug }
-					/>
-				) }
+				<ReaderSidebarLists
+					lists={ this.props.subscribedLists }
+					path={ path }
+					isOpen={ this.props.isListsOpen }
+					onClick={ this.props.toggleListsVisibility }
+					currentListOwner={ this.state.currentListOwner }
+					currentListSlug={ this.state.currentListSlug }
+				/>
 
 				<ReaderSidebarTags
 					tags={ this.props.followedTags }
@@ -264,43 +238,48 @@ export class ReaderSidebar extends Component {
 					currentTag={ this.state.currentTag }
 				/>
 
-				<SidebarSeparator />
-
-				<li>
-					<ReaderSidebarOrganizations organizations={ this.props.organizations } path={ path } />
-				</li>
+				{ this.props.organizations && (
+					<>
+						<SidebarSeparator />
+						<li>
+							<ReaderSidebarOrganizations
+								organizations={ this.props.organizations }
+								path={ path }
+							/>
+						</li>
+					</>
+				) }
 
 				{ isAutomatticTeamMember( teams ) && (
 					<SidebarItem
-						className={ ReaderSidebarHelper.itemLinkClass( '/read/conversations/a8c', path, {
+						className={ ReaderSidebarHelper.itemLinkClass( '/reader/conversations/a8c', path, {
 							'sidebar-streams__conversations': true,
 						} ) }
 						label="A8C Conversations"
 						onNavigate={ this.handleReaderSidebarA8cConversationsClicked }
-						link="/read/conversations/a8c"
-						customIcon={ <ReaderA8cConversationsIcon size={ 24 } viewBox="-5 0 24 24" /> }
+						link="/reader/conversations/a8c"
+						customIcon={ <ReaderA8cConversationsIcon size={ 24 } viewBox="-2 -2 24 24" /> }
 					/>
 				) }
 
-				<SidebarItem
-					className={ ReaderSidebarHelper.itemLinkClass( '/read/notifications', path, {
-						'sidebar-streams__notifications': true,
-					} ) }
-					label={ translate( 'Notifications' ) }
-					onNavigate={ this.handleReaderSidebarNotificationsClicked }
-					customIcon={ <ReaderNotificationsIcon size={ 24 } viewBox="-5 -2 24 24" /> }
-					link="/read/notifications"
-				/>
+				<SidebarSeparator />
 
 				<SidebarItem
-					className={ ReaderSidebarHelper.itemLinkClass( '/read/subscriptions', path, {
+					className={ ReaderSidebarHelper.itemLinkClass( '/reader/subscriptions', path, {
 						'sidebar-streams__manage-subscriptions': true,
 					} ) }
-					label={ translate( 'Manage subscriptions' ) }
+					label={ translate( 'Manage Subscriptions' ) }
 					onNavigate={ this.handleReaderSidebarManageSubscriptionsClicked }
-					customIcon={ <ReaderManageSubscriptionsIcon size={ 24 } viewBox="-3 0 24 24" /> }
-					link="/read/subscriptions"
+					customIcon={ <ReaderManageSubscriptionsIcon size={ 24 } viewBox="0 0 24 24" /> }
+					link="/reader/subscriptions"
 				/>
+				{ /*
+					Keep a separator at the end to avoid having the last item covered by browser breadcrumbs,
+					url links when hovering other items, etc. Otherwise when a user scrolls to the end of the
+					sidebar, their cursor is generally on other menu items causing the urls to popup in the
+					bottom right and obscure view the last menu item.
+				*/ }
+				<SidebarSeparator />
 			</SidebarMenu>
 		);
 	}
@@ -309,10 +288,7 @@ export class ReaderSidebar extends Component {
 		const props = {
 			path: this.props.path,
 			onClick: this.handleClick,
-			requireBackLink: false,
 			siteTitle: i18n.translate( 'Reader' ),
-			backLinkHref: this.props.returnPath || '/sites',
-			onClose: this.props.onClose && ( () => this.props.onClose() ),
 		};
 		return (
 			<GlobalSidebar { ...props }>
@@ -346,14 +322,8 @@ export default withCurrentRoute(
 	connect(
 		( state, { currentSection } ) => {
 			const sectionGroup = currentSection?.group ?? null;
-			const sectionName = currentSection?.name ?? null;
 			const siteId = getSelectedSiteId( state );
-			const shouldShowGlobalSidebar = getShouldShowGlobalSidebar(
-				state,
-				siteId,
-				sectionGroup,
-				sectionName
-			);
+			const shouldShowGlobalSidebar = getShouldShowGlobalSidebar( state, siteId, sectionGroup );
 
 			return {
 				isListsOpen: isListsOpen( state ),

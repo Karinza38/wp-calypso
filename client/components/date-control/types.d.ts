@@ -1,25 +1,26 @@
+import { DateRangePickerShortcut } from 'calypso/components/date-range/shortcuts';
+
 interface DateControlProps {
-	onApplyButtonClick: ( startDate: Moment, endDate: Moment ) => void;
+	onApplyButtonClick: ( startDate: Moment, endDate: Moment, selectedShortcutId?: string ) => void;
 	onDateControlClick?: () => void;
 	dateRange: {
 		chartStart: string;
 		chartEnd: string;
 		daysInRange: number;
+		shortcutId?: string;
 	};
-	shortcutList: DateControlPickerShortcut[];
-	onShortcutClick: ( shortcutId: string ) => void;
+	shortcutList: DateRangePickerShortcut[];
+	onShortcutClick: ( shortcut: DateRangePickerShortcut, closePopoverAndCommit: () => void ) => void;
 	tooltip?: string;
 	overlay?: JSX.Element;
-	// Temporary prop to enable new date filtering UI.
-	isNewDateFilteringEnabled?: boolean;
 }
 
 interface DateControlPickerProps {
 	buttonLabel: string;
 	dateRange: any;
-	shortcutList: DateControlPickerShortcut[];
+	shortcutList: DateRangePickerShortcut[];
 	selectedShortcut: string | undefined;
-	onShortcut: ( shortcut: DateControlPickerShortcut ) => void;
+	onShortcut: ( shortcut: DateRangePickerShortcut ) => void;
 	onApply: ( startDate: string, endDate: string ) => void;
 	overlay?: JSX.Element;
 	onGatedHandler: (
@@ -27,22 +28,6 @@ interface DateControlPickerProps {
 		event_from: string,
 		stat_type: string
 	) => void;
-}
-
-interface DateControlPickerShortcutsProps {
-	shortcutList: DateControlPickerShortcut[];
-	currentShortcut: string | undefined;
-	onClick: ( shortcut: DateControlPickerShortcut ) => void;
-}
-
-interface DateControlPickerShortcut {
-	id: string;
-	label: string;
-	offset: number;
-	range: number;
-	period: string;
-	statType: string;
-	isGated: boolean;
 }
 
 interface DateControlPickerDateProps {
@@ -55,10 +40,4 @@ interface DateControlPickerDateProps {
 	overlay?: JSX.Element;
 }
 
-export {
-	DateControlProps,
-	DateControlPickerProps,
-	DateControlPickerShortcut,
-	DateControlPickerShortcutsProps,
-	DateControlPickerDateProps,
-};
+export { DateControlProps, DateControlPickerProps, DateControlPickerDateProps };

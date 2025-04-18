@@ -1,18 +1,16 @@
 import {
-	WPCOM_FEATURES_LOCKED_MODE,
 	WPCOM_FEATURES_LEGACY_CONTACT,
+	WPCOM_FEATURES_LOCKED_MODE,
 } from '@automattic/calypso-products/src';
-import { Button, Card, FormLabel } from '@automattic/components';
+import { Button, FormLabel } from '@automattic/components';
 import { ToggleControl } from '@wordpress/components';
 import { useTranslate } from 'i18n-calypso';
 import FormFieldset from 'calypso/components/forms/form-fieldset';
 import FormSettingExplanation from 'calypso/components/forms/form-setting-explanation';
 import FormInput from 'calypso/components/forms/form-text-input';
-import { PanelHeading, PanelSection } from 'calypso/components/panel';
-import SettingsSectionHeader from 'calypso/my-sites/site-settings/settings-section-header';
+import { PanelCard, PanelCardHeading } from 'calypso/components/panel';
 import siteHasFeature from 'calypso/state/selectors/site-has-feature';
 import { useSelectedSiteSelector } from 'calypso/state/sites/hooks';
-import { isHostingMenuUntangled } from '../utils';
 
 // Add settings for enhanced ownership: ability to enable locked mode and add the name of a person who will inherit the site.
 export default function EnhancedOwnershipForm( {
@@ -94,29 +92,13 @@ export default function EnhancedOwnershipForm( {
 		);
 	};
 
-	if ( ! isHostingMenuUntangled() ) {
-		return (
-			<div className="site-settings__enhanced-ownership-container">
-				<SettingsSectionHeader
-					title={ translate( 'Control your legacy' ) }
-					id="site-settings__enhanced-ownership-header"
-					disabled={ disabled }
-					isSaving={ isSaving }
-					onButtonClick={ onSave }
-					showButton
-				/>
-				<Card>{ renderForm() }</Card>
-			</div>
-		);
-	}
-
 	return (
-		<PanelSection>
-			<PanelHeading>{ translate( 'Control your legacy' ) }</PanelHeading>
+		<PanelCard>
+			<PanelCardHeading>{ translate( 'Control your legacy' ) }</PanelCardHeading>
 			{ renderForm() }
 			<Button busy={ isSaving } disabled={ disabled } onClick={ onSave }>
 				{ translate( 'Save' ) }
 			</Button>
-		</PanelSection>
+		</PanelCard>
 	);
 }

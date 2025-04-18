@@ -40,7 +40,6 @@ export interface DomainData {
 	expired: boolean;
 	auto_renewing: boolean;
 	pending_registration: boolean;
-	pending_registration_time: string;
 	has_registration: boolean;
 	has_email_forward_dns_records: unknown;
 	points_to_wpcom: boolean;
@@ -53,6 +52,7 @@ export interface DomainData {
 	is_dnssec_enabled: boolean;
 	is_dnssec_supported: boolean;
 	is_gravatar_domain: boolean;
+	is_gravatar_restricted_domain: boolean;
 	is_hundred_year_domain: boolean;
 	is_renewable: boolean;
 	is_redeemable: boolean;
@@ -106,6 +106,7 @@ export interface DomainData {
 	has_private_registration: boolean;
 	is_pending_icann_verification: boolean;
 	is_icann_verification_suspended: boolean;
+	is_root_domain_registered_with_automattic: boolean;
 	manual_transfer_required: boolean;
 	registrar: string;
 	domain_locking_available: boolean;
@@ -129,6 +130,11 @@ export interface DomainData {
 	pending_registration_at_registry_url: string;
 	registered_via_trustee: boolean;
 	registered_via_trustee_url: string;
+	domain_status?: {
+		status: string;
+		status_type: string;
+		status_weight: number;
+	};
 }
 
 export interface SiteDomainsQueryFnData {

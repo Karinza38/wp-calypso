@@ -1,4 +1,5 @@
 import { Gridicon, ConfettiAnimation, Tooltip } from '@automattic/components';
+import { useHasEnTranslation } from '@automattic/i18n-utils';
 import { Button, Modal } from '@wordpress/components';
 import { Icon, copy } from '@wordpress/icons';
 import { useTranslate } from 'i18n-calypso';
@@ -20,10 +21,10 @@ function CelebrateLaunchModal( { setModalIsOpen, site, allDomains } ) {
 	const transformedDomains = allDomains.map( createSiteDomainObject );
 	const [ clipboardCopied, setClipboardCopied ] = useState( false );
 	const clipboardButtonEl = useRef( null );
-	const hasCustomDomain = Boolean(
-		transformedDomains.find( ( domain ) => ! domain.isWPCOMDomain )
-	);
-
+	const customDomains = transformedDomains.filter( ( domain ) => ! domain.isWPCOMDomain );
+	const hasCustomDomain = customDomains.length > 0;
+	const hasEnTranslation = useHasEnTranslation();
+	const siteDomain = hasCustomDomain ? customDomains[ 0 ].domain : site.slug;
 	useEffect( () => {
 		// remove the celebrateLaunch URL param without reloading the page as soon as the modal loads
 		// make sure the modal is shown only once
@@ -54,7 +55,9 @@ function CelebrateLaunchModal( { setModalIsOpen, site, allDomains } ) {
 					) }
 				</p>
 			);
-			buttonText = translate( 'Claim your domain' );
+			buttonText = hasEnTranslation( 'Get your domain' )
+				? translate( 'Get your domain' )
+				: translate( 'Claim your domain' );
 			buttonHref = `/domains/add/${ site.slug }`;
 		} else if ( isPaidPlan && isBilledMonthly && ! hasCustomDomain ) {
 			contentElement = (
@@ -64,7 +67,9 @@ function CelebrateLaunchModal( { setModalIsOpen, site, allDomains } ) {
 					) }
 				</p>
 			);
-			buttonText = translate( 'Claim your domain' );
+			buttonText = hasEnTranslation( 'Get your domain' )
+				? translate( 'Get your domain' )
+				: translate( 'Claim your domain' );
 			buttonHref = `/domains/add/${ site.slug }`;
 		} else if ( isPaidPlan && ! hasCustomDomain ) {
 			contentElement = (
@@ -75,7 +80,9 @@ function CelebrateLaunchModal( { setModalIsOpen, site, allDomains } ) {
 					) }
 				</p>
 			);
-			buttonText = translate( 'Claim your free domain' );
+			buttonText = hasEnTranslation( 'Get your free domain' )
+				? translate( 'Get your free domain' )
+				: translate( 'Claim your free domain' );
 			buttonHref = `/domains/add/${ site.slug }`;
 		} else if ( hasCustomDomain ) {
 			return null;
@@ -85,8 +92,7 @@ function CelebrateLaunchModal( { setModalIsOpen, site, allDomains } ) {
 			<div className="launched__modal-upsell">
 				<div className="launched__modal-upsell-content">{ contentElement }</div>
 				<Button
-					isLarge
-					isPrimary
+					variant="primary"
 					href={ buttonHref }
 					onClick={ () =>
 						dispatch(
@@ -117,10 +123,10 @@ function CelebrateLaunchModal( { setModalIsOpen, site, allDomains } ) {
 				<div className="launched__modal-actions">
 					<div className="launched__modal-site">
 						<div className="launched__modal-domain">
-							<p className="launched__modal-domain-text">{ site.slug }</p>
+							<p className="launched__modal-domain-text">{ siteDomain }</p>
 							<ClipboardButton
 								aria-label={ translate( 'Copy URL' ) }
-								text={ site.slug }
+								text={ siteDomain }
 								className="launchpad__clipboard-button"
 								borderless
 								compact

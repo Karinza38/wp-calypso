@@ -1,11 +1,11 @@
 import { isPlan, isJetpackPlan } from '@automattic/calypso-products';
 import { FormStatus, useFormStatus } from '@automattic/composite-checkout';
-import formatCurrency from '@automattic/format-currency';
 import { useShoppingCart } from '@automattic/shopping-cart';
 import { createElement, createInterpolateElement, useState } from '@wordpress/element';
 import { sprintf } from '@wordpress/i18n';
 import { useI18n } from '@wordpress/react-i18n';
 import debugFactory from 'debug';
+import { formatCurrency } from 'i18n-calypso';
 import PromoCard from 'calypso/components/promo-section/promo-card';
 import PromoCardCTA from 'calypso/components/promo-section/promo-card/cta';
 import useCartKey from 'calypso/my-sites/checkout/use-cart-key';
@@ -206,16 +206,14 @@ export function CheckoutSidebarPlanUpsell() {
 		<>
 			<PromoCard title={ cardTitle } className="checkout-sidebar-plan-upsell">
 				<div className="checkout-sidebar-plan-upsell__plan-grid">
-					{ isComparisonWithIntroOffer && (
-						<>
-							<div className="checkout-sidebar-plan-upsell__plan-grid-cell"></div>
-							<div className="checkout-sidebar-plan-upsell__plan-grid-cell">
-								<strong>{ cellLabel }</strong>
-							</div>
-						</>
-					) }
 					<div className="checkout-sidebar-plan-upsell__plan-grid-cell">
-						{ currentVariant.variantLabel }
+						<strong>{ __( 'Plan' ) }</strong>
+					</div>
+					<div className="checkout-sidebar-plan-upsell__plan-grid-cell">
+						<strong>{ isComparisonWithIntroOffer ? cellLabel : __( 'Cost' ) }</strong>
+					</div>
+					<div className="checkout-sidebar-plan-upsell__plan-grid-cell">
+						{ currentVariant.variantLabel.adjective }
 					</div>
 					<div className="checkout-sidebar-plan-upsell__plan-grid-cell">
 						{ formatCurrency(
@@ -229,7 +227,7 @@ export function CheckoutSidebarPlanUpsell() {
 						) }
 					</div>
 					<div className="checkout-sidebar-plan-upsell__plan-grid-cell">
-						{ upsellVariant.variantLabel }
+						{ upsellVariant.variantLabel.adjective }
 					</div>
 					<div className="checkout-sidebar-plan-upsell__plan-grid-cell">
 						{ compareToPriceForVariantTerm && (

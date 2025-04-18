@@ -68,7 +68,7 @@ jest.mock( '@automattic/data-stores', () => ( {
 	},
 } ) );
 
-const siteName = 'testlinkinbio';
+const siteName = 'testnewsletter';
 const secondAndTopLevelDomain = 'wordpress.com';
 const siteSlug = `${ siteName }.${ secondAndTopLevelDomain }`;
 
@@ -87,7 +87,7 @@ const props = {
 	submit: () => {},
 	goNext: () => {},
 	goToStep: () => {},
-	flow: 'link-in-bio-tld',
+	flow: 'newsletter',
 	/* eslint-enable @typescript-eslint/no-empty-function */
 };
 
@@ -126,9 +126,7 @@ function renderSidebar( props, siteDetails = defaultSiteDetails, emailVerified =
 
 		return (
 			<redux.Provider store={ reduxStore }>
-				<MemoryRouter
-					initialEntries={ [ `/setup/link-in-bio-tld/launchpad?siteSlug=${ siteSlug }` ] }
-				>
+				<MemoryRouter initialEntries={ [ `/setup/newsletter/launchpad?siteSlug=${ siteSlug }` ] }>
 					<Sidebar { ...props } />
 				</MemoryRouter>
 			</redux.Provider>
@@ -179,18 +177,6 @@ describe( 'Sidebar', () => {
 		expect( renderedDomain ).toBeNull();
 	} );
 
-	it( 'design-first flow does not display the current site url', () => {
-		renderSidebar( {
-			...props,
-			flow: 'design-first',
-		} );
-
-		const renderedDomain = screen.queryByText( ( content ) =>
-			content.includes( secondAndTopLevelDomain )
-		);
-		expect( renderedDomain ).toBeNull();
-	} );
-
 	it( 'displays customize badge for wpcom domains (free)', () => {
 		renderSidebar( props );
 		expect( screen.getByRole( 'link', { name: upgradeDomainBadgeText } ) ).toHaveAttribute(
@@ -201,7 +187,7 @@ describe( 'Sidebar', () => {
 
 	it( 'does not display customize badge for non wpcom domains (paid)', () => {
 		props.sidebarDomain = buildDomainResponse( {
-			domain: 'paidtestlinkinbio.blog',
+			domain: 'paidtestnewsletter.blog',
 			isWPCOMDomain: false,
 		} );
 
@@ -216,7 +202,7 @@ describe( 'Sidebar', () => {
 
 	it( 'does not display customize badge for a flow with a redundant domain upsell task', () => {
 		props.sidebarDomain = buildDomainResponse( {
-			domain: 'paidtestlinkinbio.blog',
+			domain: 'paidtestnewsletter.blog',
 			flow: 'free',
 			isWPCOMDomain: true,
 		} );
@@ -350,7 +336,7 @@ describe( 'Sidebar', () => {
 				} );
 				renderSidebar( props, siteDetails );
 
-				const title = screen.getByRole( 'heading', { name: /link and launch/i } );
+				const title = screen.getByRole( 'heading', { name: /Your newsletter's ready!/i } );
 				expect( title ).toBeVisible();
 			} );
 		} );
@@ -359,7 +345,7 @@ describe( 'Sidebar', () => {
 			it( 'shows a normal title', () => {
 				renderSidebar( props );
 
-				const title = screen.getByRole( 'heading', { name: /link and launch/i } );
+				const title = screen.getByRole( 'heading', { name: /Your newsletter's ready!/i } );
 				expect( title ).toBeVisible();
 			} );
 		} );

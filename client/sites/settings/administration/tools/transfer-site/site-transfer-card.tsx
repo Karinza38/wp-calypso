@@ -1,22 +1,22 @@
 import { useTranslate } from 'i18n-calypso';
-import HeaderCakeBack from 'calypso/components/header-cake/back';
 import InlineSupportLink from 'calypso/components/inline-support-link';
 import NavigationHeader from 'calypso/components/navigation-header';
-import { Panel, PanelSection } from 'calypso/components/panel';
+import { Panel, PanelCard } from 'calypso/components/panel';
 import PageViewTracker from 'calypso/lib/analytics/page-view-tracker';
-import { isHostingMenuUntangled } from 'calypso/sites/settings/utils';
+import { useSetFeatureBreadcrumb } from '../../../../hooks/breadcrumbs/use-set-feature-breadcrumb';
 
 export function SiteTransferCard( {
 	children,
-	onClick,
+	siteId,
 }: {
 	children: React.ReactNode;
-	onClick: () => void;
+	siteId: number;
 } ) {
 	const translate = useTranslate();
-	const title = isHostingMenuUntangled()
-		? translate( 'Transfer site' )
-		: translate( 'Site Transfer' );
+	const title = translate( 'Transfer site' );
+
+	useSetFeatureBreadcrumb( { siteId, title } );
+
 	return (
 		<Panel className="settings-administration__transfer-site">
 			<NavigationHeader
@@ -35,8 +35,7 @@ export function SiteTransferCard( {
 				path="/settings/start-site-transfer/:site"
 				title="Settings > Start Site Transfer"
 			/>
-			<HeaderCakeBack icon="chevron-left" onClick={ onClick } />
-			<PanelSection>{ children }</PanelSection>
+			<PanelCard>{ children }</PanelCard>
 		</Panel>
 	);
 }

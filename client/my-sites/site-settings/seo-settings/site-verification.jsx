@@ -1,15 +1,14 @@
-import { Button, FormInputValidation } from '@automattic/components';
+import { Button, FormInputValidation, ExternalLink } from '@automattic/components';
 import { localize } from 'i18n-calypso';
 import { get, omit } from 'lodash';
 import { Component } from 'react';
 import { connect } from 'react-redux';
 import QueryJetpackModules from 'calypso/components/data/query-jetpack-modules';
 import QuerySiteSettings from 'calypso/components/data/query-site-settings';
-import ExternalLink from 'calypso/components/external-link';
 import FormFieldset from 'calypso/components/forms/form-fieldset';
 import FormInput from 'calypso/components/forms/form-text-input-with-affixes';
 import InlineSupportLink from 'calypso/components/inline-support-link';
-import { PanelHeading, PanelSection } from 'calypso/components/panel';
+import { PanelCard, PanelCardHeading } from 'calypso/components/panel';
 import SupportInfo from 'calypso/components/support-info';
 import { protectForm } from 'calypso/lib/protect-form';
 import versionCompare from 'calypso/lib/version-compare';
@@ -271,11 +270,11 @@ class SiteVerification extends Component {
 		} );
 
 		return (
-			<PanelSection className="seo-settings__site-verification">
+			<PanelCard className="seo-settings__site-verification">
 				<QuerySiteSettings siteId={ siteId } />
 				{ siteIsJetpack && <QueryJetpackModules siteId={ siteId } /> }
 
-				<PanelHeading>
+				<PanelCardHeading>
 					{ translate( 'Site verification services' ) }
 					{ siteIsJetpack && (
 						<>
@@ -287,7 +286,7 @@ class SiteVerification extends Component {
 							/>
 						</>
 					) }
-				</PanelHeading>
+				</PanelCardHeading>
 				<>
 					{ siteIsJetpack && (
 						<FormFieldset>
@@ -356,7 +355,7 @@ class SiteVerification extends Component {
 						</Button>
 					</form>
 				</>
-			</PanelSection>
+			</PanelCard>
 		);
 	}
 }

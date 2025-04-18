@@ -52,7 +52,7 @@ export const usePostsQueryStats = ( siteId: number, queryOptions = {} ) => {
 	return useQuery( {
 		queryKey: [ 'promote-post-posts-stats', siteId ],
 		queryFn: async () => {
-			const postsResponse = await queryPosts( siteId, `page=1&posts_per_page=1` );
+			const postsResponse = await queryPosts( siteId, 'page=1&posts_per_page=1' );
 			return {
 				total_items: postsResponse?.total_items,
 			};
@@ -79,7 +79,14 @@ const usePostsQueryPaged = (
 			// Fetch blazable posts
 			const postsResponse = await queryPosts( siteId, `page=${ pageParam }${ searchQueryParams }` );
 
-			const { posts, page, total_items, total_pages, warnings } = postsResponse;
+			const {
+				posts,
+				page,
+				total_items,
+				total_pages,
+				warnings,
+				tsp_eligible = false,
+			} = postsResponse;
 			const has_more_pages = page < total_pages;
 
 			return {
@@ -89,6 +96,7 @@ const usePostsQueryPaged = (
 				total_pages,
 				page,
 				warnings,
+				tsp_eligible,
 			};
 		},
 		...queryOptions,

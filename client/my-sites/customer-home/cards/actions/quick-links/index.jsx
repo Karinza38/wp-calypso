@@ -2,15 +2,13 @@ import config from '@automattic/calypso-config';
 import { getAllFeaturesForPlan } from '@automattic/calypso-products/';
 import { JetpackLogo, FoldableCard } from '@automattic/components';
 import { GeneratorModal } from '@automattic/jetpack-ai-calypso';
-import i18n, { getLocaleSlug, useTranslate } from 'i18n-calypso';
+import { useTranslate } from 'i18n-calypso';
 import { useEffect, useState } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { useDebouncedCallback } from 'use-debounce';
 import fiverrIcon from 'calypso/assets/images/customer-home/fiverr-logo-grey.svg';
 import blazeIcon from 'calypso/assets/images/icons/blaze-icon.svg';
 import withIsFSEActive from 'calypso/data/themes/with-is-fse-active';
-import { canCurrentUserAddEmail } from 'calypso/lib/domains';
-import { hasPaidEmailWithUs } from 'calypso/lib/emails';
 import { usePromoteWidget, PromoteWidgetStatus } from 'calypso/lib/promote-post';
 import useAdvertisingUrl from 'calypso/my-sites/advertising/useAdvertisingUrl';
 import { bumpStat, composeAnalytics, recordTracksEvent } from 'calypso/state/analytics/actions';
@@ -21,7 +19,6 @@ import { getSelectedEditor } from 'calypso/state/selectors/get-selected-editor';
 import getSiteEditorUrl from 'calypso/state/selectors/get-site-editor-url';
 import isSiteAtomic from 'calypso/state/selectors/is-site-wpcom-atomic';
 import isSiteWpcomStaging from 'calypso/state/selectors/is-site-wpcom-staging';
-import { getDomainsBySiteId } from 'calypso/state/sites/domains/selectors';
 import {
 	getSiteFrontPage,
 	getCustomizerUrl,
@@ -40,13 +37,11 @@ import './style.scss';
 export const QuickLinks = ( {
 	canEditPages,
 	canCustomize,
-	canSwitchThemes,
 	canManageSite,
 	canModerateComments,
 	customizeUrl,
 	isWpcomStagingSite,
 	isStaticHomePage,
-	canAddEmail,
 	menusUrl,
 	trackEditHomepageAction,
 	trackWritePostAction,
@@ -58,9 +53,9 @@ export const QuickLinks = ( {
 	trackCustomizeThemeAction,
 	trackChangeThemeAction,
 	trackDesignLogoAction,
-	trackAddEmailAction,
 	trackAddDomainAction,
 	trackManageAllDomainsAction,
+	trackManageEmailsAction,
 	trackExplorePluginsAction,
 	isExpanded,
 	updateHomeQuickLinksToggleStatus,
@@ -121,7 +116,7 @@ export const QuickLinks = ( {
 				customizerLinks
 			) }
 			<ActionBox
-				href={ usesWpAdminInterface ? `${ siteAdminUrl }post-new.php` : `/post/${ siteSlug }` }
+				href={ `${ siteAdminUrl }post-new.php` }
 				hideLinkIndicator
 				onClick={ trackWritePostAction }
 				label={ translate( 'Write blog post' ) }
@@ -138,9 +133,7 @@ export const QuickLinks = ( {
 			) }
 			{ ! isStaticHomePage && canModerateComments && (
 				<ActionBox
-					href={
-						usesWpAdminInterface ? `${ siteAdminUrl }edit-comments.php` : `/comments/${ siteSlug }`
-					}
+					href={ `${ siteAdminUrl }edit-comments.php` }
 					hideLinkIndicator
 					onClick={ trackManageCommentsAction }
 					label={ translate( 'Manage comments' ) }
@@ -149,11 +142,7 @@ export const QuickLinks = ( {
 			) }
 			{ canEditPages && (
 				<ActionBox
-					href={
-						usesWpAdminInterface
-							? `${ siteAdminUrl }post-new.php?post_type=page`
-							: `/page/${ siteSlug }`
-					}
+					href={ `${ siteAdminUrl }post-new.php?post_type=page` }
 					hideLinkIndicator
 					onClick={ trackAddPageAction }
 					label={ translate( 'Add a page' ) }
@@ -178,35 +167,14 @@ export const QuickLinks = ( {
 					/>
 				</>
 			) }
-			{ canSwitchThemes && (
-				<ActionBox
-					href={ `/themes/${ siteSlug }` }
-					hideLinkIndicator
-					onClick={ trackChangeThemeAction }
-					label={ translate( 'Change theme' ) }
-					materialIcon="view_quilt"
-				/>
-			) }
 			{ canManageSite && ! isWpcomStagingSite && (
-				<>
-					{ canAddEmail ? (
-						<ActionBox
-							href={ `/email/${ siteSlug }` }
-							hideLinkIndicator
-							onClick={ trackAddEmailAction }
-							label={ translate( 'Add email' ) }
-							materialIcon="email"
-						/>
-					) : (
-						<ActionBox
-							href={ `/domains/add/${ siteSlug }` }
-							hideLinkIndicator
-							onClick={ addNewDomain }
-							label={ translate( 'Add a domain' ) }
-							gridicon="add-outline"
-						/>
-					) }
-				</>
+				<ActionBox
+					href={ `/domains/add/${ siteSlug }` }
+					hideLinkIndicator
+					onClick={ addNewDomain }
+					label={ translate( 'Add a domain' ) }
+					gridicon="add-outline"
+				/>
 			) }
 			{ canManageSite && (
 				<ActionBox
@@ -215,6 +183,15 @@ export const QuickLinks = ( {
 					onClick={ trackManageAllDomainsAction }
 					label={ translate( 'Manage all domains' ) }
 					gridicon="domains"
+				/>
+			) }
+			{ canManageSite && ! isWpcomStagingSite && (
+				<ActionBox
+					href={ `/email/${ siteSlug }` }
+					hideLinkIndicator
+					onClick={ trackManageEmailsAction }
+					label={ translate( 'Manage emails' ) }
+					materialIcon="email"
 				/>
 			) }
 			{ siteAdminUrl && (
@@ -228,6 +205,18 @@ export const QuickLinks = ( {
 			{ canManageSite && (
 				<>
 					<ActionBox
+						href={ usesWpAdminInterface ? `${ siteAdminUrl }themes.php` : `/themes/${ siteSlug }` }
+						hideLinkIndicator
+						onClick={ trackChangeThemeAction }
+						label={ translate( 'Change theme' ) }
+						iconComponent={
+							<span
+								className="quick-links__action-box-icon dashicons dashicons-admin-appearance"
+								aria-hidden
+							/>
+						}
+					/>
+					<ActionBox
 						href={
 							usesWpAdminInterface ? `${ siteAdminUrl }plugins.php` : `/plugins/${ siteSlug }`
 						}
@@ -240,13 +229,7 @@ export const QuickLinks = ( {
 						href="https://wp.me/logo-maker/?utm_campaign=my_home"
 						onClick={ trackDesignLogoAction }
 						target="_blank"
-						label={
-							getLocaleSlug() === 'en' ||
-							getLocaleSlug() === 'en-gb' ||
-							i18n.hasTranslation( 'Create a logo with Fiverr' )
-								? translate( 'Create a logo with Fiverr' )
-								: translate( 'Create a logo' )
-						}
+						label={ translate( 'Create a logo with Fiverr' ) }
 						external
 						iconSrc={ fiverrIcon }
 					/>
@@ -409,17 +392,6 @@ const trackAnchorPodcastAction = ( isStaticHomePage ) =>
 		bumpStat( 'calypso_customer_home', 'my_site_anchor_podcast' )
 	);
 
-const trackAddEmailAction = ( isStaticHomePage ) => ( dispatch ) => {
-	dispatch(
-		composeAnalytics(
-			recordTracksEvent( 'calypso_customer_home_my_site_add_email_click', {
-				is_static_home_page: isStaticHomePage,
-			} ),
-			bumpStat( 'calypso_customer_home', 'my_site_add_email' )
-		)
-	);
-};
-
 const trackExplorePluginsAction = ( isStaticHomePage ) => ( dispatch ) => {
 	dispatch(
 		composeAnalytics(
@@ -453,39 +425,35 @@ export const trackManageAllDomainsAction = ( isStaticHomePage ) => ( dispatch ) 
 	);
 };
 
-/**
- * Select a list of domains that are eligible to add email to from a larger list.
- * WPCOM-specific domains like free and staging sub-domains are filtered from this list courtesy of `canCurrentUserAddEmail`
- * @param domains An array domains to filter
- */
-const getDomainsThatCanAddEmail = ( domains ) =>
-	domains.filter(
-		( domain ) => ! hasPaidEmailWithUs( domain ) && canCurrentUserAddEmail( domain )
+export const trackManageEmailsAction = ( isStaticHomePage ) => ( dispatch ) => {
+	dispatch(
+		composeAnalytics(
+			recordTracksEvent( 'calypso_customer_home_my_site_manage_emails_click', {
+				is_static_home_page: isStaticHomePage,
+			} ),
+			bumpStat( 'calypso_customer_home', 'my_site_manage_emails' )
+		)
 	);
+};
 
 const mapStateToProps = ( state ) => {
 	const siteId = getSelectedSiteId( state );
 	const isClassicEditor = getSelectedEditor( state, siteId ) === 'classic';
-	const domains = getDomainsBySiteId( state, siteId );
 	const isStaticHomePage =
 		! isClassicEditor && 'page' === getSiteOption( state, siteId, 'show_on_front' );
 	const siteSlug = getSelectedSiteSlug( state );
 	const staticHomePageId = getSiteFrontPage( state, siteId );
 	const editHomePageUrl = isStaticHomePage && `/page/${ siteSlug }/${ staticHomePageId }`;
 
-	const canAddEmail = getDomainsThatCanAddEmail( domains ).length > 0;
-
 	return {
 		siteId,
 		canEditPages: canCurrentUser( state, siteId, 'edit_pages' ),
 		canCustomize: canCurrentUser( state, siteId, 'customize' ),
-		canSwitchThemes: canCurrentUser( state, siteId, 'switch_themes' ),
 		canManageSite: canCurrentUser( state, siteId, 'manage_options' ),
 		canModerateComments: canCurrentUser( state, siteId, 'moderate_comments' ),
 		customizeUrl: getCustomizerUrl( state, siteId ),
 		menusUrl: getCustomizerUrl( state, siteId, 'menus' ),
 		isNewlyCreatedSite: isNewSite( state, siteId ),
-		canAddEmail,
 		siteSlug,
 		isStaticHomePage,
 		editHomePageUrl,
@@ -510,9 +478,9 @@ const mapDispatchToProps = {
 	trackChangeThemeAction,
 	trackDesignLogoAction,
 	trackAnchorPodcastAction,
-	trackAddEmailAction,
 	trackAddDomainAction,
 	trackManageAllDomainsAction,
+	trackManageEmailsAction,
 	trackExplorePluginsAction,
 	updateHomeQuickLinksToggleStatus: ( status ) =>
 		savePreference( 'homeQuickLinksToggleStatus', status ),
@@ -533,10 +501,10 @@ const mergeProps = ( stateProps, dispatchProps, ownProps ) => {
 		trackChangeThemeAction: () => dispatchProps.trackChangeThemeAction( isStaticHomePage ),
 		trackDesignLogoAction: () => dispatchProps.trackDesignLogoAction( isStaticHomePage ),
 		trackAnchorPodcastAction: () => dispatchProps.trackAnchorPodcastAction( isStaticHomePage ),
-		trackAddEmailAction: () => dispatchProps.trackAddEmailAction( isStaticHomePage ),
 		trackAddDomainAction: () => dispatchProps.trackAddDomainAction( isStaticHomePage ),
 		trackManageAllDomainsAction: () =>
 			dispatchProps.trackManageAllDomainsAction( isStaticHomePage ),
+		trackManageEmailsAction: () => dispatchProps.trackManageEmailsAction( isStaticHomePage ),
 		trackExplorePluginsAction: () => dispatchProps.trackExplorePluginsAction( isStaticHomePage ),
 		...ownProps,
 	};

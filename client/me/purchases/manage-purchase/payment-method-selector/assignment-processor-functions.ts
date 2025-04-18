@@ -131,6 +131,7 @@ export async function assignNewCardProcessor(
 			organization,
 			address,
 			useForAllSubscriptions,
+			useForBusiness,
 		} = submitData;
 
 		const contactInfo: ManagedContactDetails = {
@@ -201,6 +202,7 @@ export async function assignNewCardProcessor(
 			stripeSetupIntentId
 		);
 		const token = tokenResponse.payment_method;
+		const setupKey = tokenResponse.id;
 		if ( ! token ) {
 			throw new Error( String( translate( 'Failed to add card.' ) ) );
 		}
@@ -218,6 +220,7 @@ export async function assignNewCardProcessor(
 				city,
 				organization,
 				address,
+				setupKey,
 			} );
 
 			return makeSuccessResponse( result );
@@ -227,6 +230,7 @@ export async function assignNewCardProcessor(
 			token: String( token ),
 			stripeConfiguration,
 			useForAllSubscriptions: Boolean( useForAllSubscriptions ),
+			useForBusiness,
 			eventSource,
 			postalCode,
 			countryCode,
@@ -234,6 +238,7 @@ export async function assignNewCardProcessor(
 			city,
 			organization,
 			address,
+			setupKey,
 		} );
 
 		return makeSuccessResponse( result );
@@ -285,6 +290,7 @@ interface NewCardSubmitData {
 	organization?: string;
 	address?: string;
 	useForAllSubscriptions: boolean;
+	useForBusiness?: boolean;
 }
 
 export async function assignExistingCardProcessor(

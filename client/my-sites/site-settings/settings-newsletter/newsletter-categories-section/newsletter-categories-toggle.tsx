@@ -1,8 +1,7 @@
-import { useIsEnglishLocale } from '@automattic/i18n-utils';
 import { ToggleControl } from '@wordpress/components';
-import { useI18n } from '@wordpress/react-i18n';
 import { useTranslate } from 'i18n-calypso';
 import FormSettingExplanation from 'calypso/components/forms/form-setting-explanation';
+import InlineSupportLink from 'calypso/components/inline-support-link';
 
 export const NEWSLETTER_CATEGORIES_ENABLED_OPTION = 'wpcom_newsletter_categories_enabled';
 
@@ -18,8 +17,6 @@ const NewsletterCategoriesToggle = ( {
 	value = false,
 }: NewsletterCategoriesToggleProps ) => {
 	const translate = useTranslate();
-	const { hasTranslation } = useI18n();
-	const isEnglishLocale = useIsEnglishLocale();
 
 	return (
 		<div className="newsletter-categories-toggle">
@@ -30,20 +27,14 @@ const NewsletterCategoriesToggle = ( {
 				label={ translate( 'Enable newsletter categories' ) }
 			/>
 			<FormSettingExplanation>
-				{ isEnglishLocale ||
-				hasTranslation(
-					'Newsletter categories allow visitors to subscribe only to specific topics.'
-				)
-					? translate(
-							'Newsletter categories allow visitors to subscribe only to specific topics.'
-					  ) +
-					  ' ' +
-					  translate(
-							'When enabled, only posts published under the categories selected below will be emailed to your subscribers.'
-					  )
-					: translate(
-							'This will allow your visitors to specifically subscribe to the selected categories. When this is enabled, only posts published under the created newsletter categories will be sent out to your subscribers.'
-					  ) }
+				{ translate(
+					"Newsletter categories let you select the content that's emailed to subscribers. When enabled, only posts in the selected categories will be sent as newsletters. By default, subscribers can choose from your selected categories, or you can pre-select categories using the {{link}}subscribe block{{/link}}.",
+					{
+						components: {
+							link: <InlineSupportLink showIcon={ false } supportContext="subscribe-block" />,
+						},
+					}
+				) }
 			</FormSettingExplanation>
 		</div>
 	);

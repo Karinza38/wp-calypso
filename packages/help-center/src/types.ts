@@ -9,7 +9,6 @@ export interface Container {
 	hidden?: boolean;
 	currentRoute?: string;
 	openingCoordinates?: ReturnType< typeof useOpeningCoordinates >;
-	shouldUseHelpCenterExperience?: boolean;
 }
 
 export interface PostObject {
@@ -50,12 +49,6 @@ export interface Article {
 	is_external?: boolean;
 }
 
-export interface TailoredArticles {
-	post_ids: Array< number >;
-	blog_id: number;
-	locale: string;
-}
-
 export interface FeatureFlags {
 	loadNextStepsTutorial: boolean;
 }
@@ -87,6 +80,7 @@ interface Availability {
 	is_presales_chat_open: boolean;
 	is_precancellation_chat_open: boolean;
 	force_email_support: boolean;
+	is_difm_chat_open: boolean;
 }
 
 interface Eligibility {
@@ -103,6 +97,7 @@ interface Eligibility {
 		| 'ecommerce'
 		| 'jetpack-paid'
 		| 'p2-plus';
+	user_field_flow_name: string;
 }
 
 export interface SupportStatus {

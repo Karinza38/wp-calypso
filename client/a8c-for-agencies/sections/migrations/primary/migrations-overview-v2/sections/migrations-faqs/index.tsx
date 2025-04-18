@@ -1,12 +1,9 @@
-import config from '@automattic/calypso-config';
-import { useTranslate } from 'i18n-calypso';
+import { useTranslate, formatCurrency } from 'i18n-calypso';
 import { useCallback } from 'react';
 import PageSection from 'calypso/a8c-for-agencies/components/page-section';
-import {
-	A4A_MIGRATIONS_PAYMENT_SETTINGS,
-	A4A_REFERRALS_PAYMENT_SETTINGS,
-} from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
+import { A4A_MIGRATIONS_PAYMENT_SETTINGS } from 'calypso/a8c-for-agencies/components/sidebar-menu/lib/constants';
 import FoldableFAQ from 'calypso/components/foldable-faq';
+import { preventWidows } from 'calypso/lib/formatting';
 import { useDispatch } from 'calypso/state';
 import { recordTracksEvent } from 'calypso/state/analytics/actions';
 
@@ -79,13 +76,43 @@ export default function MigrationsFAQs() {
 			question: translate( 'Are there any special offers for agencies moving multiple sites?' ),
 			answer: (
 				<>
-					{ translate(
-						'From now until the end of 2024, you’ll receive $100 for each site you migrate to Pressable or WordPress.com, up to $10,000*. If you’re a WP Engine customer, we’ll also credit the costs to set you free.'
+					{ preventWidows(
+						translate(
+							"Receive %(amount)s for each site you migrate to Pressable or WordPress.com, up to %(maxAmount)s.* If you're a WP\u00A0Engine customer, we'll also credit the costs to set you free. {{a}}Full Terms ↗{{/a}}",
+							{
+								args: {
+									amount: formatCurrency( 100, 'USD' ),
+									maxAmount: formatCurrency( 10000, 'USD' ),
+								},
+								components: {
+									a: (
+										<a
+											href="https://automattic.com/for-agencies/program-incentives"
+											target="_blank"
+											rel="noopener noreferrer"
+										/>
+									),
+								},
+							}
+						)
 					) }
 					<br />
 					<br />
 					{ translate(
-						'* The migration limit is $10,000 for WP Engine and $3,000 for other hosts.'
+						'* The migration limit is %(maxAmount)s for WP\u00A0Engine and %(maxAmount)s for other hosts. Offer valid until %(endDate)s',
+						{
+							args: {
+								maxAmount: formatCurrency( 10000, 'USD' ),
+								endDate: new Date( '2025-01-31T00:00:00' ).toLocaleDateString(
+									translate.localeSlug,
+									{
+										year: 'numeric',
+										month: 'long',
+										day: 'numeric',
+									}
+								),
+							},
+						}
 					) }
 				</>
 			),
@@ -101,14 +128,14 @@ export default function MigrationsFAQs() {
 			id: 'migration-host-application',
 			question: translate( 'Does this apply to any host?' ),
 			answer: translate(
-				'Yes. It doesn’t matter where your site is hosted; our migration offer extends to any site migrated to WordPress.com or Pressable.'
+				"Yes. It doesn't matter where your site is hosted; our migration offer extends to any site migrated to WordPress.com or Pressable."
 			),
 		},
 		{
 			id: 'migration-existing-host-location',
 			question: translate( 'Does my site already have to be hosted on WordPress?' ),
 			answer: translate(
-				'No. It doesn’t matter what CMS your site currently uses. You will be eligible for our migration offer if you migrate your site to WordPress.com or Pressable. However, we won’t be able to provide you with migration assistance in this case.'
+				"No. It doesn't matter what CMS your site currently uses. You will be eligible for our migration offer if you migrate your site to WordPress.com or Pressable. However, we won't be able to provide you with migration assistance in this case."
 			),
 		},
 		{
@@ -130,11 +157,7 @@ export default function MigrationsFAQs() {
 						),
 						PaymentSettingLink: (
 							<a
-								href={
-									config.isEnabled( 'a4a-tracking-site-migrations' )
-										? A4A_MIGRATIONS_PAYMENT_SETTINGS
-										: A4A_REFERRALS_PAYMENT_SETTINGS
-								}
+								href={ A4A_MIGRATIONS_PAYMENT_SETTINGS }
 								onClick={ () =>
 									dispatch(
 										recordTracksEvent( 'calypso_a4a_migrations_payment_setting_link_click' )

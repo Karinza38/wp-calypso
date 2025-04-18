@@ -1,37 +1,79 @@
 import { WPCOM_FEATURES_SITE_PREVIEW_LINKS } from '@automattic/calypso-products';
-import { Card, CompactCard, Button } from '@automattic/components';
-import formatCurrency from '@automattic/format-currency';
+import { Button } from '@automattic/components';
 import { localizeUrl } from '@automattic/i18n-utils';
 import clsx from 'clsx';
-import { translate } from 'i18n-calypso';
+import { formatCurrency, translate } from 'i18n-calypso';
 import { useState } from 'react';
 import useFetchAgencyFromBlog from 'calypso/a8c-for-agencies/data/agencies/use-fetch-agency-from-blog';
 import QuerySiteDomains from 'calypso/components/data/query-site-domains';
-import { PanelHeading, PanelSection } from 'calypso/components/panel';
+import { PanelCard, PanelCardHeading } from 'calypso/components/panel';
 import SitePreviewLinks from 'calypso/components/site-preview-links';
-import SettingsSectionHeader from 'calypso/my-sites/site-settings/settings-section-header';
-import { useSelector, useDispatch } from 'calypso/state';
+import { useDispatch, useSelector } from 'calypso/state';
 import isSiteComingSoon from 'calypso/state/selectors/is-site-coming-soon';
 import getIsUnlaunchedSite from 'calypso/state/selectors/is-unlaunched-site';
 import siteHasFeature from 'calypso/state/selectors/site-has-feature';
 import { getSiteSettings } from 'calypso/state/site-settings/selectors';
 import { getDomainsBySiteId } from 'calypso/state/sites/domains/selectors';
-import { launchSite } from 'calypso/state/sites/launch/actions';
+import {
+	launchSite,
+	launchSiteOrRedirectToLaunchSignupFlow,
+} from 'calypso/state/sites/launch/actions';
 import { getIsSiteLaunchInProgress } from 'calypso/state/sites/launch/selectors';
 import {
 	isSiteOnECommerceTrial as getIsSiteOnECommerceTrial,
 	isSiteOnMigrationTrial as getIsSiteOnMigrationTrial,
 } from 'calypso/state/sites/plans/selectors';
 import { isCurrentPlanPaid } from 'calypso/state/sites/selectors';
-import {
-	getSelectedSite,
-	getSelectedSiteId,
-	getSelectedSiteSlug,
-} from 'calypso/state/ui/selectors';
-import { isHostingMenuUntangled } from '../../utils';
+import { getSelectedSite, getSelectedSiteId } from 'calypso/state/ui/selectors';
 import { LaunchConfirmationModal } from './launch-confirmation-modal';
 import { LaunchSiteTrialUpsellNotice } from './launch-site-trial-notice';
+
 import './styles.scss';
+
+const createAgencyBillingMessage = ( agency, agencyLoading = false, agencyError = false ) => {
+	if ( ! agency ) {
+		return undefined;
+	}
+
+	const agencyPriceInfoIsDefined =
+		Number.isFinite( agency.prices?.actual_price ) && typeof agency.prices?.currency === 'string';
+
+	if ( agencyLoading || agencyError || ! agencyPriceInfoIsDefined ) {
+		return translate( "After launch, we'll bill your agency in the next billing cycle." );
+	}
+
+	const agencyName = agency.name;
+	const existingWPCOMLicenseCount = agency.existing_wpcom_license_count || 0;
+	const price = formatCurrency( agency.prices.actual_price, agency.prices.currency );
+
+	return translate(
+		"After launch, we'll bill {{strong}}%(agencyName)s{{/strong}} in the next billing cycle. With %(licenseCount)s production hosting license, you will be charged %(price)s / license / month. {{a}}Learn more.{{/a}}",
+		"After launch, we'll bill {{strong}}%(agencyName)s{{/strong}} in the next billing cycle. With %(licenseCount)s production hosting licenses, you will be charged %(price)s / license / month. {{a}}Learn more.{{/a}}",
+		{
+			count: existingWPCOMLicenseCount + 1,
+			args: {
+				agencyName,
+				licenseCount: existingWPCOMLicenseCount + 1,
+				price,
+			},
+			components: {
+				strong: <strong />,
+				a: (
+					<a
+						className="site-settings__general-settings-launch-site-agency-learn-more"
+						href={ localizeUrl(
+							'https://agencieshelp.automattic.com/knowledge-base/free-development-licenses-for-wordpress-com-hosting/'
+						) }
+						target="_blank"
+						rel="noopener noreferrer"
+					/>
+				),
+			},
+			comment:
+				'agencyName: name of the agency that will be billed for the site; licenseCount: number of licenses the agency will be billed for; price: price per license',
+		}
+	);
+};
 
 const LaunchSite = () => {
 	const [ isLaunchConfirmationModalOpen, setLaunchConfirmationModalOpen ] = useState( false );
@@ -42,7 +84,6 @@ const LaunchSite = () => {
 	const site = useSelector( ( state ) => getSelectedSite( state ) );
 	const siteId = useSelector( ( state ) => getSelectedSiteId( state ) );
 	const siteSettings = useSelector( ( state ) => getSiteSettings( state, siteId ) );
-	const siteSlug = useSelector( ( state ) => getSelectedSiteSlug( state ) );
 	const isPaidPlan = useSelector( ( state ) => isCurrentPlanPaid( state, siteId ) );
 	const isComingSoon = useSelector( ( state ) => isSiteComingSoon( state, siteId ) );
 	const hasSitePreviewLink = useSelector( ( state ) =>
@@ -73,9 +114,7 @@ const LaunchSite = () => {
 		error: agencyError,
 		isLoading: agencyLoading,
 	} = useFetchAgencyFromBlog( site?.ID, { enabled: !! site?.ID && isDevelopmentSite } );
-	const agencyName = agency?.name;
-	const existingWPCOMLicenseCount = agency?.existing_wpcom_license_count || 0;
-	const price = formatCurrency( agency?.prices?.actual_price, agency?.prices?.currency );
+
 	const siteReferralActive = agency?.referral_status === 'active';
 	const shouldShowReferToClientButton =
 		isDevelopmentSite && ! siteReferralActive && ! agencyLoading;
@@ -86,7 +125,9 @@ const LaunchSite = () => {
 		if ( isDevelopmentSite && ! siteReferralActive ) {
 			openLaunchConfirmationModal();
 		} else {
-			dispatchSiteLaunch();
+			dispatch(
+				launchSiteOrRedirectToLaunchSignupFlow( siteId, 'general-settings', site.title, 'yes' )
+			);
 		}
 	};
 
@@ -95,21 +136,15 @@ const LaunchSite = () => {
 	if ( 0 === siteDomains.length ) {
 		querySiteDomainsComponent = <QuerySiteDomains siteId={ siteId } />;
 		btnComponent = <Button>{ btnText }</Button>;
-	} else if ( isPaidPlan && siteDomains.length > 1 ) {
+	} else {
 		btnComponent = (
 			<Button
 				onClick={ handleLaunchSiteClick }
 				busy={ isLaunchInProgress }
-				disabled={ ! isLaunchable || ( isDevelopmentSite && agencyLoading ) }
-			>
-				{ btnText }
-			</Button>
-		);
-		querySiteDomainsComponent = '';
-	} else {
-		btnComponent = (
-			<Button
-				href={ `/start/launch-site?siteSlug=${ siteSlug }&source=general-settings&new=${ site.title }&search=yes` }
+				disabled={
+					( isPaidPlan && siteDomains.length > 1 && ! isLaunchable ) ||
+					( isDevelopmentSite && agencyLoading )
+				}
 			>
 				{ btnText }
 			</Button>
@@ -124,42 +159,11 @@ const LaunchSite = () => {
 
 	const showPreviewLink = isComingSoon && hasSitePreviewLink;
 
-	const LaunchCard = showPreviewLink ? CompactCard : Card;
-
 	const handleReferToClient = () => {
 		window.location.href = `https://agencies.automattic.com/marketplace/checkout?referral_blog_id=${ siteId }`;
 	};
 
-	const agencyBillingMessage =
-		agencyLoading || agencyError
-			? translate( "After launch, we'll bill your agency in the next billing cycle." )
-			: translate(
-					"After launch, we'll bill {{strong}}%(agencyName)s{{/strong}} in the next billing cycle. With %(licenseCount)s production hosting license, you will be charged %(price)s / license / month. {{a}}Learn more.{{/a}}",
-					"After launch, we'll bill {{strong}}%(agencyName)s{{/strong}} in the next billing cycle. With %(licenseCount)s production hosting licenses, you will be charged %(price)s / license / month. {{a}}Learn more.{{/a}}",
-					{
-						count: existingWPCOMLicenseCount + 1,
-						args: {
-							agencyName: agencyName,
-							licenseCount: existingWPCOMLicenseCount + 1,
-							price,
-						},
-						components: {
-							strong: <strong />,
-							a: (
-								<a
-									className="site-settings__general-settings-launch-site-agency-learn-more"
-									href={ localizeUrl(
-										'https://agencieshelp.automattic.com/knowledge-base/free-development-licenses-for-wordpress-com-hosting/'
-									) }
-									target="_blank"
-									rel="noopener noreferrer"
-								/>
-							),
-						},
-						comment:
-							'agencyName: name of the agency that will be billed for the site; licenseCount: number of licenses the agency will be billed for; price: price per license',
-					}
-			  );
+	const agencyBillingMessage = createAgencyBillingMessage( agency, agencyLoading, agencyError );
 
 	const renderConfirmationModal = () => {
 		return (
@@ -210,30 +214,19 @@ const LaunchSite = () => {
 		return <SitePreviewLinks siteUrl={ site.URL } siteId={ siteId } source="launch-settings" />;
 	};
 
-	const isUntangled = isHostingMenuUntangled();
 	return (
 		<>
 			{ renderConfirmationModal() }
-			{ ! isUntangled ? (
-				<>
-					<SettingsSectionHeader title={ translate( 'Launch site' ) } />
-					<LaunchCard>{ renderContent() }</LaunchCard>
-				</>
-			) : (
-				<PanelSection>
-					<PanelHeading>{ translate( 'Launch site' ) }</PanelHeading>
-					{ renderContent() }
-				</PanelSection>
+			<PanelCard>
+				<PanelCardHeading>{ translate( 'Launch site' ) }</PanelCardHeading>
+				{ renderContent() }
+			</PanelCard>
+			{ showPreviewLink && (
+				<PanelCard>
+					<PanelCardHeading>{ translate( 'Coming soon' ) }</PanelCardHeading>
+					{ renderPreviewLinks() }
+				</PanelCard>
 			) }
-			{ showPreviewLink &&
-				( ! isUntangled ? (
-					<Card>{ renderPreviewLinks() }</Card>
-				) : (
-					<PanelSection>
-						<PanelHeading>{ translate( 'Coming soon' ) }</PanelHeading>
-						{ renderPreviewLinks() }
-					</PanelSection>
-				) ) }
 			{ querySiteDomainsComponent }
 		</>
 	);

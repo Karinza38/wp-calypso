@@ -1,9 +1,8 @@
 import { Card, Button, FormInputValidation, Gridicon } from '@automattic/components';
-import { englishLocales, useLocale } from '@automattic/i18n-utils';
-import { __, hasTranslation } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 import { Icon } from '@wordpress/icons';
 import PropTypes from 'prop-types';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useId } from 'react';
 import { connect } from 'react-redux';
 import illustration from 'calypso/assets/images/domains/domain.svg';
 import FormButton from 'calypso/components/forms/form-button';
@@ -25,7 +24,7 @@ function UseMyDomainInput( {
 	validationError,
 } ) {
 	const domainNameInput = useRef( null );
-	const locale = useLocale();
+	const inputId = 'use-my-domain-input-' + useId();
 
 	useEffect( () => {
 		shouldSetFocus && domainNameInput.current.focus();
@@ -47,12 +46,6 @@ function UseMyDomainInput( {
 		}
 	};
 
-	const hasDomainPlaceholderLabel =
-		englishLocales.includes( locale ) || hasTranslation( 'yourgroovydomain.com' );
-	const domainPlaceholderLabel = hasDomainPlaceholderLabel
-		? __( 'yourgroovydomain.com' )
-		: __( 'mydomain.com' );
-
 	return (
 		<Card className={ baseClassName }>
 			{ ! isSignupStep && (
@@ -61,10 +54,11 @@ function UseMyDomainInput( {
 				</div>
 			) }
 			<div className={ baseClassName + '__domain-input' }>
-				<label>{ __( 'Enter the domain you would like to use:' ) }</label>
+				<label htmlFor={ inputId }>{ __( 'Enter the domain you would like to use:' ) }</label>
 				<FormFieldset className={ baseClassName + '__domain-input-fieldset' }>
 					<FormTextInput
-						placeholder={ domainPlaceholderLabel }
+						id={ inputId }
+						placeholder={ __( 'yourgroovydomain.com' ) }
 						value={ domainName }
 						onChange={ onChange }
 						onKeyDown={ keyDown }

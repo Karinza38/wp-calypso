@@ -123,6 +123,7 @@ export const createSiteDomainObject = ( domain: DomainData ) => {
 		isDnssecEnabled: Boolean( domain.is_dnssec_enabled ),
 		isDnssecSupported: Boolean( domain.is_dnssec_supported ),
 		isGravatarDomain: Boolean( domain.is_gravatar_domain ),
+		isGravatarRestrictedDomain: Boolean( domain.is_gravatar_restricted_domain ),
 		isHundredYearDomain: Boolean( domain.is_hundred_year_domain ),
 		isLocked: Boolean( domain.is_locked ),
 		isRenewable: Boolean( domain.is_renewable ),
@@ -136,6 +137,9 @@ export const createSiteDomainObject = ( domain: DomainData ) => {
 		isMappedToAtomicSite: Boolean( domain.is_mapped_to_atomic_site ),
 		isMoveToNewSitePending: Boolean( domain.is_move_to_new_site_pending ),
 		isPendingIcannVerification: Boolean( domain.is_pending_icann_verification ),
+		isRootDomainRegisteredWithAutomattic: Boolean(
+			domain.is_root_domain_registered_with_automattic
+		),
 		isPendingRenewal: Boolean( domain.pending_renewal ),
 		isPremium: Boolean( domain.is_premium ),
 		isPrimary: Boolean( domain.primary_domain ),
@@ -158,7 +162,6 @@ export const createSiteDomainObject = ( domain: DomainData ) => {
 		pendingRegistration: Boolean( domain.pending_registration ),
 		pendingRegistrationAtRegistry: Boolean( domain.pending_registration_at_registry ),
 		pendingRegistrationAtRegistryUrl: String( domain.pending_registration_at_registry_url ?? '' ),
-		pendingRegistrationTime: String( domain.pending_registration_time ),
 		pendingTransfer: domain.pending_transfer,
 		pointsToWpcom: Boolean( domain.points_to_wpcom ),
 		privateDomain: domain.private_domain,

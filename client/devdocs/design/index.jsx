@@ -1,4 +1,3 @@
-import config from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
 import { Gravatar, SpinnerExample as Spinner } from '@automattic/components';
 import Badge from '@automattic/components/src/badge/docs/example';
@@ -19,11 +18,11 @@ import SelectDropdown from '@automattic/components/src/select-dropdown/docs/exam
 import SiteThumbnail from '@automattic/components/src/site-thumbnail/docs/example';
 import Suggestions from '@automattic/components/src/suggestions/docs/example';
 import Swipeable from '@automattic/components/src/swipeable/docs/example';
+import TimeSince from '@automattic/components/src/time-since/docs/example';
 import Tooltip from '@automattic/components/src/tooltip/docs/example';
 import clsx from 'clsx';
 import { trim } from 'lodash';
 import { Component, Fragment } from 'react';
-import ColorSchemePicker from 'calypso/blocks/color-scheme-picker/docs/example';
 import JetpackReviewPromptExample from 'calypso/blocks/jetpack-review-prompt/docs/example';
 import ActionCard from 'calypso/components/action-card/docs/example';
 import ActionPanel from 'calypso/components/action-panel/docs/example';
@@ -34,6 +33,7 @@ import Breadcrumb from 'calypso/components/breadcrumb/docs/example';
 import BulkSelect from 'calypso/components/bulk-select/docs/example';
 import ButtonGroups from 'calypso/components/button-group/docs/example';
 import CardHeading from 'calypso/components/card-heading/docs/example';
+import CategoryPillNavigationExample from 'calypso/components/category-pill-navigation/docs/example';
 import Chart from 'calypso/components/chart/docs/example';
 import Checklist from 'calypso/components/checklist/docs/example';
 import ClipboardButtonInput from 'calypso/components/clipboard-button-input/docs/example';
@@ -48,7 +48,6 @@ import FAQ from 'calypso/components/faq/docs/example';
 import FeatureGate from 'calypso/components/feature-example/docs/example';
 import FeatureItem from 'calypso/components/feature-item/docs/example';
 import FilePickers from 'calypso/components/file-picker/docs/example';
-import FocusableExample from 'calypso/components/focusable/docs/example';
 import FoldableFAQ from 'calypso/components/foldable-faq/docs/example';
 import FormattedDate from 'calypso/components/formatted-date/docs/example';
 import FormattedHeader from 'calypso/components/formatted-header/docs/example';
@@ -56,11 +55,9 @@ import ClipboardButtons from 'calypso/components/forms/clipboard-button/docs/exa
 import CountedTextareas from 'calypso/components/forms/counted-textarea/docs/example';
 import FormFields from 'calypso/components/forms/docs/example';
 import Ranges from 'calypso/components/forms/range/docs/example';
-import Gauge from 'calypso/components/gauge/docs/example';
 import GlobalNotices from 'calypso/components/global-notices/docs/example';
 import GravatarCaterpillar from 'calypso/components/gravatar-caterpillar/docs/example';
 import HappinessEngineersTray from 'calypso/components/happiness-engineers-tray/docs/example';
-import HeaderButton from 'calypso/components/header-button/docs/example';
 import HeaderCake from 'calypso/components/header-cake';
 import Headers from 'calypso/components/header-cake/docs/example';
 import ImagePreloader from 'calypso/components/image-preloader/docs/example';
@@ -109,7 +106,6 @@ import SupportInfoExample from 'calypso/components/support-info/docs/example';
 import TextDiff from 'calypso/components/text-diff/docs/example';
 import TextareaAutosize from 'calypso/components/textarea-autosize/docs/example';
 import TileGrid from 'calypso/components/tile-grid/docs/example';
-import TimeSince from 'calypso/components/time-since/docs/example';
 import Timeline from 'calypso/components/timeline/docs/example';
 import Timezone from 'calypso/components/timezone/docs/example';
 import TokenFields from 'calypso/components/token-field/docs/example';
@@ -117,8 +113,6 @@ import UserItem from 'calypso/components/user/docs/example';
 import VerticalMenu from 'calypso/components/vertical-menu/docs/example';
 import VerticalNav from 'calypso/components/vertical-nav/docs/example';
 import Wizard from 'calypso/components/wizard/docs/example';
-import WizardProgressBar from 'calypso/components/wizard-progress-bar/docs/example';
-import WpcomColophon from 'calypso/components/wpcom-colophon/docs/example';
 import Collection from 'calypso/devdocs/design/search-collection';
 import { slugToCamelCase } from 'calypso/devdocs/docs-example/util';
 import SitesGridItemExample from 'calypso/sites-dashboard/components/sites-grid-item/docs/example';
@@ -153,9 +147,6 @@ export default class DesignAssets extends Component {
 						<HeaderCake onClick={ this.backToComponents } backText="All Components">
 							{ slugToCamelCase( component ) }
 						</HeaderCake>
-						{ config.isEnabled( 'devdocs/color-scheme-picker' ) && (
-							<ColorSchemePicker readmeFilePath="color-scheme-picker" />
-						) }
 					</Fragment>
 				) : (
 					<div>
@@ -171,9 +162,6 @@ export default class DesignAssets extends Component {
 				) }
 
 				<Collection component={ component } filter={ filter }>
-					{ config.isEnabled( 'devdocs/color-scheme-picker' ) && (
-						<ColorSchemePicker readmeFilePath="color-scheme-picker" />
-					) }
 					<ActionCard readmeFilePath="action-card" />
 					<ActionPanel readmeFilePath="action-panel" />
 					<Animate readmeFilePath="animate" />
@@ -186,6 +174,7 @@ export default class DesignAssets extends Component {
 					<Buttons readmeFilePath="/packages/components/src/button" />
 					<CardHeading readmeFilePath="card-heading" />
 					<Cards readmeFilePath="/packages/components/src/card" />
+					<CategoryPillNavigationExample readmeFilePath="category-pill-navigation" />
 					<Chart readmeFilePath="chart" />
 					<Checklist readmeFilePath="checklist" />
 					<ClipboardButtonInput readmeFilePath="clipboard-button-input" />
@@ -205,19 +194,16 @@ export default class DesignAssets extends Component {
 					<FeatureGate readmeFilePath="feature-example" />
 					<FeatureItem readmeFilePath="feature-item" />
 					<FilePickers readmeFilePath="file-picker" />
-					<FocusableExample readmeFilePath="focusable" />
 					<FoldableCard readmeFilePath="foldable-card" searchKeywords="accordion" />
 					<FoldableFAQ readmeFilePath="foldable-faq" />
 					<FormattedDate readmeFilePath="formatted-date" />
 					<FormattedHeader readmeFilePath="formatted-header" />
 					<FormFields searchKeywords="input textbox textarea radio" readmeFilePath="forms" />
-					<Gauge readmeFilePath="gauge" />
 					<GlobalNotices readmeFilePath="global-notices" />
 					<Gravatar readmeFilePath="gravatar" />
 					<GravatarCaterpillar readmeFilePath="gravatar-caterpillar" />
 					<Gridicon />
 					<HappinessEngineersTray readmeFilePath="happiness-engineers-tray" />
-					<HeaderButton readmeFilePath="header-button" />
 					<Headers readmeFilePath="header-cake" />
 					<ImagePreloader readmeFilePath="image-preloader" />
 					<InfoPopover readmeFilePath="info-popover" />
@@ -275,7 +261,7 @@ export default class DesignAssets extends Component {
 					<TextDiff readmeFilePath="text-diff" />
 					<TileGrid readmeFilePath="tile-grid" />
 					<Timeline readmeFilePath="timeline" />
-					<TimeSince readmeFilePath="time-since" />
+					<TimeSince readmeFilePath="/packages/components/src/time-since" />
 					<Timezone readmeFilePath="timezone" />
 					<TokenFields readmeFilePath="token-field" />
 					<Tooltip readmeFilePath="tooltip" />
@@ -283,8 +269,6 @@ export default class DesignAssets extends Component {
 					<VerticalMenu readmeFilePath="vertical-menu" />
 					<VerticalNav readmeFilePath="vertical-nav" />
 					<Wizard readmeFilePath="wizard" />
-					<WizardProgressBar readmeFilePath="wizard-progress-bar" />
-					<WpcomColophon readmeFilePath="wpcom-colophon" />
 					<MasonryGridExample readmeFilePath="masonry-grid" />
 				</Collection>
 			</Main>

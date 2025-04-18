@@ -84,7 +84,7 @@ body.is-section-stepper .domains__step-content,
 		bottom: 0;
 		left: 0;
 		z-index: 99;
-		padding-bottom: 6px !important;
+		padding-bottom: 0 !important;
 		box-shadow: 0 -3px 10px 0 rgba(0, 0, 0, 0.12);
 
 		.foldable-card__main {
@@ -182,11 +182,12 @@ body.is-section-stepper .domains__step-content,
 			}
 
 			.domains__domain-cart-remove {
-				color: var(--studio-gray-50);
+				color: var(--studio-gray-100);
 				font-size: $font-body-extra-small;
 				min-width: 50px;
 				margin-right: 10px;
 				text-align: left;
+				text-decoration: underline;
 			}
 
 			.domain-product-price__price {
@@ -242,6 +243,7 @@ body.is-section-stepper .domains__step-content,
 			height: 40px;
 			color: var(--studio-gray-100);
 			text-decoration: underline;
+			text-align: left;
 			margin-top: 5px;
 		}
 	}
@@ -250,10 +252,8 @@ body.is-section-stepper .domains__step-content,
 .onboarding {
 	&.domains {
 		&.step-route {
-			padding: 48px 0 0;
-			@include break-mobile {
-				padding: 48px 12px 0 12px;
-			}
+			padding: 60px 12px 0 12px;
+
 			.step-container {
 				.step-container__header {
 					margin: 36px 0 24px 0;
@@ -284,12 +284,8 @@ body.is-section-stepper .domains__step-content,
 	}
 }
 
-/**
- * Styles for design reskin
- * The `is-white-signup` class is attached to the body when the user is assigned the `reskinned` group of the `reskinSignupFlow` a/b test
- */
 body.is-section-stepper.is-group-stepper,
-body.is-section-signup.is-white-signup {
+body.is-section-signup {
 	$light-white: #f3f4f5;
 
 	#primary {
@@ -316,6 +312,12 @@ body.is-section-signup.is-white-signup {
 					font-size: rem(16px);
 				}
 			}
+		}
+	}
+
+	.featured-domain-suggestions {
+		@include break-mobile {
+			border-top: none;
 		}
 	}
 
@@ -353,6 +355,12 @@ body.is-section-signup.is-white-signup {
 				flex-direction: column;
 				display: flex;
 			}
+
+			&.is-sticky {
+				position: sticky;
+				top: 0;
+				align-self: flex-start;
+			}
 		}
 
 		.register-domain-step .domains__domain-side-content-container {
@@ -373,7 +381,7 @@ body.is-section-signup.is-white-signup {
 			}
 		}
 
-		.domains__free-domain .reskin-side-explainer__subtitle-2 {
+		.domains__free-domain .side-explainer__subtitle-2 {
 			display: none;
 
 			@include break-small {
@@ -421,6 +429,10 @@ body.is-section-signup.is-white-signup {
 			border-bottom: none;
 		}
 
+		.domains__domain-cart-foldable-card .domains__domain-side-content {
+			padding: 0;
+		}
+
 		.register-domain-step {
 			flex: 1;
 		}
@@ -456,10 +468,6 @@ body.is-section-signup.is-white-signup {
 			transform: scaleX(-1);
 		}
 
-		.search-component__icon-navigation.components-button:focus:not(:disabled) {
-			box-shadow: 0 0 0 1px var(--color-primary);
-		}
-
 		.search-component__icon-search {
 			fill: #a7aaad;
 			margin: 8px 6px 8px 8px;
@@ -470,7 +478,7 @@ body.is-section-signup.is-white-signup {
 		}
 
 		.use-my-domain__page-heading {
-			text-align: left;
+			text-align: center;
 		}
 	}
 
@@ -486,8 +494,7 @@ body.is-section-signup.is-white-signup {
 		}
 
 		.button {
-			&:hover,
-			&:focus {
+			&:hover {
 				box-shadow: none;
 			}
 
@@ -506,68 +513,42 @@ body.is-section-signup.is-white-signup {
 		@include break-mobile {
 			padding: 0;
 		}
-
 	}
 }
 
-// blue signup flow-specific styles
-body.is-section-signup:not(.is-white-signup) {
+body.is-section-stepper .step-route.domains:has(.step-container-v2) {
+	padding: 0;
 
-	.domains__step-content {
-
-		a {
-			text-decoration: underline;
-			color: var(--color-text-inverted);
-		}
-
-		.domain-transfer-or-connect {
-
-			&__content {
-
-				.option-content {
-
-					&__illustration,
-					&__main,
-					&__action,
-					&__header,
-					&__top-text,
-					&__pricing-text {
-						color: var(--color-text-inverted);
-					}
-
-					&__benefits-item-text,
-					&__pricing-cost {
-						filter: brightness(0.9);
-					}
-
-					&__benefits-item .gridicon {
-						fill: var(--studio-green-20);
-					}
-
-					& + .option-content {
-						border-color: var(--studio-gray-40);
-					}
-
-				}
-
-			}
-
-			&__support-link {
-				color: var(--color-text-inverted);
-				filter: brightness(0.9);
-			}
-
-		}
-
-		.use-my-domain {
-
-			.form-input-validation.is-error {
-				color: var(--color-error-30);
-			}
-
-		}
-
+	.register-domain-step__search-card {
+		margin: 0;
 	}
 
-}
+	.featured-domain-suggestions,
+	.domain-suggestion {
+		margin-inline: 0;
+	}
 
+	.register-domain-step__domain-side-content-container-domain-explanation-image {
+		max-width: 100%;
+		margin-bottom: 0;
+	}
+
+	.register-domain-step__example-prompt {
+		margin: 0;
+	}
+
+	.domains__domain-side-content-container {
+		display: flex;
+		margin-top: 0;
+	}
+
+	.domains__domain-side-content {
+		margin: 0;
+		flex: 1;
+		width: 100%;
+	}
+
+	.domains__domain-side-content.fade-out {
+		display: none;
+	}
+}

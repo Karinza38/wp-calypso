@@ -9,7 +9,7 @@ import {
 import { __ } from '@wordpress/i18n';
 import { useTranslate } from 'i18n-calypso';
 import { useEffect, useLayoutEffect, useState } from 'react';
-import SocialLogo from 'social-logos';
+import { SocialLogo } from 'social-logos';
 import { AutomatticBrand, getAutomatticBrandingNoun } from '../utils';
 import type { FooterProps, PureFooterProps, LanguageOptions } from '../types';
 
@@ -94,6 +94,14 @@ export const PureUniversalNavbarFooter = ( {
 								</li>
 								<li>
 									<a
+										href={ localizeUrl( 'https://wordpress.com/ai-website-builder/?ref=footer' ) }
+										target="_self"
+									>
+										{ __( 'AI Website Builder', __i18n_text_domain__ ) }
+									</a>
+								</li>
+								<li>
+									<a
 										href={ localizeUrl( 'https://wordpress.com/website-builder/' ) }
 										target="_self"
 									>
@@ -111,14 +119,6 @@ export const PureUniversalNavbarFooter = ( {
 										target="_self"
 									>
 										{ __( 'Professional Email', __i18n_text_domain__ ) }
-									</a>
-								</li>
-								<li>
-									<a
-										href={ localizeUrl( 'https://wordpress.com/p2/?ref=wpcom-product-menu' ) }
-										target="_self"
-									>
-										{ __( 'P2: WordPress for Teams', __i18n_text_domain__ ) }
 									</a>
 								</li>
 								<li>
@@ -231,13 +231,8 @@ export const PureUniversalNavbarFooter = ( {
 									</a>
 								</li>
 								<li>
-									<a href={ localizeUrl( 'https://wordpress.com/read/search/' ) } target="_self">
+									<a href={ localizeUrl( 'https://wordpress.com/reader/search/' ) } target="_self">
 										{ __( 'Blog Search', __i18n_text_domain__ ) }
-									</a>
-								</li>
-								<li>
-									<a href={ localizeUrl( 'https://wordpress.com/webinars/' ) } target="_self">
-										{ __( 'Daily Webinars', __i18n_text_domain__ ) }
 									</a>
 								</li>
 								<li>
@@ -265,11 +260,6 @@ export const PureUniversalNavbarFooter = ( {
 								<li>
 									<a href={ localizeUrl( 'https://wordpress.com/about/' ) } target="_self">
 										{ __( 'About', __i18n_text_domain__ ) }
-									</a>
-								</li>
-								<li>
-									<a href={ localizeUrl( 'https://wordpress.com/partners/' ) } target="_self">
-										{ __( 'Partners', __i18n_text_domain__ ) }
 									</a>
 								</li>
 								<li>

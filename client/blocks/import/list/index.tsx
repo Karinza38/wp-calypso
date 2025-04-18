@@ -22,7 +22,7 @@ interface Props {
 	siteSlug: string | null;
 	title?: string;
 	subTitle?: string;
-	submit?: ( dependencies: Record< string, unknown > ) => void;
+	submit?: ( dependencies: { platform: ImporterPlatform; url: string } ) => void;
 	getFinalImporterUrl: (
 		siteSlug: string,
 		fromSite: string,
@@ -37,8 +37,9 @@ export default function ListStep( props: Props ) {
 	const urlQueryParams = useQuery();
 	const { siteSlug, submit, getFinalImporterUrl, onNavBack } = props;
 	const backToFlow = urlQueryParams.get( 'backToFlow' );
-	const title = props.title || __( 'Import content from another platform' );
-	const subTitle = props.subTitle || __( 'Select the platform where your content lives' );
+	const fromSite = urlQueryParams.get( 'from' );
+	const title = props.title || __( 'Import content from another platform or file' );
+	const subTitle = props.subTitle || __( "Select the platform you're coming from" );
 
 	// We need to remove the wix importer from the primary importers list.
 	const primaryListOptions: ImporterOption[] = getImportersAsImporterOption( 'primary' ).filter(
@@ -52,7 +53,7 @@ export default function ListStep( props: Props ) {
 	const onImporterSelect = ( platform: ImporterPlatform ): void => {
 		const importerUrl = getFinalImporterUrl(
 			siteSlug ?? '',
-			'',
+			fromSite ?? '',
 			platform,
 			backToFlow ?? undefined
 		);

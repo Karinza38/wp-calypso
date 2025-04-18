@@ -1,13 +1,10 @@
+import { useI18n } from '@wordpress/react-i18n';
 import clsx from 'clsx';
-import Markdown from 'react-markdown';
-import { useOdieAssistantContext } from '../../context';
 import { zendeskMessageConverter } from '../../utils';
 import ChatWithSupportLabel from '../chat-with-support';
-import CustomALink from './custom-a-link';
-import DislikeFeedbackMessage from './dislike-feedback-message';
 import ErrorMessage from './error-message';
-import Sources from './sources';
-import { uriTransformer } from './uri-transformer';
+import { FeedbackContent } from './feedback-content';
+import { IntroductionMessage } from './introduction-message';
 import { UserMessage } from './user-message';
 import type { ZendeskMessage, Message } from '../../types';
 
@@ -17,25 +14,27 @@ export const MessageContent = ( {
 	messageHeader,
 	isNextMessageFromSameSender,
 	displayChatWithSupportLabel,
+	displayChatWithSupportEndedLabel,
 }: {
 	message: Message;
 	messageHeader: React.ReactNode;
 	isDisliked?: boolean;
 	isNextMessageFromSameSender?: boolean;
 	displayChatWithSupportLabel?: boolean;
+	displayChatWithSupportEndedLabel?: boolean;
 } ) => {
-	const { shouldUseHelpCenterExperience } = useOdieAssistantContext();
+	const { __ } = useI18n();
 	const messageClasses = clsx(
 		'odie-chatbox-message',
 		`odie-chatbox-message-${ message.role }`,
 		`odie-chatbox-message-${ message.type ?? 'message' }`,
-		shouldUseHelpCenterExperience &&
-			message?.context?.flags?.show_ai_avatar === false &&
-			`odie-chatbox-message-no-avatar`
+		message?.context?.flags?.show_ai_avatar === false && 'odie-chatbox-message-no-avatar'
 	);
+	const isFeedbackMessage = message.type === 'conversation-feedback' && message?.meta?.feedbackUrl;
+
 	const containerClasses = clsx(
 		'odie-chatbox-message-sources-container',
-		shouldUseHelpCenterExperience && isNextMessageFromSameSender && 'next-chat-message-same-sender'
+		( isNextMessageFromSameSender || isFeedbackMessage ) && 'next-chat-message-same-sender'
 	);
 
 	const isMessageWithOnlyText =
@@ -66,7 +65,9 @@ export const MessageContent = ( {
 				<div className={ messageClasses }>
 					{ message?.context?.flags?.show_ai_avatar !== false && messageHeader }
 					{ message.type === 'error' && <ErrorMessage message={ message } /> }
-					{ ( [ 'message', 'image', 'file', 'text' ].includes( message.type ) ||
+					{ ( [ 'message', 'image', 'image-placeholder', 'file', 'text' ].includes(
+						message.type
+					) ||
 						! message.type ) && (
 						<UserMessage
 							message={ markdownMessageContent }
@@ -74,25 +75,21 @@ export const MessageContent = ( {
 							isMessageWithoutEscalationOption={ isMessageWithOnlyText }
 						/>
 					) }
-					{ message.type === 'introduction' && (
-						<div className="odie-introduction-message-content">
-							<div className="odie-chatbox-introduction-message">
-								<Markdown
-									urlTransform={ uriTransformer }
-									components={ {
-										a: CustomALink,
-									} }
-								>
-									{ message.content }
-								</Markdown>
-							</div>
-						</div>
+					{ message.type === 'introduction' && <IntroductionMessage content={ message.content } /> }
+					{ isFeedbackMessage && (
+						<FeedbackContent content={ message.content } meta={ message?.meta } />
 					) }
-					{ message.type === 'dislike-feedback' && <DislikeFeedbackMessage /> }
 				</div>
-				{ ! isMessageWithOnlyText && <Sources message={ message } /> }
 			</div>
-			{ shouldUseHelpCenterExperience && displayChatWithSupportLabel && <ChatWithSupportLabel /> }
+
+			{ displayChatWithSupportLabel && (
+				<ChatWithSupportLabel
+					labelText={ __( 'Chat with support started', __i18n_text_domain__ ) }
+				/>
+			) }
+			{ displayChatWithSupportEndedLabel && (
+				<ChatWithSupportLabel labelText={ __( 'Chat with support ended', __i18n_text_domain__ ) } />
+			) }
 		</>
 	);
 };

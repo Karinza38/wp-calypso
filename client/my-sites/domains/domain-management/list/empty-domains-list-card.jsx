@@ -1,12 +1,14 @@
 import { PLAN_100_YEARS, domainProductSlugs, isFreePlan } from '@automattic/calypso-products';
 import { useHasEnTranslation } from '@automattic/i18n-utils';
 import clsx from 'clsx';
-import i18n, { useTranslate } from 'i18n-calypso';
+import { useTranslate } from 'i18n-calypso';
 import PropTypes from 'prop-types';
 import QueryProductsList from 'calypso/components/data/query-products-list';
 import { domainAddNew, domainUseMyDomain } from 'calypso/my-sites/domains/paths';
+import { useDomainToPlanCreditsApplicable } from 'calypso/my-sites/plans-features-main/hooks/use-domain-to-plan-credits-applicable';
 import { useSelector } from 'calypso/state';
 import { getProductBySlug } from 'calypso/state/products-list/selectors';
+import { isFetchingUserPurchases } from 'calypso/state/purchases/selectors/fetching';
 import { EmptyDomainsListCardSkeleton } from './empty-domains-list-card-skeleton';
 
 import './empty-domains-list-card-styles.scss';
@@ -20,9 +22,9 @@ function EmptyDomainsListCard( { selectedSite, hasDomainCredit, isCompact, hasNo
 
 	const siteHasHundredYearPlan = selectedSite?.plan?.product_slug === PLAN_100_YEARS;
 
-	let title = i18n.hasTranslation( 'Get your free domain' )
-		? translate( 'Get your free domain' )
-		: translate( 'Get your domain' );
+	const isLoadingUserPurchases = useSelector( isFetchingUserPurchases );
+
+	let title = translate( 'Get your free domain' );
 	let line = translate(
 		'Get a free one-year domain registration or transfer with any annual paid plan.'
 	);
@@ -37,6 +39,15 @@ function EmptyDomainsListCard( { selectedSite, hasDomainCredit, isCompact, hasNo
 		getProductBySlug( state, domainProductSlugs.DOTCOM_DOMAIN_REGISTRATION )
 	);
 	const domainProductCost = domainRegistrationProduct?.combined_cost_display;
+	const domainToPlanCreditsApplicable = useDomainToPlanCreditsApplicable( selectedSite?.ID );
+
+	if ( isLoadingUserPurchases ) {
+		return null;
+	}
+
+	if ( domainToPlanCreditsApplicable !== null && domainToPlanCreditsApplicable > 0 ) {
+		return null;
+	}
 
 	if ( siteHasPaidPlan && ! hasDomainCredit ) {
 		if ( hasNonWpcomDomains ) {
@@ -46,7 +57,7 @@ function EmptyDomainsListCard( { selectedSite, hasDomainCredit, isCompact, hasNo
 		line = translate( 'You have no domains added to this site.' );
 		action = translate( 'Search for a domain' );
 		actionURL = domainAddNew( selectedSite.slug );
-		secondaryAction = translate( 'I have a domain' );
+		secondaryAction = translate( 'Use a domain I own' );
 		secondaryActionURL = domainUseMyDomain( selectedSite.slug );
 		contentType = 'paid_plan_with_no_free_domain_credits';
 	}
@@ -74,7 +85,7 @@ function EmptyDomainsListCard( { selectedSite, hasDomainCredit, isCompact, hasNo
 		}
 		action = translate( 'Search for a domain' );
 		actionURL = domainAddNew( selectedSite.slug );
-		secondaryAction = translate( 'I have a domain' );
+		secondaryAction = translate( 'Use a domain I own' );
 		secondaryActionURL = domainUseMyDomain( selectedSite.slug, {
 			redirectTo: `/domains/manage/${ selectedSite.slug }`,
 		} );

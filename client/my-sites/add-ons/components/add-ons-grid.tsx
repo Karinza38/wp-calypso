@@ -1,10 +1,14 @@
+import { PRODUCT_1GB_SPACE } from '@automattic/calypso-products';
 import styled from '@emotion/styled';
-import AddOnCard from './add-ons-card';
-import type { Props as CardProps } from './add-ons-card';
+import AddOnCard from 'calypso/sites/components/add-ons/add-ons-card';
+import StorageAddOnCard from './storage-add-ons-card';
 import type { AddOnMeta } from '@automattic/data-stores';
+import type { Props as CardProps } from 'calypso/sites/components/add-ons/add-ons-card';
+import type { SiteId } from 'calypso/types';
 
 interface Props extends Omit< CardProps, 'addOnMeta' > {
 	addOns: ( AddOnMeta | null )[];
+	siteId?: SiteId;
 }
 
 const Container = styled.div`
@@ -22,12 +26,13 @@ const AddOnsGrid = ( {
 	addOns,
 	actionPrimary,
 	actionSecondary,
-	useAddOnAvailabilityStatus,
 	highlightFeatured,
+	siteId,
 }: Props ) => {
+	const nonStorageAddOns = addOns.filter( ( addOn ) => addOn?.productSlug !== PRODUCT_1GB_SPACE );
 	return (
 		<Container>
-			{ addOns.map( ( addOn ) =>
+			{ nonStorageAddOns.map( ( addOn ) =>
 				addOn ? (
 					<AddOnCard
 						key={
@@ -35,12 +40,12 @@ const AddOnsGrid = ( {
 						}
 						actionPrimary={ actionPrimary }
 						actionSecondary={ actionSecondary }
-						useAddOnAvailabilityStatus={ useAddOnAvailabilityStatus }
 						addOnMeta={ addOn }
 						highlightFeatured={ highlightFeatured }
 					/>
 				) : null
 			) }
+			{ siteId && <StorageAddOnCard siteId={ siteId } actionPrimary={ actionPrimary } /> }
 		</Container>
 	);
 };

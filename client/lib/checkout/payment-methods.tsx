@@ -12,8 +12,13 @@ import payPalImage from 'calypso/assets/images/upgrades/paypal.svg';
 import razorpayImage from 'calypso/assets/images/upgrades/upi.svg';
 
 export const PARTNER_PAYPAL_EXPRESS = 'paypal_express';
+export const PARTNER_PAYPAL_PPCP = 'paypal_ppcp';
 export const PARTNER_RAZORPAY = 'razorpay';
-export const PAYMENT_AGREEMENTS_PARTNERS = [ PARTNER_PAYPAL_EXPRESS, PARTNER_RAZORPAY ];
+export const PAYMENT_AGREEMENTS_PARTNERS = [
+	PARTNER_PAYPAL_EXPRESS,
+	PARTNER_PAYPAL_PPCP,
+	PARTNER_RAZORPAY,
+];
 export const UPI_PARTNERS = [ PARTNER_RAZORPAY ];
 
 /**
@@ -53,7 +58,7 @@ export interface StoredPaymentMethodBase {
 }
 
 export interface StoredPaymentMethodPayPal extends StoredPaymentMethodBase {
-	payment_partner: 'paypal_express';
+	payment_partner: 'paypal_express' | 'paypal_ppcp';
 }
 
 export interface StoredPaymentMethodRazorpay extends StoredPaymentMethodBase {
@@ -99,6 +104,7 @@ export interface StoredPaymentMethodTaxLocation {
 	organization?: string;
 	address?: string;
 	city?: string;
+	is_for_business?: boolean | undefined;
 }
 
 export const isPaymentAgreement = (
@@ -125,8 +131,9 @@ const CREDIT_CARD_SELECTED_PATHS: ImagePathsMap = {
 	mastercard: creditCardMasterCardImage,
 	unionpay: creditCardUnionPayImage,
 	visa: creditCardVisaImage,
-	paypal_express: payPalImage,
 	paypal: payPalImage,
+	paypal_express: payPalImage,
+	paypal_ppcp: payPalImage,
 	razorpay: razorpayImage,
 };
 
@@ -148,7 +155,7 @@ export const PaymentMethodSummary = ( {
 	email?: string;
 } ) => {
 	const translate = useTranslate();
-	if ( type === PARTNER_PAYPAL_EXPRESS ) {
+	if ( type === PARTNER_PAYPAL_EXPRESS || type === PARTNER_PAYPAL_PPCP ) {
 		return <>{ email || '' }</>;
 	}
 	if ( type === PARTNER_RAZORPAY ) {

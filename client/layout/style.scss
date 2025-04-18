@@ -83,6 +83,11 @@ body.command-palette-modal-open {
 		margin: 0;
 	}
 
+	.is-section-marketplace.has-no-sidebar & {
+		padding: 0;
+		margin: 0;
+	}
+
 	.is-section-themes.has-no-sidebar.is-logged-in &,
 	.theme-default .is-section-themes.has-no-sidebar.is-logged-in & {
 		padding: 79px 32px 32px;
@@ -371,8 +376,17 @@ body.is-mobile-app-view {
 	}
 }
 
-// Try to clean things up a bit when printing.
 .layout {
+	.global-notices {
+		padding: 8px;
+
+		/* This is the breakpoint we're using in client/components/global-notices/style.scss */
+		@include breakpoint-deprecated( ">660px" ) {
+			padding: 0;
+		}
+	}
+
+	// Try to clean things up a bit when printing.
 	.masterbar,
 	.layout__secondary {
 		@media print {

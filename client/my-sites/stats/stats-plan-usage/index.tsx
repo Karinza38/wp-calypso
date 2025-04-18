@@ -1,6 +1,5 @@
-import { formattedNumber } from '@automattic/components';
 import clsx from 'clsx';
-import { useTranslate } from 'i18n-calypso';
+import { useTranslate, numberFormat } from 'i18n-calypso';
 import React from 'react';
 import usePlanUsageQuery from 'calypso/my-sites/stats/hooks/use-plan-usage-query';
 
@@ -76,7 +75,13 @@ const PlanUsage: React.FC< PlanUsageProps > = ( {
 
 	return (
 		<div className="plan-usage">
-			<h3 className="plan-usage-heading">{ translate( 'Your Stats plan usage' ) }</h3>
+			<h3 className="plan-usage-heading">
+				{ translate( 'Your %(productName)s plan usage', {
+					args: {
+						productName: 'Stats',
+					},
+				} ) }
+			</h3>
 			<div className={ progressClassNames } key="progress">
 				<div
 					className="plan-usage-progress-bar"
@@ -86,8 +91,8 @@ const PlanUsage: React.FC< PlanUsageProps > = ( {
 				<div key="usage">
 					{ translate( '%(numberOfUsage)s / %(numberOfLimit)s views', {
 						args: {
-							numberOfUsage: formattedNumber( usage ),
-							numberOfLimit: formattedNumber( limit ),
+							numberOfUsage: numberFormat( usage ),
+							numberOfLimit: typeof limit === 'number' ? numberFormat( limit ) : '-',
 						},
 					} ) }
 				</div>

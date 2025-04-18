@@ -1,21 +1,23 @@
 import config from '@automattic/calypso-config';
 import page from '@automattic/calypso-router';
 import './style.scss';
-import { Badge, Dialog } from '@automattic/components';
+import { Badge, Dialog, Gridicon } from '@automattic/components';
 import { localizeUrl } from '@automattic/i18n-utils';
-import { Button, DropdownMenu } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
-import { Icon, chevronLeft, chevronDown } from '@wordpress/icons';
+import { Button, DropdownMenu, Spinner } from '@wordpress/components';
+import { __, _n, _x, sprintf } from '@wordpress/i18n';
+import { chevronDown, chevronLeft, Icon } from '@wordpress/icons';
+import clsx from 'clsx';
+import cookie from 'cookie';
 import { useTranslate } from 'i18n-calypso';
 import moment from 'moment/moment';
-import React, { useState } from 'react';
-import ExternalLink from 'calypso/components/external-link';
+import React, { useEffect, useRef, useState } from 'react';
 import InfoPopover from 'calypso/components/info-popover';
 import InlineSupportLink from 'calypso/components/inline-support-link';
 import Main from 'calypso/components/main';
 import Notice from 'calypso/components/notice';
 import {
 	CampaignChartSeriesData,
+	ChartResolution,
 	useCampaignChartStatsQuery,
 } from 'calypso/data/promote-post/use-campaign-chart-stats-query';
 import useBillingSummaryQuery from 'calypso/data/promote-post/use-promote-post-billing-summary-query';
@@ -24,18 +26,25 @@ import {
 	Order,
 } from 'calypso/data/promote-post/use-promote-post-campaigns-query';
 import useCancelCampaignMutation from 'calypso/data/promote-post/use-promote-post-cancel-campaign-mutation';
+import { recordTracksEvent } from 'calypso/lib/analytics/tracks';
+import { useJetpackBlazeVersionCheck } from 'calypso/lib/promote-post';
 import AdPreview from 'calypso/my-sites/promote-post-i2/components/ad-preview';
 import AdPreviewModal from 'calypso/my-sites/promote-post-i2/components/campaign-item-details/AdPreviewModal';
+import CampaignDownloadStats from 'calypso/my-sites/promote-post-i2/components/campaign-item-details/CampaignDownloadStats';
 import CampaignStatsLineChart from 'calypso/my-sites/promote-post-i2/components/campaign-stats-line-chart/index.tsx/campaign-stats-line-chart';
 import LocationChart from 'calypso/my-sites/promote-post-i2/components/location-charts';
+import PaymentLinks from 'calypso/my-sites/promote-post-i2/components/payment-links';
+import TspMetricsBanner from 'calypso/my-sites/promote-post-i2/components/tsp-metrics-banner';
 import useOpenPromoteWidget from 'calypso/my-sites/promote-post-i2/hooks/use-open-promote-widget';
 import {
 	campaignStatus,
 	canCancelCampaign,
+	canGetCampaignStats,
 	canPromoteAgainCampaign,
 	formatAmount,
 	getAdvertisingDashboardPath,
 	getCampaignActiveDays,
+	getCampaignDurationFormatted,
 } from 'calypso/my-sites/promote-post-i2/utils';
 import { useSelector } from 'calypso/state';
 import { getSelectedSiteSlug } from 'calypso/state/ui/selectors';
@@ -46,10 +55,6 @@ import {
 	getCampaignStatus,
 	getCampaignStatusBadgeColor,
 } from '../../utils';
-import AwarenessIcon from '../campaign-objective-icons/AwarenessIcon';
-import EngagementIcon from '../campaign-objective-icons/EngagementIcon';
-import SalesIcon from '../campaign-objective-icons/SalesIcon';
-import TrafficIcon from '../campaign-objective-icons/TrafficIcon';
 import TargetLocations from './target-locations';
 
 interface Props {
@@ -73,17 +78,6 @@ const getPostIdFromURN = ( targetUrn: string ) => {
 	}
 };
 
-const getExternalLinkIcon = ( fillColor?: string ) => (
-	<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-		<path
-			fillRule="evenodd"
-			clipRule="evenodd"
-			d="M9.93271 3.02436L12.4162 3.01314L8.1546 7.27477L8.8617 7.98188L13.1183 3.72526L13.0971 6.18673L14.0971 6.19534L14.1332 2.00537L9.92819 2.02437L9.93271 3.02436ZM4.66732 2.83349C3.6548 2.83349 2.83398 3.6543 2.83398 4.66682V11.3335C2.83398 12.346 3.6548 13.1668 4.66732 13.1668H11.334C12.3465 13.1668 13.1673 12.346 13.1673 11.3335V8.90756H12.1673V11.3335C12.1673 11.7937 11.7942 12.1668 11.334 12.1668H4.66732C4.20708 12.1668 3.83398 11.7937 3.83398 11.3335V4.66682C3.83398 4.20658 4.20708 3.83349 4.66732 3.83349H6.83398V2.83349H4.66732Z"
-			fill={ fillColor }
-		/>
-	</svg>
-);
-
 const getExternalTabletIcon = ( fillColor = '#A7AAAD' ) => (
 	<span className="campaign-item-details__tablet-icon">
 		<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -98,18 +92,38 @@ const getExternalTabletIcon = ( fillColor = '#A7AAAD' ) => (
 	</span>
 );
 
-const getCampaignStatsChart = (
-	campaignChartStats: CampaignChartSeriesData[],
-	source: ChartSourceOptions
-) => {
-	return <CampaignStatsLineChart data={ campaignChartStats } source={ source } />;
-};
-
 export enum ChartSourceOptions {
 	Impressions = 'impressions',
 	Clicks = 'clicks',
 	Spend = 'spend',
 }
+
+// Define the available date range options
+enum ChartSourceDateRanges {
+	YESTERDAY = 'yesterday',
+	LAST_7_DAYS = 'last_7_days',
+	LAST_14_DAYS = 'last_14_days',
+	LAST_30_DAYS = 'last_30_days',
+	WHOLE_CAMPAIGN = 'whole_campaign',
+}
+
+// User facing strings for date ranges
+const ChartSourceDateRangeLabels = {
+	[ ChartSourceDateRanges.YESTERDAY ]: __( 'Yesterday' ),
+	[ ChartSourceDateRanges.LAST_7_DAYS ]: __( 'Last 7 days' ),
+	[ ChartSourceDateRanges.LAST_14_DAYS ]: __( 'Last 14 days' ),
+	[ ChartSourceDateRanges.LAST_30_DAYS ]: __( 'Last 30 days' ),
+	[ ChartSourceDateRanges.WHOLE_CAMPAIGN ]: __( 'Whole Campaign' ),
+};
+
+const HIDE_TSP_METRICS_BANNER_COOKIE = 'blaze-hide-tsp-metrics-banner';
+
+const setHideTspMetricsBannerCookie = ( value: boolean ) => {
+	document.cookie = cookie.serialize( HIDE_TSP_METRICS_BANNER_COOKIE, ( +value ).toString(), {
+		path: '/',
+		maxAge: 365 * 24 * 60 * 60, // 1 year
+	} );
+};
 
 export default function CampaignItemDetails( props: Props ) {
 	const isRunningInWpAdmin = useIsRunningInWpAdmin();
@@ -122,10 +136,21 @@ export default function CampaignItemDetails( props: Props ) {
 	const { cancelCampaign } = useCancelCampaignMutation( () => setShowErrorDialog( true ) );
 	const selectedSiteSlug = useSelector( getSelectedSiteSlug );
 	const { campaign, isLoading, siteId } = props;
-	const campaignId = campaign?.campaign_id;
+	const campaignId = campaign?.campaign_id || 0;
 	const isWooStore = config.isEnabled( 'is_running_in_woo_site' );
 	const { data, isLoading: isLoadingBillingSummary } = useBillingSummaryQuery();
 	const paymentBlocked = data?.paymentsBlocked ?? false;
+
+	const [ showReportErrorDialog, setShowReportErrorDialog ] = useState( false );
+	const [ showAllReplies, setShowAllReplies ] = useState( false );
+
+	const getEffectiveEndDate = () => {
+		const endDate = campaign?.end_date ? new Date( campaign.end_date ) : null;
+		const today = new Date();
+
+		// If the campaign has already finished, fetch data relative to the end date (we can't fetch data after that point)
+		return endDate && endDate < today ? endDate : today;
+	};
 
 	const {
 		audience_list,
@@ -139,8 +164,6 @@ export default function CampaignItemDetails( props: Props ) {
 		status,
 		ui_status,
 		campaign_stats,
-		objective,
-		objective_data,
 		billing_data,
 		target_urn,
 		campaign_id,
@@ -148,6 +171,8 @@ export default function CampaignItemDetails( props: Props ) {
 		format,
 		budget_cents,
 		type,
+		display_delivery_estimate,
+		display_clicks_estimate,
 		is_evergreen = false,
 	} = campaign || {};
 
@@ -155,22 +180,63 @@ export default function CampaignItemDetails( props: Props ) {
 		impressions_total = 0,
 		clicks_total,
 		clickthrough_rate,
+		duration_days,
 		total_budget,
 		total_budget_used,
 		conversions_total,
 		conversion_value,
 		conversion_rate,
 		conversion_last_currency_found,
+		tsp,
 	} = campaign_stats || {};
 
-	const campaignStatsQuery = useCampaignChartStatsQuery(
-		siteId,
-		campaignId,
-		campaign.start_date,
-		!! impressions_total
+	const {
+		impressions_total: tsp_impressions_total,
+		// todo uncomment this line when we check that clicks are tracked through smart
+		// clicks_total: tsp_clicks_total,
+		replies,
+		likes_total,
+		replies_total,
+		permalink,
+	} = tsp || {};
+
+	const displayedReplies = showAllReplies ? replies : replies?.slice( 0, 3 );
+
+	// check if delivery outperformed
+	const calculateOutperformPercentage = ( estimates: string, total: number ): number => {
+		const tempValues = ( estimates || '' ).split( ':' );
+		let median = 0;
+		if ( tempValues && tempValues.length >= 2 ) {
+			const [ minValue, maxValue ] = tempValues.map( Number );
+			median = ( minValue + maxValue ) / 2;
+		}
+		if ( is_evergreen ) {
+			// Calculate the duration in weeks from the start date.
+			// Add 1 to ensure the minimum value is 1 week (avoiding division by zero or values less than 1).
+			// This ensures clicks are divided by the total whole number of weeks that have elapsed since the start date.
+			const durationInWeeksFromStartDate =
+				moment.utc().diff( moment.utc( start_date ), 'weeks' ) + 1;
+			// The total is divided by the number of weeks,
+			// as the estimated values are calculated on a weekly basis.
+			total = Math.round( total / durationInWeeksFromStartDate );
+		}
+		if ( total > median && median > 0 ) {
+			return Math.round( ( ( total - median ) / median ) * 100 );
+		}
+		return 0;
+	};
+
+	// for impressions
+	const impressionsOutperformedPercentage = calculateOutperformPercentage(
+		display_delivery_estimate,
+		impressions_total
 	);
-	const { isLoading: campaignsStatsIsLoading } = campaignStatsQuery;
-	const { data: campaignStats } = campaignStatsQuery;
+
+	// for clicks
+	const clicksOutperformedPercentage = calculateOutperformPercentage(
+		display_clicks_estimate,
+		clicks_total
+	);
 
 	const { card_name, payment_method, credits, total, orders, payment_links } = billing_data || {};
 	const { title, clickUrl } = content_config || {};
@@ -196,6 +262,15 @@ export default function CampaignItemDetails( props: Props ) {
 			: '-';
 	const ctrFormatted = clickthrough_rate ? `${ clickthrough_rate.toFixed( 2 ) }%` : '-';
 	const clicksFormatted = clicks_total && clicks_total > 0 ? formatNumber( clicks_total ) : '-';
+	const likesFormatted = likes_total && likes_total > 0 ? formatNumber( likes_total ) : '-';
+	const repliesFormatted = replies_total && replies_total > 0 ? formatNumber( replies_total ) : '-';
+	const tspImpressionsFormatted =
+		tsp_impressions_total && tsp_impressions_total > 0
+			? formatNumber( tsp_impressions_total )
+			: '-';
+	// todo uncomment this line when we check that clicks are tracked through smart
+	// const tspClicksFormatted =
+	// 	tsp_clicks_total && tsp_clicks_total > 0 ? formatNumber( tsp_clicks_total ) : '-';
 	const weeklyBudget = budget_cents ? ( budget_cents / 100 ) * 7 : 0;
 	const weeklySpend =
 		total_budget_used && billing_data ? Math.max( 0, total_budget_used - billing_data?.total ) : 0;
@@ -207,37 +282,6 @@ export default function CampaignItemDetails( props: Props ) {
 
 	const campaignTitleFormatted = title || __( 'Untitled' );
 	const campaignCreatedFormatted = moment.utc( created_at ).format( 'MMMM DD, YYYY' );
-
-	const objectiveIcon = ( () => {
-		switch ( objective ) {
-			case 'traffic':
-				return <span> { TrafficIcon() } </span>;
-			case 'sales':
-				return <span> { SalesIcon() } </span>;
-			case 'awareness':
-				return <span> { AwarenessIcon() } </span>;
-			case 'engagement':
-				return <span> { EngagementIcon() } </span>;
-			default:
-				return null;
-		}
-	} )();
-
-	const objectiveFormatted = ( () => {
-		if ( ! objectiveIcon || ! objective_data ) {
-			return null;
-		}
-		return (
-			<>
-				<span> { objectiveIcon } </span>
-				<span>
-					<span className="title">{ objective_data?.title }</span>
-					{ ' - ' }
-					{ objective_data?.description }
-				</span>
-			</>
-		);
-	} )();
 
 	const devicesListFormatted = devicesList ? `${ devicesList }` : __( 'All' );
 	const languagesListFormatted = languagesList
@@ -260,8 +304,138 @@ export default function CampaignItemDetails( props: Props ) {
 		: '-';
 
 	const activeDays = getCampaignActiveDays( start_date, end_date );
+
+	const durationDateFormatted = getCampaignDurationFormatted(
+		start_date,
+		end_date,
+		is_evergreen,
+		campaign?.ui_status
+	);
+
+	const durationDateAndTimeFormatted = getCampaignDurationFormatted(
+		start_date,
+		end_date,
+		is_evergreen,
+		campaign?.ui_status,
+		// translators: Moment.js date format, `MMM` refers to short month name (e.g. `Sep`), `D` refers to day of month (e.g. `5`), `HH` refers to hours in 24-hour format (e.g. `19` in 19:50), `mm` refers to minutes (e.g. `50`). Wrap text [] to be displayed as is, for example `D [de] MMM` will be formatted as `5 de sep.`.
+		_x( 'MMM D, HH:mm', 'shorter date format' )
+	);
+
+	const durationFormatted = duration_days
+		? sprintf(
+				/* translators: %s is the duration in days */
+				_n( '%s day', '%s days', duration_days ),
+				formatNumber( duration_days, true )
+		  )
+		: '';
+
+	const initialRange =
+		activeDays <= 7 ? ChartSourceDateRanges.WHOLE_CAMPAIGN : ChartSourceDateRanges.LAST_7_DAYS;
+	const initialResolution = activeDays < 3 ? ChartResolution.Hour : ChartResolution.Day;
+
+	const [ selectedDateRange, setSelectedDateRange ] =
+		useState< ChartSourceDateRanges >( initialRange );
+
+	const getChartStartDate = ( dateRange: ChartSourceDateRanges ) => {
+		const effectiveEndDate = getEffectiveEndDate();
+		let startDate = new Date( effectiveEndDate );
+
+		switch ( dateRange ) {
+			case ChartSourceDateRanges.YESTERDAY:
+				startDate.setDate( effectiveEndDate.getDate() - 1 );
+				break;
+			case ChartSourceDateRanges.LAST_7_DAYS:
+				startDate.setDate( effectiveEndDate.getDate() - 7 );
+				break;
+			case ChartSourceDateRanges.LAST_14_DAYS:
+				startDate.setDate( effectiveEndDate.getDate() - 14 );
+				break;
+			case ChartSourceDateRanges.LAST_30_DAYS:
+				startDate.setDate( effectiveEndDate.getDate() - 30 );
+				break;
+			case ChartSourceDateRanges.WHOLE_CAMPAIGN:
+				if ( campaign?.start_date ) {
+					startDate = new Date( campaign.start_date );
+				}
+				break;
+		}
+
+		return startDate.toISOString().split( 'T' )[ 0 ];
+	};
+
+	const [ chartParams, setChartParams ] = useState( {
+		startDate: getChartStartDate( initialRange ),
+		endDate: getEffectiveEndDate().toISOString().split( 'T' )[ 0 ],
+		resolution: initialResolution,
+	} );
+
+	const updateChartParams = ( newDateRange: ChartSourceDateRanges ) => {
+		// These shorter time frames can show hourly data, we can show up to 30 days of hourly data (max days stored in Druid)
+		const newResolution =
+			newDateRange === ChartSourceDateRanges.YESTERDAY || activeDays < 3
+				? ChartResolution.Hour
+				: ChartResolution.Day;
+
+		const newStartDate = getChartStartDate( newDateRange );
+
+		// Update the params for the chart here, which will trigger the refetch
+		setChartParams( {
+			startDate: newStartDate,
+			endDate: getEffectiveEndDate().toISOString().split( 'T' )[ 0 ],
+			resolution: newResolution,
+		} );
+		setSelectedDateRange( newDateRange );
+	};
+
+	const areStatsEnabled = useJetpackBlazeVersionCheck( siteId, '14.1', '0.5.3' );
+	const hasStats = !! impressions_total && areStatsEnabled;
+
+	const campaignStatsQuery = useCampaignChartStatsQuery(
+		siteId,
+		campaignId,
+		chartParams,
+		hasStats
+	);
+	const { isLoading: campaignsStatsIsLoading } = campaignStatsQuery;
+	const { data: campaignStats } = campaignStatsQuery;
+	const getCampaignStatsChart = (
+		data: CampaignChartSeriesData[] | null,
+		source: ChartSourceOptions,
+		isLoading = false
+	) => {
+		if ( isLoading ) {
+			return (
+				<div className="campaign-item-details__graph-stats-loader">
+					<div>
+						<Spinner />
+					</div>
+				</div>
+			);
+		}
+
+		// Data should be an array with at least 2 elements. The reason is the necessity to overcome
+		// uPlot's bug of having an infinite loop https://github.com/leeoniya/uPlot/issues/827.
+		if ( ! Array.isArray( data ) || data.length < 2 ) {
+			return (
+				<div>
+					{ translate(
+						"We couldn't retrieve any data for this time frame. Please check back later, as campaign data may take a few hours to appear."
+					) }
+				</div>
+			);
+		}
+
+		return (
+			<CampaignStatsLineChart
+				data={ data }
+				source={ source }
+				resolution={ chartParams.resolution }
+			/>
+		);
+	};
+
 	const budgetRemainingFormatted =
-		total_budget && total_budget_used
+		total_budget && total_budget_used !== undefined
 			? `$${ formatCents( total_budget - total_budget_used, 2 ) }`
 			: '';
 	const overallSpendingFormatted = activeDays
@@ -337,6 +511,67 @@ export default function CampaignItemDetails( props: Props ) {
 			ui_status
 		);
 
+	const chartControls = [];
+
+	// Some controls are conditional, depending on how long the campaign has been active, or if the campaign is in the past
+	// It would be pointless showing "yesterday" to a finished campaign, or 30 days to a 7-day campaign
+	const conditionalControls = [
+		{
+			condition: ! campaignIsFinished,
+			controls: [
+				{
+					onClick: () => updateChartParams( ChartSourceDateRanges.YESTERDAY ),
+					title: ChartSourceDateRangeLabels[ ChartSourceDateRanges.YESTERDAY ],
+					isDisabled: selectedDateRange === ChartSourceDateRanges.YESTERDAY,
+				},
+			],
+		},
+		{
+			condition: activeDays > 7,
+			controls: [
+				{
+					onClick: () => updateChartParams( ChartSourceDateRanges.LAST_7_DAYS ),
+					title: ChartSourceDateRangeLabels[ ChartSourceDateRanges.LAST_7_DAYS ],
+					isDisabled: selectedDateRange === ChartSourceDateRanges.LAST_7_DAYS,
+				},
+			],
+		},
+		{
+			condition: activeDays > 14,
+			controls: [
+				{
+					onClick: () => updateChartParams( ChartSourceDateRanges.LAST_14_DAYS ),
+					title: ChartSourceDateRangeLabels[ ChartSourceDateRanges.LAST_14_DAYS ],
+					isDisabled: selectedDateRange === ChartSourceDateRanges.LAST_14_DAYS,
+				},
+			],
+		},
+		{
+			condition: activeDays > 30,
+			controls: [
+				{
+					onClick: () => updateChartParams( ChartSourceDateRanges.LAST_30_DAYS ),
+					title: ChartSourceDateRangeLabels[ ChartSourceDateRanges.LAST_30_DAYS ],
+					isDisabled: selectedDateRange === ChartSourceDateRanges.LAST_30_DAYS,
+				},
+			],
+		},
+	];
+
+	// Add the available controls
+	conditionalControls.forEach( ( { condition, controls } ) => {
+		if ( condition ) {
+			chartControls.push( ...controls );
+		}
+	} );
+
+	// The controls that are always shown
+	chartControls.push( {
+		onClick: () => updateChartParams( ChartSourceDateRanges.WHOLE_CAMPAIGN ),
+		title: ChartSourceDateRangeLabels[ ChartSourceDateRanges.WHOLE_CAMPAIGN ],
+		isDisabled: selectedDateRange === ChartSourceDateRanges.WHOLE_CAMPAIGN,
+	} );
+
 	const buttons = [
 		{
 			action: 'cancel',
@@ -370,6 +605,150 @@ export default function CampaignItemDetails( props: Props ) {
 		},
 	];
 
+	const errorReportDialogButtons = [
+		{
+			action: 'remove',
+			label: __( 'Contact support' ),
+			onClick: async () => {
+				setShowReportErrorDialog( false );
+				const localizedUrl = localizeUrl( 'https://wordpress.com/support/' );
+				window.open( localizedUrl, '_blank' );
+			},
+		},
+		{
+			action: 'cancel',
+			isPrimary: true,
+			label: __( 'Ok' ),
+		},
+	];
+
+	const tspTargetRef = useRef< HTMLDivElement | null >( null );
+
+	useEffect( () => {
+		const handleScroll = () => {
+			if ( tspTargetRef.current ) {
+				const rect = tspTargetRef.current.getBoundingClientRect();
+				const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
+				if ( inView ) {
+					window.removeEventListener( 'scroll', handleScroll );
+					recordTracksEvent( 'calypso_dsp_tsp_section_scroll_into_view', {} );
+				}
+			}
+		};
+
+		// check that the page has loaded, before adding the listener
+		// check if the campaign has stats, in this case wait for the campaigns stats loading to complete
+		if ( ! isLoading && ( ! hasStats || ! campaignsStatsIsLoading ) ) {
+			window.addEventListener( 'scroll', handleScroll );
+			handleScroll();
+		}
+
+		return () => {
+			window.removeEventListener( 'scroll', handleScroll );
+		};
+	}, [ isLoading, hasStats, campaignsStatsIsLoading ] );
+
+	const cookies = cookie.parse( document.cookie );
+
+	const initialHideTspMetricsBanner = ( cookies[ HIDE_TSP_METRICS_BANNER_COOKIE ] ?? '0' ) === '1';
+	const [ showTspMetricsBanner, setShowTspMetricsBanner ] = useState(
+		! initialHideTspMetricsBanner
+	);
+
+	const closeTspMetricsBanner = () => {
+		setShowTspMetricsBanner( false );
+		setHideTspMetricsBannerCookie( true );
+	};
+
+	const getCampaignTSPStats = ( showBanner: boolean ) => (
+		<>
+			<div className="campaign-item-details__main-stats-row" ref={ tspTargetRef }>
+				<TspMetricsBanner
+					onClose={ closeTspMetricsBanner }
+					display={ showBanner && showTspMetricsBanner }
+				/>
+				<div className="campaign-item-details__main-stats-title">
+					<span className="campaign-item-details__title">{ translate( 'Social Engagement' ) }</span>
+					<a
+						href={ permalink }
+						target="_blank"
+						rel="noreferrer"
+						className="campaign-item-details__tsp-permalink"
+						onClick={ () => {
+							recordTracksEvent( 'calypso_dsp_tsp_open_post_click', {} );
+						} }
+					>
+						<span>{ translate( 'Open Tumblr Post' ) }</span>
+						<Gridicon icon="external" size={ 16 } />
+					</a>
+				</div>
+				<div>
+					<span className="campaign-item-details__label">{ translate( 'Tumblr Post views' ) }</span>
+					<span className="campaign-item-details__text">
+						<span className="wp-brand-font">
+							{ ! isLoading ? tspImpressionsFormatted : <FlexibleSkeleton /> }
+						</span>
+					</span>
+				</div>
+				{ /* todo commenting this until we figure out if this is working properly*/ }
+				{ /*<div>*/ }
+				{ /*	<span className="campaign-item-details__label">*/ }
+				{ /*		{ translate( 'Site visits from Tumblr Post' ) }*/ }
+				{ /*	</span>*/ }
+				{ /*	<span className="campaign-item-details__text">*/ }
+				{ /*		<span className="wp-brand-font">*/ }
+				{ /*			{ ! isLoading ? tspClicksFormatted : <FlexibleSkeleton /> }*/ }
+				{ /*		</span>*/ }
+				{ /*	</span>*/ }
+				{ /*</div>*/ }
+			</div>
+			<div className="campaign-item-details__main-stats-row ">
+				<div>
+					<span className="campaign-item-details__label">{ translate( 'Replies' ) }</span>
+					<span className="campaign-item-details__text">
+						<span className="wp-brand-font">
+							{ ! isLoading ? repliesFormatted : <FlexibleSkeleton /> }
+						</span>
+					</span>
+				</div>
+				<div>
+					<span className="campaign-item-details__label">{ translate( 'Likes' ) }</span>
+					<span className="campaign-item-details__text">
+						<span className="wp-brand-font">
+							{ ! isLoading ? likesFormatted : <FlexibleSkeleton /> }
+						</span>
+					</span>
+				</div>
+				{ displayedReplies && replies && replies?.length > 0 && (
+					<div className="campaign-items-details__tsp-replies">
+						{ displayedReplies.map( ( reply, index ) => (
+							<div key={ index } className="campaign-items-details__tsp-reply">
+								<a href={ reply.blog_url } target="_blank" rel="noopener noreferrer">
+									@{ reply.blog_name }
+								</a>
+								<br />
+								{ reply?.reply_text || '-' }
+							</div>
+						) ) }
+						{ replies && replies?.length > 3 && (
+							<button
+								className="campaign-items-details__replies-show-more-button"
+								onClick={ () => {
+									if ( ! showAllReplies ) {
+										recordTracksEvent( 'calypso_dsp_tsp_section_replies_show_more_click', {} );
+									}
+									setShowAllReplies( ! showAllReplies );
+								} }
+							>
+								{ showAllReplies ? __( 'Show Less' ) : __( 'Show More' ) }
+							</button>
+						) }
+					</div>
+				) }
+			</div>
+		</>
+	);
+
 	return (
 		<div className="campaign-item__container">
 			<Dialog
@@ -387,6 +766,15 @@ export default function CampaignItemDetails( props: Props ) {
 				onClose={ () => setShowErrorDialog( false ) }
 			>
 				<h1>{ __( "Something's gone wrong" ) }</h1>
+				<p>{ __( 'Please try again later or contact support if the problem persists.' ) }</p>
+			</Dialog>
+
+			<Dialog
+				isVisible={ showReportErrorDialog }
+				buttons={ errorReportDialogButtons }
+				onClose={ () => setShowReportErrorDialog( false ) }
+			>
+				<h1>{ __( "Something's gone wrong trying to download your report" ) }</h1>
 				<p>{ __( 'Please try again later or contact support if the problem persists.' ) }</p>
 			</Dialog>
 
@@ -449,6 +837,16 @@ export default function CampaignItemDetails( props: Props ) {
 				{ ! isLoading && status && (
 					<div className="campaign-item-details__support-buttons-container">
 						<div className="campaign-item-details__support-buttons">
+							{ status &&
+								canGetCampaignStats( status ) &&
+								campaign?.campaign_stats?.impressions_total > 0 && (
+									<CampaignDownloadStats
+										siteId={ siteId }
+										campaign={ campaign }
+										isLoading={ isLoading }
+										setStatsError={ () => setShowReportErrorDialog( true ) }
+									/>
+								) }
 							{ ! isLoading && status ? (
 								<>
 									{ canPromoteAgainCampaign( status ) && (
@@ -473,7 +871,7 @@ export default function CampaignItemDetails( props: Props ) {
 			<Main wideLayout className="campaign-item-details">
 				{ status === 'rejected' && (
 					<Notice
-						isReskinned
+						theme="light"
 						showDismiss={ false }
 						status="is-error"
 						icon="notice-outline"
@@ -506,7 +904,7 @@ export default function CampaignItemDetails( props: Props ) {
 				{ status === 'suspended' && payment_links && payment_links.length > 0 && (
 					<>
 						<Notice
-							isReskinned
+							theme="light"
 							showDismiss={ false }
 							status="is-error"
 							icon="notice-outline"
@@ -521,48 +919,93 @@ export default function CampaignItemDetails( props: Props ) {
 				<section className="campaign-item-details__wrapper">
 					<div className="campaign-item-details__main">
 						{ status === 'suspended' && payment_links && payment_links.length > 0 && (
-							<div className="campaign-item-details__payment-links-container">
-								<div className="campaign-item-details__payment-links">
-									<div className="campaign-item-details__payment-link-row">
-										<div className="payment-link__label">{ translate( 'Date' ) }</div>
-										<div className="payment-link__label">{ translate( 'Amount' ) }</div>
-										<div>&nbsp;</div>
-									</div>
-									{ payment_links.map( ( info, index ) => (
-										<div key={ index } className="campaign-item-details__payment-link-row">
-											<div>{ moment( info.date ).format( 'MMMM DD, YYYY' ) }</div>
-											<div>${ formatNumber( info.amount ) }</div>
-											<div className="payment-link__link">
-												<ExternalLink href={ info.url } target="_blank">
-													{ translate( 'Pay' ) }
-													{ getExternalLinkIcon() }
-												</ExternalLink>
-											</div>
-										</div>
-									) ) }
-								</div>
-							</div>
+							<PaymentLinks payment_links={ payment_links } />
 						) }
 
 						{ shouldShowStats && (
 							<div className="campaign-item-details__main-stats-container">
 								<div className="campaign-item-details__main-stats campaign-item-details__impressions">
+									{ !! duration_days && (
+										<div className="campaign-item-details__main-stats-row ">
+											<div>
+												<span className="campaign-item-details__label">
+													{ translate( 'Duration' ) }
+												</span>
+												<span className="campaign-item-details__text wp-brand-font">
+													{ isLoading && <FlexibleSkeleton /> }
+													{ ! isLoading && is_evergreen ? translate( 'Until stopped' ) : '' }
+													{ ! isLoading && ! is_evergreen && durationFormatted }
+												</span>
+											</div>
+											<div>
+												<span className="campaign-item-details__label">
+													{ translate( 'Run between' ) }
+													&nbsp;
+													<InfoPopover position="right">
+														<span className="popover-title">
+															{ ! isLoading ? durationDateAndTimeFormatted : <FlexibleSkeleton /> }
+														</span>
+													</InfoPopover>
+												</span>
+												<span className="campaign-item-details__text wp-brand-font">
+													{ ! isLoading ? durationDateFormatted : <FlexibleSkeleton /> }
+												</span>
+											</div>
+										</div>
+									) }
 									<div className="campaign-item-details__main-stats-row ">
-										<div>
-											<span className="campaign-item-details__label">
-												{ translate( 'Clicks' ) }
-											</span>
-											<span className="campaign-item-details__text wp-brand-font">
-												{ ! isLoading ? clicksFormatted : <FlexibleSkeleton /> }
+										<div className="campaign-item-details__main-stats-title">
+											<span className="campaign-item-details__title">
+												{ translate( 'Ad Performance' ) }
 											</span>
 										</div>
 										<div>
 											<span className="campaign-item-details__label">
-												{ translate( 'Impressions' ) }
+												{ translate( 'Clicks' ) }
 											</span>
-											<span className="campaign-item-details__text wp-brand-font">
-												{ ! isLoading ? impressionsTotal : <FlexibleSkeleton /> }
+											<span className="campaign-item-details__text">
+												<span className="wp-brand-font">
+													{ ! isLoading ? clicksFormatted : <FlexibleSkeleton /> }
+												</span>
+												{ !! clicksOutperformedPercentage && (
+													<span className="campaign-item-details__outperformed">
+														{ translate( 'Outperformed' ) }
+													</span>
+												) }
 											</span>
+											{ !! clicksOutperformedPercentage && (
+												<span>
+													{ translate( '%(percentage)s% more than estimated', {
+														args: {
+															percentage: clicksOutperformedPercentage,
+														},
+													} ) }
+												</span>
+											) }
+										</div>
+										<div>
+											<span className="campaign-item-details__label">
+												{ translate( 'People reached' ) }
+											</span>
+											<span className="campaign-item-details__text">
+												<span className="wp-brand-font">
+													{ ! isLoading ? impressionsTotal : <FlexibleSkeleton /> }
+												</span>
+												{ !! impressionsOutperformedPercentage && (
+													<span className="campaign-item-details__outperformed">
+														{ translate( 'Outperformed' ) }
+													</span>
+												) }
+											</span>
+											{ !! impressionsOutperformedPercentage && (
+												<span>
+													{ translate( '%(percentage)s% more than estimated', {
+														args: {
+															percentage: impressionsOutperformedPercentage,
+														},
+													} ) }
+												</span>
+											) }
 										</div>
 										{ isWooStore && status !== 'created' && (
 											<>
@@ -630,11 +1073,18 @@ export default function CampaignItemDetails( props: Props ) {
 										) }
 									</div>
 
-									{ ! campaignsStatsIsLoading && campaignStats && (
+									{ areStatsEnabled && (
 										<>
 											<div className="campaign-item-details__main-stats-row campaign-item-details__graph-stats-row">
 												<div>
 													<div className="campaign-item-page__graph">
+														<DropdownMenu
+															class="campaign-item-page__graph-selector"
+															controls={ chartControls }
+															icon={ chevronDown }
+															text={ ChartSourceDateRangeLabels[ selectedDateRange ] }
+															label={ ChartSourceDateRangeLabels[ selectedDateRange ] }
+														/>
 														<DropdownMenu
 															class="campaign-item-page__graph-selector"
 															controls={ [
@@ -658,33 +1108,37 @@ export default function CampaignItemDetails( props: Props ) {
 															label={ chartSource }
 														/>
 														{ getCampaignStatsChart(
-															campaignStats?.series[ chartSource ],
-															chartSource
+															campaignStats?.series[ chartSource ] ?? null,
+															chartSource,
+															campaignsStatsIsLoading
 														) }
 													</div>
 												</div>
 											</div>
 
-											<div className="campaign-item-details__main-stats-row campaign-item-details__graph-stats-row">
-												<div>
-													<div className="campaign-item-page__locaton-charts">
-														<span className="campaign-item-details__label">
-															{ chartSource === ChartSourceOptions.Clicks
-																? __( 'Clicks by location' )
-																: __( 'Impressions by location' ) }
-														</span>
-														<div>
-															<LocationChart
-																stats={ campaignStats?.total_stats.countryStats[ chartSource ] }
-																total={ campaignStats.total_stats.total[ chartSource ] }
-																source={ chartSource }
-															/>
+											{ campaignStats && (
+												<div className="campaign-item-details__main-stats-row campaign-item-details__graph-stats-row">
+													<div>
+														<div className="campaign-item-page__locaton-charts">
+															<span className="campaign-item-details__label">
+																{ chartSource === ChartSourceOptions.Clicks
+																	? __( 'Clicks by location' )
+																	: __( 'Impressions by location' ) }
+															</span>
+															<div>
+																<LocationChart
+																	stats={ campaignStats?.total_stats.countryStats[ chartSource ] }
+																	total={ campaignStats.total_stats.total[ chartSource ] }
+																	source={ chartSource }
+																/>
+															</div>
 														</div>
 													</div>
 												</div>
-											</div>
+											) }
 										</>
 									) }
+									{ tsp && getCampaignTSPStats( true ) }
 								</div>
 							</div>
 						) }
@@ -708,11 +1162,11 @@ export default function CampaignItemDetails( props: Props ) {
 													<span className="campaign-item-details__label">
 														{ __( 'Weekly spend' ) }
 													</span>
-													<span className="campaign-item-details__text wp-brand-font">
+													<span className="campaign-item-details__text wp-brand-font align-baseline">
 														{ ! isLoading ? (
 															<>
 																{ weeklySpendFormatted }{ ' ' }
-																<span className="campaign-item-details__details">
+																<span className="campaign-item-details__details no-bottom-margin">
 																	/ { totalBudgetFormatted }
 																</span>
 															</>
@@ -727,6 +1181,13 @@ export default function CampaignItemDetails( props: Props ) {
 															<FlexibleSkeleton />
 														) }
 													</span>
+													{ weeklySpend > displayBudget && (
+														<span className="campaign-item-details__details outperformed_notice">
+															{ __(
+																'Your campaign outperformed this week! You’ll only be charged up to your budget.'
+															) }
+														</span>
+													) }
 												</div>
 											) : (
 												<div>
@@ -736,13 +1197,15 @@ export default function CampaignItemDetails( props: Props ) {
 													<span className="campaign-item-details__text wp-brand-font">
 														{ ! isLoading ? totalBudgetFormatted : <FlexibleSkeleton /> }
 													</span>
-													<span className="campaign-item-details__details">
-														{ ! isLoading ? (
-															`${ budgetRemainingFormatted } remaining`
-														) : (
-															<FlexibleSkeleton />
-														) }
-													</span>
+													{ budgetRemainingFormatted !== '' && (
+														<span className="campaign-item-details__details">
+															{ ! isLoading ? (
+																`${ budgetRemainingFormatted } remaining`
+															) : (
+																<FlexibleSkeleton />
+															) }
+														</span>
+													) }
 												</div>
 											) }
 										</>
@@ -773,35 +1236,31 @@ export default function CampaignItemDetails( props: Props ) {
 									</>
 								</div>
 
-								<div className="campaign-item-details__main-stats-row campaign-item-details__graph-stats-row">
-									<div>
-										<div className="campaign-item-page__graph">
-											{ ! campaignsStatsIsLoading &&
-												campaignStats &&
-												getCampaignStatsChart(
-													campaignStats?.series.spend,
-													ChartSourceOptions.Spend
+								{ areStatsEnabled && campaign?.campaign_stats?.impressions_total > 0 && (
+									<div className="campaign-item-details__main-stats-row campaign-item-details__graph-stats-row">
+										<div>
+											<div className="campaign-item-page__graph">
+												{ getCampaignStatsChart(
+													campaignStats?.series.spend ?? [],
+													ChartSourceOptions.Spend,
+													campaignsStatsIsLoading
 												) }
+											</div>
 										</div>
 									</div>
-								</div>
+								) }
 							</div>
 						</div>
+
+						{ ! shouldShowStats && tsp && (
+							<div className="campaign-item-details__main-stats-container">
+								{ getCampaignTSPStats( false ) }
+							</div>
+						) }
 
 						<div className="campaign-item-details__main-stats-container">
 							<div className="campaign-item-details__secondary-stats">
 								<div className="campaign-item-details__secondary-stats-row">
-									{ objective && objectiveFormatted && (
-										<div>
-											<span className="campaign-item-details__label">
-												{ translate( 'Campaign objective' ) }
-											</span>
-											<span className="campaign-item-details__details objective">
-												{ ! isLoading ? objectiveFormatted : <FlexibleSkeleton /> }
-											</span>
-										</div>
-									) }
-
 									<div>
 										<span className="campaign-item-details__label">
 											{ translate( 'Audience' ) }
@@ -850,7 +1309,7 @@ export default function CampaignItemDetails( props: Props ) {
 													target="_blank"
 												>
 													{ getDestinationLabel() }
-													{ getExternalLinkIcon() }
+													<Gridicon icon="external" size={ 16 } />
 												</Button>
 											) : (
 												<FlexibleSkeleton />
@@ -914,6 +1373,11 @@ export default function CampaignItemDetails( props: Props ) {
 
 													const durationFormatted = formatDuration( createdAt );
 
+													if ( order.status !== 'COMPLETED' ) {
+														// we only want to display data when orders are in completed state
+														return null;
+													}
+
 													return (
 														<div key={ index } className="campaign-item-details__weekly-orders-row">
 															<div className="campaign-item-details__weekly-label">
@@ -934,7 +1398,11 @@ export default function CampaignItemDetails( props: Props ) {
 												<div className="campaign-item-details__weekly-orders-seperator"></div>
 											</div>
 										) }
-										<div className="campaign-item-details__secondary-payment-row">
+										<div
+											className={ clsx( 'campaign-item-details__secondary-payment-row', {
+												'no-payment-method': ! payment_method || ! card_name,
+											} ) }
+										>
 											{ payment_method && card_name && (
 												<>
 													<div className="campaign-item-details__payment-method">
@@ -1032,7 +1500,7 @@ export default function CampaignItemDetails( props: Props ) {
 									showSupportModal={ ! isRunningInWpAdmin }
 								>
 									{ translate( 'View documentation' ) }
-									{ getExternalLinkIcon() }
+									<Gridicon icon="external" size={ 16 } />
 								</InlineSupportLink>
 							</div>
 

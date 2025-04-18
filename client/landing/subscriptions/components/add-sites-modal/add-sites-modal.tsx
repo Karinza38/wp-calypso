@@ -1,15 +1,16 @@
 import { Modal } from '@wordpress/components';
 import { useTranslate } from 'i18n-calypso';
 import { AddSitesForm } from 'calypso/landing/subscriptions/components/add-sites-form';
+import { SOURCE_SUBSCRIPTIONS_ADD_SITES_MODAL } from 'calypso/landing/subscriptions/tracks/constants';
 import './styles.scss';
 
 type AddSitesModalProps = {
 	showModal: boolean;
 	onClose: () => void;
-	onAddFinished: () => void;
+	onChangeSubscribe: () => void;
 };
 
-const AddSitesModal = ( { showModal, onClose, onAddFinished }: AddSitesModalProps ) => {
+const AddSitesModal = ( { showModal, onClose, onChangeSubscribe }: AddSitesModalProps ) => {
 	const translate = useTranslate();
 
 	const modalTitle = translate( 'Add a New Subscription', {
@@ -31,7 +32,10 @@ const AddSitesModal = ( { showModal, onClose, onAddFinished }: AddSitesModalProp
 				{ translate( 'Subscribe to sites, newsletters, and RSS feeds.' ) }
 			</p>
 
-			<AddSitesForm onAddFinished={ onAddFinished } />
+			<AddSitesForm
+				onChangeSubscribe={ onChangeSubscribe }
+				source={ SOURCE_SUBSCRIPTIONS_ADD_SITES_MODAL }
+			/>
 		</Modal>
 	);
 };

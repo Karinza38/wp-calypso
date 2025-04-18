@@ -1,45 +1,91 @@
 import { OnboardSelect } from '@automattic/data-stores';
-import { useStepPersistedState } from '@automattic/onboarding';
-import { useMobileBreakpoint } from '@automattic/viewport-react';
+import {
+	AI_SITE_BUILDER_FLOW,
+	EXAMPLE_FLOW,
+	NEW_HOSTED_SITE_FLOW,
+	NEWSLETTER_FLOW,
+	START_WRITING_FLOW,
+	Step,
+	useStepPersistedState,
+} from '@automattic/onboarding';
 import { useSelect, useDispatch as useWPDispatch } from '@wordpress/data';
-import { localize } from 'i18n-calypso';
 import { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useQueryTheme } from 'calypso/components/data/query-theme';
+import Loading from 'calypso/components/loading';
 import { useQuery } from 'calypso/landing/stepper/hooks/use-query';
 import { useSite } from 'calypso/landing/stepper/hooks/use-site';
 import { useSiteSlug } from 'calypso/landing/stepper/hooks/use-site-slug';
 import { ONBOARD_STORE } from 'calypso/landing/stepper/stores';
-import { PlansStep } from 'calypso/signup/steps/plans';
-import { getIntervalType } from 'calypso/signup/steps/plans/util';
+import { getHidePlanPropsBasedOnThemeType } from 'calypso/my-sites/plans-features-main/components/utils/utils';
+import { getSignupCompleteSiteID, getSignupCompleteSlug } from 'calypso/signup/storageUtils';
 import { useSelector } from 'calypso/state';
-import { recordTracksEvent } from 'calypso/state/analytics/actions';
 import { getCurrentUserName } from 'calypso/state/current-user/selectors';
-import { errorNotice } from 'calypso/state/notices/actions';
-import { ProvidedDependencies, StepProps } from '../../types';
+import { getTheme, getThemeType } from 'calypso/state/themes/selectors';
+import { shouldUseStepContainerV2 } from '../../../helpers/should-use-step-container-v2';
+import UnifiedPlansStep from './unified-plans-step';
+import { getIntervalType } from './util';
+import type { ProvidedDependencies, Step as StepType } from '../../types';
+import type { PlansIntent } from '@automattic/plans-grid-next';
 
 import './style.scss';
 
-export const LocalizedPlanStep = localize( PlansStep );
+/**
+ * Copied from steps-repository/plans (which should be removed)
+ */
+function getPlansIntent( flowName: string | null, isWordCampPromo?: boolean ): PlansIntent | null {
+	switch ( flowName ) {
+		case START_WRITING_FLOW:
+			return 'plans-blog-onboarding';
+		case NEWSLETTER_FLOW:
+		case EXAMPLE_FLOW:
+			return 'plans-newsletter';
+		case NEW_HOSTED_SITE_FLOW:
+			if ( isWordCampPromo ) {
+				return 'plans-new-hosted-site-business-only';
+			}
+			return 'plans-new-hosted-site';
+		default:
+			return null;
+	}
+}
 
-export default function PlansStepAdaptor( props: StepProps ) {
+const PlansStepAdaptor: StepType< {
+	// TODO: work on more specific types
+	submits: Record< string, unknown >;
+} > = ( props ) => {
 	const [ stepState, setStepState ] = useStepPersistedState< ProvidedDependencies >( 'plans-step' );
 	const siteSlug = useSiteSlug();
-	const isMobile = useMobileBreakpoint();
 
-	const { siteTitle, domainItem, domainItems } = useSelect(
+	const { siteTitle, domainItem, domainItems, selectedDesign } = useSelect(
 		( select: ( key: string ) => OnboardSelect ) => {
+			const { getSelectedSiteTitle, getDomainCartItem, getDomainCartItems, getSelectedDesign } =
+				select( ONBOARD_STORE );
 			return {
-				siteTitle: select( ONBOARD_STORE ).getSelectedSiteTitle(),
-				domainItem: select( ONBOARD_STORE ).getDomainCartItem(),
-				domainItems: select( ONBOARD_STORE ).getDomainCartItems(),
+				siteTitle: getSelectedSiteTitle(),
+				domainItem: getDomainCartItem(),
+				domainItems: getDomainCartItems(),
+				selectedDesign: getSelectedDesign(),
 			};
 		},
 		[]
 	);
 	const username = useSelector( getCurrentUserName );
-	const coupon = undefined;
+	const coupon = useQuery().get( 'coupon' ) ?? undefined;
+	const { setSiteUrl } = useWPDispatch( ONBOARD_STORE );
 
-	const { setDomainCartItem, setDomainCartItems, setSiteUrl } = useWPDispatch( ONBOARD_STORE );
+	const theme = useSelector( ( state ) =>
+		selectedDesign ? getTheme( state, 'wpcom', selectedDesign.slug ) : null
+	);
+	const selectedThemeType = useSelector( ( state ) =>
+		theme ? getThemeType( state, theme.id ) : ''
+	);
+	const isLoadingSelectedTheme = selectedDesign && ! theme;
+	const { siteUrl } = useSelect(
+		( select ) => ( {
+			siteUrl: ( select( ONBOARD_STORE ) as OnboardSelect ).getSiteUrl(),
+		} ),
+		[]
+	);
 
 	const signupDependencies = {
 		siteSlug,
@@ -48,13 +94,36 @@ export default function PlansStepAdaptor( props: StepProps ) {
 		coupon,
 		domainItem,
 		domainCart: domainItems,
+		selectedThemeType,
+		siteUrl,
 	};
 
-	const site = useSite();
-	const customerType = useQuery().get( 'customerType' );
-	const dispatch = useDispatch();
+	const postSignUpSiteSlugParam = getSignupCompleteSlug();
+	const postSignUpSiteIdParam = getSignupCompleteSiteID();
 
+	const site = useSite( postSignUpSiteSlugParam || postSignUpSiteIdParam );
+	const customerType = useQuery().get( 'customerType' ) ?? undefined;
 	const [ planInterval, setPlanInterval ] = useState< string | undefined >( undefined );
+
+	useQueryTheme( 'wpcom', selectedDesign?.slug );
+
+	/**
+	 * isWordCampPromo is temporary
+	 */
+	const isWordCampPromo = new URLSearchParams( location.search ).has( 'utm_source', 'wordcamp' );
+	const plansIntent = getPlansIntent( props.flow, isWordCampPromo );
+
+	let hidePlanProps;
+	if ( props.flow === AI_SITE_BUILDER_FLOW ) {
+		hidePlanProps = {
+			hideFreePlan: true,
+			hidePersonalPlan: true,
+			hideEcommercePlan: true,
+			hideEnterprisePlan: true,
+		};
+	} else {
+		hidePlanProps = getHidePlanPropsBasedOnThemeType( selectedThemeType || '' );
+	}
 
 	/**
 	 * The plans step has a quirk where it calls `submitSignupStep` then synchronously calls `goToNextStep` after it.
@@ -67,24 +136,24 @@ export default function PlansStepAdaptor( props: StepProps ) {
 		setPlanInterval( intervalType );
 	};
 
+	const isUsingStepContainerV2 = shouldUseStepContainerV2( props.flow );
+
+	if ( isLoadingSelectedTheme ) {
+		return isUsingStepContainerV2 ? <Step.Loading /> : <Loading />;
+	}
+
 	return (
-		<LocalizedPlanStep
-			selectedSite={ site }
-			saveSignupStep={ ( state: ProvidedDependencies ) => {
-				setStepState( ( mostRecentState = { ...stepState, ...state } ) );
+		<UnifiedPlansStep
+			{ ...hidePlanProps }
+			selectedSite={ site ?? undefined }
+			saveSignupStep={ ( step ) => {
+				setStepState( ( mostRecentState = { ...stepState, ...step } ) );
 			} }
-			submitSignupStep={ ( state: ProvidedDependencies ) => {
-				/* The plans step removes paid domains when the user picks a free plan
-				   after picking a paid domain */
-				if ( state.stepName === 'domains' ) {
-					if ( state.isPurchasingItem === false ) {
-						setDomainCartItem( undefined );
-						setDomainCartItems( undefined );
-					} else if ( state.siteUrl ) {
-						setSiteUrl( state.siteUrl );
-					}
+			submitSignupStep={ ( stepInfo ) => {
+				if ( stepInfo.stepName === 'domains' && stepInfo.siteUrl ) {
+					setSiteUrl( stepInfo.siteUrl );
 				} else {
-					setStepState( ( mostRecentState = { ...stepState, ...state } ) );
+					setStepState( ( mostRecentState = { ...stepState, ...stepInfo } ) );
 				}
 			} }
 			goToNextStep={ () => {
@@ -92,24 +161,22 @@ export default function PlansStepAdaptor( props: StepProps ) {
 			} }
 			step={ stepState }
 			customerType={ customerType }
-			errorNotice={ ( message: string ) => dispatch( errorNotice( message ) ) }
 			signupDependencies={ signupDependencies }
 			stepName="plans"
 			flowName={ props.flow }
-			recordTracksEvent={ ( name: string, props: unknown ) => {
-				dispatch( recordTracksEvent( name, props ) );
-			} }
+			intent={ plansIntent ?? undefined }
 			onPlanIntervalUpdate={ onPlanIntervalUpdate }
 			intervalType={ planInterval }
 			wrapperProps={ {
-				hideBack: isMobile,
+				hideBack: false,
 				goBack: props.navigation.goBack,
-				recordTracksEvent: ( name: string, props: unknown ) =>
-					dispatch( recordTracksEvent( name, props ) ),
 				isFullLayout: true,
 				isExtraWideLayout: false,
 			} }
 			useStepperWrapper
+			useStepContainerV2={ isUsingStepContainerV2 }
 		/>
 	);
-}
+};
+
+export default PlansStepAdaptor;

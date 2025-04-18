@@ -1,6 +1,6 @@
 {
 	"name": "@automattic/oauth-token",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Wrapper for OAuth token storage so we can change the underlying storage location without changing access to the token.",
 	"main": "dist/cjs/index.js",
 	"module": "dist/esm/index.js",
@@ -17,7 +17,7 @@
 	"bugs": "https://github.com/Automattic/wp-calypso/issues",
 	"homepage": "https://github.com/Automattic/wp-calypso/tree/HEAD/packages/oauth-token#readme",
 	"dependencies": {
-		"cookie": "^0.7.0",
+		"cookie": "^0.7.2",
 		"store": "^2.0.12"
 	},
 	"devDependencies": {

@@ -1,21 +1,19 @@
 import {
+	getPlan,
 	PLAN_BUSINESS,
 	WPCOM_FEATURES_NO_WPCOM_BRANDING,
-	getPlan,
 } from '@automattic/calypso-products';
-import { CompactCard, Button } from '@automattic/components';
+import { Button } from '@automattic/components';
 import { useTranslate } from 'i18n-calypso';
 import UpsellNudge from 'calypso/blocks/upsell-nudge';
-import { PanelHeading, PanelSection } from 'calypso/components/panel';
+import { PanelCard, PanelCardHeading } from 'calypso/components/panel';
 import { useActiveThemeQuery } from 'calypso/data/themes/use-active-theme-query';
 import { preventWidows } from 'calypso/lib/formatting';
-import SettingsSectionHeader from 'calypso/my-sites/site-settings/settings-section-header';
 import isSiteAutomatedTransfer from 'calypso/state/selectors/is-site-automated-transfer';
 import isSiteWPForTeams from 'calypso/state/selectors/is-site-wpforteams';
 import siteHasFeature from 'calypso/state/selectors/site-has-feature';
 import { useSelectedSiteSelector } from 'calypso/state/sites/hooks';
 import { getCustomizerUrl } from 'calypso/state/sites/selectors';
-import { isHostingMenuUntangled } from '../../utils';
 
 import './style.scss';
 
@@ -80,25 +78,10 @@ export default function FooterCredit( { site, siteIsJetpack } ) {
 	};
 
 	return (
-		<>
-			{ ! isHostingMenuUntangled() ? (
-				<div className="site-settings__footer-credit-container">
-					<SettingsSectionHeader
-						title={ translate( 'Footer credit' ) }
-						id="site-settings__footer-credit-header"
-					/>
-					<CompactCard className="site-settings__footer-credit-explanation">
-						{ renderContent() }
-					</CompactCard>
-					{ renderUpsellNudge() }
-				</div>
-			) : (
-				<PanelSection className="settings-site__footer-credit">
-					<PanelHeading>{ translate( 'Footer credit' ) }</PanelHeading>
-					{ renderContent() }
-					{ renderUpsellNudge() }
-				</PanelSection>
-			) }
-		</>
+		<PanelCard className="settings-site__footer-credit">
+			<PanelCardHeading>{ translate( 'Footer credit' ) }</PanelCardHeading>
+			{ renderContent() }
+			{ renderUpsellNudge() }
+		</PanelCard>
 	);
 }

@@ -1,16 +1,15 @@
 import { recordTracksEvent } from '@automattic/calypso-analytics';
 import { isEnabled } from '@automattic/calypso-config';
 import { DomainTransferData, DomainTransferForm } from '@automattic/data-stores';
-import formatCurrency from '@automattic/format-currency';
-import { useDataLossWarning } from '@automattic/onboarding';
+import { HUNDRED_YEAR_DOMAIN_TRANSFER, useDataLossWarning } from '@automattic/onboarding';
 import { Button } from '@wordpress/components';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { sprintf } from '@wordpress/i18n';
 import { plus } from '@wordpress/icons';
 import { useI18n } from '@wordpress/react-i18n';
 import { getQueryArg } from '@wordpress/url';
+import { formatCurrency } from 'i18n-calypso';
 import { useCallback, useEffect, useState } from 'react';
-import { v4 as uuid } from 'uuid';
 import QueryProducts from 'calypso/components/data/query-products-list';
 import { domainTransfer } from 'calypso/lib/cart-values/cart-items';
 import { cartManagerClient } from 'calypso/my-sites/checkout/cart-manager-client';
@@ -26,7 +25,7 @@ export interface Props {
 
 const defaultState: DomainTransferForm = {
 	domains: {
-		[ uuid() ]: {
+		[ crypto.randomUUID() ]: {
 			domain: '',
 			auth: '',
 			valid: false,
@@ -91,6 +90,8 @@ const Domains: React.FC< Props > = ( { onSubmit, variantSlug } ) => {
 		( { domain, auth } ) => domain.trim() || auth.trim()
 	);
 
+	const isHundredYearTransfer = variantSlug === HUNDRED_YEAR_DOMAIN_TRANSFER;
+
 	useDataLossWarning( hasAnyDomains && enabledDataLossWarning );
 
 	// create a string key representing the current state of the domains
@@ -110,7 +111,9 @@ const Domains: React.FC< Props > = ( { onSubmit, variantSlug } ) => {
 						auth_code: auth,
 						signup: false,
 						import_dns_records: true,
+						is_hundred_year_domain: isHundredYearTransfer,
 					},
+					volume: isHundredYearTransfer ? 100 : 1,
 				} )
 			);
 
@@ -151,7 +154,7 @@ const Domains: React.FC< Props > = ( { onSubmit, variantSlug } ) => {
 			resulting_domain_count: domainCount + 1,
 		} );
 		const newDomainsState = { ...domainsState };
-		newDomainsState[ uuid() ] = {
+		newDomainsState[ crypto.randomUUID() ] = {
 			domain: '',
 			auth: '',
 			valid: false,
@@ -222,7 +225,18 @@ const Domains: React.FC< Props > = ( { onSubmit, variantSlug } ) => {
 				}
 			} );
 
-			newDomainsState[ uuid() ] = { ...domainTransferObj };
+			newDomainsState[ crypto.randomUUID() ] = { ...domainTransferObj };
+
+			// Only keep the latest entry - 100-year domain flows are only
+			// allowed to have one domain at a time, so always keep the latest
+			// one and remove the rest.
+			if ( isHundredYearTransfer ) {
+				Object.entries( newDomainsState ).forEach( ( [ key, domainObject ] ) => {
+					if ( domainObject.domain !== newDomainTransferQueryArg ) {
+						delete newDomainsState[ key ];
+					}
+				} );
+			}
 		}
 
 		if ( ! duplicateDomain ) {
@@ -257,9 +271,11 @@ const Domains: React.FC< Props > = ( { onSubmit, variantSlug } ) => {
 					variantSlug={ variantSlug }
 				/>
 			) ) }
-			<Button className="bulk-domain-transfer__add-domain" icon={ plus } onClick={ addDomain }>
-				{ __( 'Add more' ) }
-			</Button>
+			{ ! isHundredYearTransfer && (
+				<Button className="bulk-domain-transfer__add-domain" icon={ plus } onClick={ addDomain }>
+					{ __( 'Add more' ) }
+				</Button>
+			) }
 			<div className="bulk-domain-transfer__cta-container">
 				<Button
 					disabled={ numberOfValidDomains === 0 || ! allGood }

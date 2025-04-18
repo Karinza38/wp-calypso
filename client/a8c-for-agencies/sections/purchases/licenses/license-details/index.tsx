@@ -1,66 +1,54 @@
-import config from '@automattic/calypso-config';
 import { Card, Gridicon } from '@automattic/components';
 import clsx from 'clsx';
 import { useTranslate } from 'i18n-calypso';
 import PressableUsageDetails from 'calypso/a8c-for-agencies/components/pressable-usage-details';
-import useProductAndPlans from 'calypso/a8c-for-agencies/sections/marketplace/hooks/use-product-and-plans';
 import { isPressableHostingProduct } from 'calypso/a8c-for-agencies/sections/marketplace/lib/hosting';
-import useExistingPressablePlan from 'calypso/a8c-for-agencies/sections/marketplace/pressable-overview/hooks/use-existing-pressable-plan';
+import useGetPressablePlanByProductId from 'calypso/a8c-for-agencies/sections/marketplace/pressable-overview/hooks/use-get-pressable-plan-by-product-id';
 import FormattedDate from 'calypso/components/formatted-date';
 import ClipboardButton from 'calypso/components/forms/clipboard-button';
 import { getLicenseState, noop } from 'calypso/jetpack-cloud/sections/partner-portal/lib';
 import { LicenseState, LicenseType } from 'calypso/jetpack-cloud/sections/partner-portal/types';
 import LicenseDetailsActions from './actions';
 import type { ReferralAPIResponse } from 'calypso/a8c-for-agencies/sections/referrals/types';
+import type { License } from 'calypso/state/partner-portal/types';
 
 import './style.scss';
 
 interface Props {
-	licenseKey: string;
-	product: string;
-	siteUrl: string | null;
-	blogId: number | null;
-	hasDownloads: boolean;
-	issuedAt: string;
-	attachedAt: string | null;
-	revokedAt: string | null;
+	license: License;
 	onCopyLicense?: () => void;
 	licenseType: LicenseType;
 	isChildLicense?: boolean;
 	referral?: ReferralAPIResponse | null;
+	isDevSite?: boolean;
 }
 
 const DETAILS_DATE_FORMAT = 'YYYY-MM-DD h:mm:ss A';
 const DETAILS_DATE_FORMAT_SHORT = 'YYYY-MM-DD';
 
 export default function LicenseDetails( {
-	licenseKey,
-	product,
-	siteUrl,
-	blogId,
-	hasDownloads,
-	issuedAt,
-	attachedAt,
-	revokedAt,
+	license,
 	onCopyLicense = noop,
 	licenseType,
 	isChildLicense,
 	referral,
+	isDevSite,
 }: Props ) {
+	const licenseKey = license.licenseKey;
+	const product = license.product;
+	const siteUrl = license.siteUrl;
+	const blogId = license.blogId;
+	const hasDownloads = license.hasDownloads;
+	const issuedAt = license.issuedAt;
+	const attachedAt = license.attachedAt;
+	const revokedAt = license.revokedAt;
+	const productId = license.productId;
+
 	const translate = useTranslate();
 	const licenseState = getLicenseState( attachedAt, revokedAt );
 	const isPressableLicense = isPressableHostingProduct( licenseKey );
 
-	const { pressablePlans } = useProductAndPlans( {
-		selectedSite: null,
-		productSearchQuery: '',
-	} );
-
-	const { existingPlan: pressablePlan } = useExistingPressablePlan( {
-		plans: pressablePlans,
-	} );
-
-	const isAutomatedReferralsEnabled = config.isEnabled( 'a4a-automated-referrals' );
+	const pressablePlan = useGetPressablePlanByProductId( { product_id: productId } );
 
 	return (
 		<Card
@@ -112,7 +100,7 @@ export default function LicenseDetails( {
 					</li>
 				) }
 
-				{ isAutomatedReferralsEnabled && referral && (
+				{ referral && (
 					<li className="license-details__list-item-small">
 						<h4 className="license-details__label">{ translate( 'Owned by' ) }</h4>
 						{ referral.client.email }
@@ -142,6 +130,9 @@ export default function LicenseDetails( {
 				licenseType={ licenseType }
 				hasDownloads={ hasDownloads }
 				isChildLicense={ isChildLicense }
+				isClientLicense={ !! referral }
+				isDevSite={ isDevSite }
+				productId={ productId }
 			/>
 		</Card>
 	);

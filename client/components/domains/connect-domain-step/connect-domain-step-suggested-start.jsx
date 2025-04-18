@@ -11,7 +11,6 @@ import {
 	stepsHeading,
 	stepSlug,
 } from 'calypso/components/domains/connect-domain-step/constants';
-import { isSubdomain } from 'calypso/lib/domains';
 import { domainManagementDns } from 'calypso/my-sites/domains/paths';
 import { getSelectedSite } from 'calypso/state/ui/selectors';
 import ConnectDomainStepWrapper from './connect-domain-step-wrapper';
@@ -26,16 +25,18 @@ export default function ConnectDomainStepSuggestedStart( {
 	onNextStep,
 	progressStepList,
 	setPage,
+	domainSetupInfo,
 } ) {
 	const { __ } = useI18n();
+	const { data } = domainSetupInfo;
 	const selectedSite = useSelector( getSelectedSite );
 	const goToDnsRecordsPage = () => page( domainManagementDns( selectedSite?.slug, domain ) );
-	const firstStep = isSubdomain( domain )
+	const firstStep = data?.is_subdomain
 		? stepSlug.SUBDOMAIN_ADVANCED_START
 		: stepSlug.ADVANCED_START;
 	const switchToAdvancedSetup = () => setPage( firstStep );
 
-	const message = isSubdomain( domain )
+	const message = data?.is_subdomain
 		? __(
 				'The easiest way to connect your subdomain is by changing NS records. But if you are unable to do this, then switch to our <a>advanced setup</a>, using A & CNAME records.'
 		  )
@@ -58,7 +59,7 @@ export default function ConnectDomainStepSuggestedStart( {
 				{ __( 'How long will it take?' ) }
 			</CardHeading>
 			<p className={ className + '__text' }>
-				{ __( 'It takes 5-15 minutes to set up.' ) }
+				{ __( 'It takes 5–15 minutes to set up.' ) }
 				<br />
 				{ __( 'It can take up to 72 hours for the domain to be fully connected.' ) }
 			</p>
@@ -130,4 +131,5 @@ ConnectDomainStepSuggestedStart.propTypes = {
 	onNextStep: PropTypes.func.isRequired,
 	progressStepList: PropTypes.object.isRequired,
 	setPage: PropTypes.func.isRequired,
+	domainSetupInfo: PropTypes.object.isRequired,
 };
